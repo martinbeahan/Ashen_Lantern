@@ -1803,14 +1803,19 @@ void Game::grantKillLoot(Character* actor, const std::string& foeName) {
     }
     if (!looter) return;
     looter->gold += gold;
-    std::string msg = looter->name + " loots " + std::to_string(gold) + " gold from the " + foeName + ".";
+    // Kill beat first so UI juice can toast "Felled …" then gold line stays in the feed.
+    std::string msg = "Felled " + foeName + "! " + looter->name + " loots " +
+                      std::to_string(gold) + " gold.";
     addChatMessage("Combat", msg);
-    dmSay(msg);
-    addJournalEntry(msg);
+    dmSay("The " + foeName + " falls. " + looter->name + " claims " + std::to_string(gold) + " gold.");
+    addJournalEntry("Defeated " + foeName + " — " + looter->name + " loots " + std::to_string(gold) + " gold.");
     lastEvent_ = msg;
 }
 
 void Game::enterClearedRoom(Character* actor) {
+    // Preserve kill beat ("Felled …") so UI juice can toast it when this room clears.
+    const std::string priorKillBeat =
+        (lastEvent_.rfind("Felled ", 0) == 0) ? lastEvent_ : std::string();
     const int setPieceXp = pendingSetPieceXpBonus_;
     const int setPieceGold = pendingSetPieceGoldBonus_;
     const bool setPieceLoot = pendingSetPieceGuaranteedLoot_;
@@ -1845,6 +1850,7 @@ void Game::enterClearedRoom(Character* actor) {
     // Capture before lantern / early-return paths discard the pending flag.
     const bool pendingAllowLegendary = pendingBossAllowLegendary_;
     pendingBossAllowLegendary_ = false;
+    std::string rareLootNote; // Rare+ for UI juice (toast + soft accent)
     if (static_cast<SoloQuestBeat>(questBeat_) == SoloQuestBeat::LANTERN_VAULT) {
         grantAshenLantern(actor);
     } else if (actor && !actor->isDead) {
@@ -1856,6 +1862,11 @@ void Game::enterClearedRoom(Character* actor) {
             actor->addToInventory(loot);
             dmSay(actor->name + " finds " + loot->getDescription() + " [" + loot->rarityLabel() + "] — check Inventory.");
             addJournalEntry(actor->name + " found loot: " + loot->getDescription() + " (" + loot->rarityLabel() + ")");
+            if (loot->rarity == ItemRarity::RARE || loot->rarity == ItemRarity::EPIC
+                || loot->rarity == ItemRarity::LEGENDARY) {
+                rareLootNote = actor->name + " finds " + loot->getDescription()
+                    + " [" + loot->rarityLabel() + "]!";
+            }
         } else if (luck > 0) {
             // #46 pity: guarantee a drop; hard-cap at Epic (never Legendary).
             auto pity = LootSystem::generateLoot(roomCount_, 30, preferA, preferB, false);
@@ -1864,6 +1875,11 @@ void Game::enterClearedRoom(Character* actor) {
                 actor->addToInventory(pity);
                 dmSay(actor->name + " claims a boss trophy: " + pity->getDescription() + " [" + pity->rarityLabel() + "].");
                 addJournalEntry(actor->name + " claimed boss loot: " + pity->getDescription());
+                if (pity->rarity == ItemRarity::RARE || pity->rarity == ItemRarity::EPIC
+                    || pity->rarity == ItemRarity::LEGENDARY) {
+                    rareLootNote = actor->name + " claims " + pity->getDescription()
+                        + " [" + pity->rarityLabel() + "]!";
+                }
             }
         }
         // Set-piece: guaranteed Common or Uncommon (never Legendary; respects drop nerfs).
@@ -1905,12 +1921,32 @@ void Game::enterClearedRoom(Character* actor) {
     currentTurnIndex_ = 0;
     roomSearchUsed_ = false;
     roomDescription_ += " The foes lie still. You may Search, take a Short Rest, or press Onward.";
-    if (wasSetPiece && !setPieceFeed.empty()) {
+    if (!rareLootNote.empty()) {
+        // Prefer Rare+ loot beat so UI can toast a restrained accent.
+        lastEvent_ = rareLootNote;
+        addChatMessage("Combat", rareLootNote);
+        if (!priorKillBeat.empty()) addChatMessage("Combat", priorKillBeat);
+        if (wasSetPiece && !setPieceFeed.empty()) {
+            addChatMessage("Combat", setPieceFeed + " Search, Rest, or Onward.");
+        } else {
+            addChatMessage("Combat", "Room cleared! Search, Rest, or Onward.");
+        }
+    } else if (!priorKillBeat.empty()) {
+        // Keep Felled line as lastEvent_ for kill-pop toast; also note the clear.
+        lastEvent_ = priorKillBeat;
+        addChatMessage("Combat", priorKillBeat);
+        if (wasSetPiece && !setPieceFeed.empty()) {
+            addChatMessage("Combat", setPieceFeed + " Search, Rest, or Onward.");
+        } else {
+            addChatMessage("Combat", "Room cleared! Search, Rest, or Onward.");
+        }
+    } else if (wasSetPiece && !setPieceFeed.empty()) {
         lastEvent_ = setPieceFeed + " Search, Rest, or Onward.";
+        addChatMessage("Combat", lastEvent_);
     } else {
         lastEvent_ = "Room cleared! Search, Rest, or Onward.";
+        addChatMessage("Combat", lastEvent_);
     }
-    addChatMessage("Combat", lastEvent_);
     if (questLanternRecovered_ && static_cast<SoloQuestBeat>(questBeat_) == SoloQuestBeat::LANTERN_VAULT) {
         dmSay("The vault is clear. Carry the Ashen Lantern Onward to the shrine — or Search and Rest first.");
     } else if (wasSetPiece) {
@@ -1928,7 +1964,6 @@ void Game::purgeDownedEnemies() {
         if ((*it)->currentHp <= 0 || (*it)->isDowned) {
             std::string foeName = (*it)->name;
             grantKillLoot(looter, foeName);
-            addJournalEntry("Defeated " + foeName);
             removeFromTurnOrder(it->get());
             it = enemies_.erase(it);
             removed = true;
@@ -2191,9 +2226,7 @@ void Game::resolveEnemyDefeated(Character* actor, int /*targetEnemyIndex*/) {
     for (auto it = enemies_.begin(); it != enemies_.end(); ) {
         if ((*it)->currentHp <= 0) {
             std::string foeName = (*it)->name;
-            grantKillLoot(actor, foeName);
-            addJournalEntry("Defeated " + foeName);
-            dmSay("The " + foeName + " falls. The dungeon grows quieter… for now.");
+            grantKillLoot(actor, foeName); // sets Felled … lastEvent_ + journal/DM
             removeFromTurnOrder(it->get());
             it = enemies_.erase(it);
         } else ++it;

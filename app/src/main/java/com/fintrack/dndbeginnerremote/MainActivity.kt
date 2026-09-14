@@ -64,6 +64,9 @@ class MainActivity : AppCompatActivity() {
     private var multiplayer: MultiplayerManager? = null
     private var lastBattleRoster = ""
     private var lastAnimEvent = ""
+    /** Dedupe short kill / rare-loot juice toasts within a session tick. */
+    private var lastKillPopKey = ""
+    private var lastRareLootKey = ""
     private var selectedEnemyName: String? = null
     private var selectedAllyName: String? = null
     private var foeTargetingMode = false
@@ -1270,6 +1273,10 @@ class MainActivity : AppCompatActivity() {
                 combatFlashOverlay?.animate()?.cancel()
                 combatFlashOverlay?.visibility = View.GONE
                 combatFlashOverlay?.alpha = 1f
+                if (::battleArena.isInitialized) {
+                    battleArena.animate().cancel()
+                    battleArena.translationX = 0f
+                }
             }
         }
         btnSettingsTutorial.setOnClickListener {
@@ -1327,6 +1334,10 @@ class MainActivity : AppCompatActivity() {
                 combatFlashOverlay?.animate()?.cancel()
                 combatFlashOverlay?.visibility = View.GONE
                 combatFlashOverlay?.alpha = 1f
+                if (::battleArena.isInitialized) {
+                    battleArena.animate().cancel()
+                    battleArena.translationX = 0f
+                }
             }
         }
         btnSettingsAbandon.visibility = if (sessionActive) View.VISIBLE else View.GONE
@@ -2000,6 +2011,7 @@ class MainActivity : AppCompatActivity() {
         }
         Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
         appendCombatFeed("LEVEL UP: ${newly.joinToString(", ") { it.first }}")
+        pulseAccent(AccentKind.LEVEL_UP)
         // One-shot banner dialog for the first new leveler this tick
         if (isFinishing || levelUpDialogShowing) return
         val (who, lvl) = newly.first()
@@ -2996,6 +3008,9 @@ class MainActivity : AppCompatActivity() {
                 || lastEv.startsWith("SET-PIECE!")) {
                 Toast.makeText(this, lastEv, Toast.LENGTH_LONG).show()
             }
+            maybeKillPop(lastEv)
+            maybeRareLootAccent(lastEv)
+            maybeSpecialAbilityJuice(lastEv)
             if (lastEv.contains("Game Over", ignoreCase = true)) {
                 btnReset.visibility = View.VISIBLE
                 handlePartyWipeUi()
@@ -3411,11 +3426,16 @@ class MainActivity : AppCompatActivity() {
                     if (damageAmount != null && damageAmount > 0) {
                         spawnFloatingDamage(d, damageAmount, critical)
                         flashScreen(critical)
+                        shakeBattleArena(critical)
                     } else if (critical) {
                         flashScreen(true)
+                        shakeBattleArena(true)
                     }
                 } ?: run {
-                    if (critical) flashScreen(true)
+                    if (critical) {
+                        flashScreen(true)
+                        shakeBattleArena(true)
+                    }
                 }
             }.start()
     }
@@ -3505,37 +3525,54 @@ class MainActivity : AppCompatActivity() {
         lastAnimEvent = event
         val e = event.lowercase()
         when {
-            e.contains("attacks") || e.contains("hits") || e.contains("slashes") || e.contains("fireball") || e.contains("sneak") || e.contains("action surge") || e.contains("magic missile") -> {
-                val attackMatch = Regex("""^(.+?)\s+attacks\s+(.+?)(?:!|\.|$)""", RegexOption.IGNORE_CASE)
-                    .find(event.trim())
+            e.contains("attacks") || e.contains("hits") || e.contains("slashes") ||
+                e.contains("fireball") || e.contains("sneak") || e.contains("action surge") ||
+                e.contains("magic missile") || e.contains("cutting quip") ||
+                e.contains("psychic sting") -> {
+                val attackMatch = Regex(
+                    """^(.+?)\s+(?:attacks|Cutting Quip vs)\s+(.+?)(?:!|\.|$)""",
+                    RegexOption.IGNORE_CASE
+                ).find(event.trim())
                 val attackerName = attackMatch?.groupValues?.getOrNull(1)?.trim().orEmpty()
-                val foeNames = listOf("goblin", "skeleton", "wolf", "ogre", "collector")
+                val foeNames = listOf(
+                    "goblin", "skeleton", "wolf", "ogre", "collector",
+                    "herald", "drake", "hydra", "nightfang", "warden", "king"
+                )
                 val attackerIsFoe = foeNames.any { attackerName.lowercase().contains(it) } ||
                     (attackerName.isBlank() && foeNames.any { e.contains(it) } &&
                         !e.startsWith(localPlayerName.lowercase()))
                 val isCrit = e.contains("critical")
-                val dmg = Regex("""(?i)(?:Damage|deal(?:s)?|for)\s+(\d+)""").find(event)
-                    ?.groupValues?.getOrNull(1)?.toIntOrNull()
+                val dmg = Regex("""(?i)(?:Damage|deal(?:s)?|for|Psychic sting)\s+(\d+)""")
+                    .find(event)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                val landed = (dmg != null && dmg > 0) ||
+                    e.contains("hit!") || e.contains("critical") || e.contains("psychic sting")
                 animateAttack(
                     attackerIsPlayer = !attackerIsFoe,
                     attackerName = attackerName.ifBlank { null },
                     critical = isCrit,
                     damageAmount = dmg
                 )
+                // Shake only when animateAttack had no damageAmount to drive it.
+                if (landed && dmg == null) {
+                    shakeBattleArena(isCrit)
+                }
                 if (attackerIsFoe) {
                     gameAudio?.playGrowl()
                     gameAudio?.playAttack()
                 } else {
                     gameAudio?.playAttack()
                 }
-                if (e.contains("hit") || e.contains("damage") || e.contains("critical")) {
+                if (e.contains("hit") || e.contains("damage") || e.contains("critical") ||
+                    e.contains("psychic sting")
+                ) {
                     gameAudio?.playHit()
                 }
             }
-            e.contains("damage") || e.contains("struck") || e.contains("wounded") -> {
+            e.contains("damage") || e.contains("struck") || e.contains("wounded") ||
+                e.contains("psychic sting") -> {
                 gameAudio?.playHit()
-                val dmg = Regex("""(?i)(?:Damage|deal(?:s)?|for)\s+(\d+)""").find(event)
-                    ?.groupValues?.getOrNull(1)?.toIntOrNull()
+                val dmg = Regex("""(?i)(?:Damage|deal(?:s)?|for|Psychic sting)\s+(\d+)""")
+                    .find(event)?.groupValues?.getOrNull(1)?.toIntOrNull()
                 val isCrit = e.contains("critical")
                 if (dmg != null && dmg > 0) {
                     val target = firstSprite(partyColumn) ?: firstSprite(enemyColumn)
@@ -3543,10 +3580,136 @@ class MainActivity : AppCompatActivity() {
                         spawnFloatingDamage(target, dmg, isCrit)
                         flashScreen(isCrit)
                         flashHit(target, isCrit)
+                        shakeBattleArena(isCrit)
                     }
                 }
             }
         }
+    }
+
+    private enum class AccentKind { HIT, CRIT, KILL, SPECIAL, LEVEL_UP, RARE_LOOT }
+
+    /**
+     * Restrained combat juice helpers. Heavy flashes / shakes mute when
+     * [reduceFlashEnabled] (pref_reduce_flash) is on — photosensitive-safe.
+     */
+    private fun shakeBattleArena(critical: Boolean) {
+        if (!::battleArena.isInitialized) return
+        // Photosensitive: skip shake entirely (vestibular + motion sensitivity).
+        if (reduceFlashEnabled) return
+        val amp = if (critical) 10f else 5f
+        val dur = if (critical) 55L else 40L
+        battleArena.animate().cancel()
+        battleArena.translationX = 0f
+        battleArena.animate()
+            .translationX(amp)
+            .setDuration(dur)
+            .withEndAction {
+                battleArena.animate()
+                    .translationX(-amp * 0.7f)
+                    .setDuration(dur)
+                    .withEndAction {
+                        battleArena.animate()
+                            .translationX(0f)
+                            .setDuration(dur + 20L)
+                            .start()
+                    }
+                    .start()
+            }
+            .start()
+    }
+
+    /** One-shot soft UI pulse — never a rapid strobe. Soft tint only when reduce-flash. */
+    private fun pulseAccent(kind: AccentKind) {
+        val overlay = combatFlashOverlay
+        val color = when (kind) {
+            AccentKind.KILL -> Color.parseColor("#66C9A84A")
+            AccentKind.SPECIAL -> Color.parseColor("#554A90C9")
+            AccentKind.LEVEL_UP -> Color.parseColor("#66E8C84A")
+            AccentKind.RARE_LOOT -> Color.parseColor("#66B07AFF")
+            AccentKind.CRIT -> Color.parseColor("#88FFE08A")
+            AccentKind.HIT -> Color.parseColor("#55FF4433")
+        }
+        // Light button pulse for specials (always safe — single scale, no opacity strobe).
+        if (kind == AccentKind.SPECIAL && ::btnSpecial.isInitialized) {
+            btnSpecial.animate().cancel()
+            btnSpecial.animate()
+                .scaleX(1.08f).scaleY(1.08f)
+                .setDuration(90L)
+                .withEndAction {
+                    btnSpecial.animate().scaleX(1f).scaleY(1f).setDuration(140L).start()
+                }
+                .start()
+        }
+        if (kind == AccentKind.LEVEL_UP && ::btnSheet.isInitialized) {
+            btnSheet.animate().cancel()
+            btnSheet.animate()
+                .scaleX(1.06f).scaleY(1.06f)
+                .setDuration(100L)
+                .withEndAction {
+                    btnSheet.animate().scaleX(1f).scaleY(1f).setDuration(160L).start()
+                }
+                .start()
+        }
+        // Soft full-screen wash — skipped when reduce-flash (no extra flashes).
+        if (reduceFlashEnabled || overlay == null) return
+        if (kind == AccentKind.HIT) return // hits already use flashScreen / flashHit
+        overlay.setBackgroundColor(color)
+        overlay.visibility = View.VISIBLE
+        overlay.alpha = when (kind) {
+            AccentKind.CRIT -> 0.55f
+            AccentKind.KILL, AccentKind.LEVEL_UP, AccentKind.RARE_LOOT -> 0.35f
+            AccentKind.SPECIAL -> 0.28f
+            else -> 0.25f
+        }
+        overlay.animate().cancel()
+        overlay.animate()
+            .alpha(0f)
+            .setDuration(if (kind == AccentKind.CRIT) 280L else 220L)
+            .withEndAction {
+                overlay.visibility = View.GONE
+                overlay.alpha = 1f
+            }
+            .start()
+    }
+
+    private fun maybeKillPop(event: String) {
+        val felled = Regex("""(?i)^Felled\s+(.+?)!""").find(event.trim())
+        val foe = felled?.groupValues?.getOrNull(1)?.trim().orEmpty()
+        if (foe.isBlank()) return
+        val key = "kill:$foe:${event.hashCode()}"
+        if (key == lastKillPopKey) return
+        lastKillPopKey = key
+        Toast.makeText(this, "Felled $foe", Toast.LENGTH_SHORT).show()
+        pulseAccent(AccentKind.KILL)
+    }
+
+    private fun maybeRareLootAccent(event: String) {
+        val e = event.lowercase()
+        val rare = e.contains("[rare]") || e.contains("[epic]") || e.contains("[legendary]") ||
+            e.contains("(rare)") || e.contains("(epic)") || e.contains("(legendary)") ||
+            (e.contains("legendary") && (e.contains("finds") || e.contains("claims") || e.contains("loot")))
+        if (!rare) return
+        val key = "loot:${event.take(80)}"
+        if (key == lastRareLootKey) return
+        lastRareLootKey = key
+        val label = when {
+            e.contains("legendary") -> "Legendary loot!"
+            e.contains("epic") -> "Epic loot!"
+            else -> "Rare loot!"
+        }
+        Toast.makeText(this, label, Toast.LENGTH_SHORT).show()
+        pulseAccent(AccentKind.RARE_LOOT)
+    }
+
+    private fun maybeSpecialAbilityJuice(event: String) {
+        val e = event.lowercase()
+        val special = e.contains("cutting quip") || e.contains("magic missile") ||
+            e.contains("action surge") || e.contains("sneak attack") ||
+            e.contains("healing word")
+        if (!special) return
+        // Combat-log line is already appended; light UI pulse only (no spam toast).
+        pulseAccent(AccentKind.SPECIAL)
     }
 
     private fun wireDiceOverlay() {
@@ -3562,7 +3725,8 @@ class MainActivity : AppCompatActivity() {
     private fun looksLikeCombatRoll(event: String): Boolean {
         val e = event.lowercase()
         return e.contains("d20=") || e.contains("damage") || e.contains("miss!") ||
-            e.contains("magic missile") || e.contains("healing") || e.contains("potion")
+            e.contains("magic missile") || e.contains("healing") || e.contains("potion") ||
+            e.contains("cutting quip") || e.contains("psychic sting")
     }
 
     private var lastDiceEvent = ""
@@ -3583,10 +3747,11 @@ class MainActivity : AppCompatActivity() {
     private fun showDiceOverlay(event: String) {
         val root = diceOverlayRoot ?: return
         val d20Match = Regex("""d20=(\d+)""").find(event)
-        val dmgMatch = Regex("""(?i)(?:Damage|deal(?:s)?|for)\s+(\d+)""").find(event)
+        val dmgMatch = Regex("""(?i)(?:Damage|deal(?:s)?|for|Psychic sting)\s+(\d+)""").find(event)
         val miss = event.contains("Miss!", ignoreCase = true)
         val crit = event.contains("CRITICAL", ignoreCase = true)
         diceTitle?.text = when {
+            event.contains("Cutting Quip", ignoreCase = true) -> "Cutting Quip"
             event.contains("Magic Missile", ignoreCase = true) -> "Magic Missile"
             event.contains("Potion", ignoreCase = true) || event.contains("Healing", ignoreCase = true) -> "Healing"
             miss -> "Attack — Miss"
