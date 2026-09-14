@@ -188,6 +188,12 @@ private:
     /** Set by noteBossDefeat for Hollow Crown / Ember Hydra / Nightfang / Boss Raid only. */
     bool pendingBossAllowLegendary_ = false;
     int pendingBossGoldBonus_ = 0;
+    /** Active authored set-piece (AA step 2); cleared on room clear / new spawn. */
+    int activeSetPieceId_ = 0; // EncounterAuthorship::TemplateId as int
+    int pendingSetPieceXpBonus_ = 0;
+    int pendingSetPieceGoldBonus_ = 0;
+    bool pendingSetPieceGuaranteedLoot_ = false;
+    std::string pendingSetPieceClearFeed_;
     bool bossSeenGk_ = false;
     bool bossSeenSk_ = false;
     bool bossSeenDrake_ = false;
@@ -239,6 +245,9 @@ private:
     void grantKillLoot(Character* actor, const std::string& foeName);
     void restockShop();
     void maybeSpawnBossEncounter();
+    /** Try an authored set-piece instead of pure-random trash (crawl / post-quest). */
+    bool trySpawnAuthoredEncounter();
+    void clearSetPiecePending();
     void spawnNamedBoss(const std::string& name, int tier);
     void markBossSeen(const std::string& name);
     bool hasLivingBossEnemy() const;

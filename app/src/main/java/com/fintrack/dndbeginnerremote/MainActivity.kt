@@ -2992,7 +2992,8 @@ class MainActivity : AppCompatActivity() {
         if (lastEv.isNotEmpty() && lastEv != lastProcessedEvent) {
             lastProcessedEvent = lastEv
             appendCombatFeed(lastEv)
-            if (lastEv.startsWith("BOSS!") || lastEv.contains("Boss encounter", ignoreCase = true)) {
+            if (lastEv.startsWith("BOSS!") || lastEv.contains("Boss encounter", ignoreCase = true)
+                || lastEv.startsWith("SET-PIECE!")) {
                 Toast.makeText(this, lastEv, Toast.LENGTH_LONG).show()
             }
             if (lastEv.contains("Game Over", ignoreCase = true)) {

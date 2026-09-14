@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "EncounterAuthorship.h"
 #include "AndroidOut.h"
 #include <sstream>
 #include <iomanip>
@@ -31,6 +32,7 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
     pendingBossLootLuck_ = 0;
     pendingBossAllowLegendary_ = false;
     pendingBossGoldBonus_ = 0;
+    clearSetPiecePending();
     bossSeenGk_ = false;
     bossSeenSk_ = false;
     bossSeenDrake_ = false;
@@ -800,6 +802,7 @@ void Game::spawnRoomContent() {
     shopInventory_.clear();
     isMerchantRoom_ = false;
     roomSearchUsed_ = false;
+    clearSetPiecePending();
 
     if (isSoloQuestScripted()) {
         spawnSoloQuestEnemies();
@@ -817,6 +820,9 @@ void Game::spawnRoomContent() {
     // Boss chance for deep crawl / post-quest procedural rooms (gated so beginners are not soft-locked).
     maybeSpawnBossEncounter();
     if (!enemies_.empty()) return;
+
+    // Authored set-pieces (AA step 2): bias mid-crawl / post-story; fall back to light trash.
+    if (trySpawnAuthoredEncounter()) return;
 
     auto goblin = std::make_unique<Character>("Goblin", CharacterClass::ROGUE, "goblin-" + std::to_string(getRandomInt(0, 1000000)));
     goblin->maxHp += (roomCount_ * 2);
@@ -1330,6 +1336,119 @@ bool Game::hasLivingBossEnemy() const {
     return false;
 }
 
+void Game::clearSetPiecePending() {
+    activeSetPieceId_ = 0;
+    pendingSetPieceXpBonus_ = 0;
+    pendingSetPieceGoldBonus_ = 0;
+    pendingSetPieceGuaranteedLoot_ = false;
+    pendingSetPieceClearFeed_.clear();
+}
+
+bool Game::trySpawnAuthoredEncounter() {
+    // Only procedural crawl / post-quest / DM rooms — never rewrite Easy early story beats.
+    if (isSoloQuestScripted()) return false;
+    if (isBossRaid()) return false;
+    if (roomCount_ < 3) return false;
+
+    const bool postStory = questComplete_ || questAct2Complete_ || questAct3Complete_
+        || questBeat_ == static_cast<int>(SoloQuestBeat::POST_QUEST);
+    const bool easy = difficulty_ <= static_cast<int>(Difficulty::EASY);
+
+    // Chance rises with depth; Easy early crawl stays mostly trash; post-story bias.
+    int chance = 18;
+    if (roomCount_ >= 6) chance = 32;
+    if (roomCount_ >= 10) chance = 40;
+    if (postStory) chance += 18;
+    if (easy && roomCount_ < 6) chance = std::max(10, chance - 12);
+    if (chance > 55) chance = 55;
+    if (getRandomInt(1, 100) > chance) return false;
+
+    size_t n = 0;
+    const EncounterAuthorship::TemplateInfo* tab = EncounterAuthorship::table(n);
+    std::vector<size_t> eligible;
+    eligible.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+        if (roomCount_ < tab[i].minRoomDepth) continue;
+        // King's Herald: prefer mid+ depth; Ogre needs a bit more room.
+        eligible.push_back(i);
+        if (tab[i].preferPostStory && postStory) eligible.push_back(i); // weight
+        if (roomCount_ >= tab[i].minRoomDepth + 3) eligible.push_back(i);
+    }
+    if (eligible.empty()) return false;
+
+    const EncounterAuthorship::TemplateInfo& t = tab[eligible[static_cast<size_t>(getRandomInt(0, static_cast<int>(eligible.size()) - 1))]];
+
+    auto scaleHp = [&](Character& c, int flat) {
+        c.maxHp += flat + (roomCount_ / 2);
+        if (easy) c.maxHp = std::max(4, c.maxHp - 4);
+        c.currentHp = c.maxHp;
+    };
+    auto pushFoe = [&](const std::string& name, CharacterClass cl, int hpFlat, int acFlat, int atkDelta) {
+        auto foe = std::make_unique<Character>(name, cl, name + "-" + std::to_string(getRandomInt(0, 1000000)));
+        scaleHp(*foe, hpFlat);
+        foe->armorClass += acFlat;
+        foe->resources = 0;
+        if (cl == CharacterClass::ROGUE) foe->attributes.dexterity = std::max(8, foe->attributes.dexterity + atkDelta);
+        else if (cl == CharacterClass::WIZARD) foe->attributes.intelligence = std::max(8, foe->attributes.intelligence + atkDelta);
+        else foe->attributes.strength = std::max(8, foe->attributes.strength + atkDelta);
+        enemies_.push_back(std::move(foe));
+    };
+
+    using Tid = EncounterAuthorship::TemplateId;
+    switch (t.id) {
+        case Tid::SHADOW_AMBUSH:
+            pushFoe("Goblin Ambusher", CharacterClass::ROGUE, roomCount_, 0, -1);
+            pushFoe("Goblin Ambusher", CharacterClass::ROGUE, roomCount_ - 2, 0, -2);
+            if (roomCount_ >= 8) pushFoe("Goblin", CharacterClass::ROGUE, roomCount_ / 2, 0, -2);
+            break;
+        case Tid::BONEBOUND_DUO:
+            pushFoe("Bonebound Skeleton", CharacterClass::FIGHTER, 6 + roomCount_, 1, -1);
+            pushFoe("Bonebound Skeleton", CharacterClass::FIGHTER, 4 + roomCount_, 1, -1);
+            break;
+        case Tid::RELIC_SNATCH:
+            pushFoe("Wolf", CharacterClass::ROGUE, 2 + roomCount_ / 2, 0, -2);
+            pushFoe("Wolf", CharacterClass::ROGUE, roomCount_ / 2, 0, -2);
+            pushFoe("Cache Goblin", CharacterClass::ROGUE, 4 + roomCount_, 0, -1);
+            break;
+        case Tid::KINGS_HERALD: {
+            // Tease deeper bosses without spawning them; pick herald flavor by depth.
+            if (roomCount_ >= 9) {
+                pushFoe("Bone Herald", CharacterClass::FIGHTER, 10 + roomCount_, 1, -1);
+                pushFoe("Skeleton", CharacterClass::FIGHTER, roomCount_, 0, -2);
+            } else {
+                pushFoe("Goblin Herald", CharacterClass::ROGUE, 8 + roomCount_, 1, -1);
+                pushFoe("Goblin Scout", CharacterClass::ROGUE, roomCount_, 0, -2);
+            }
+            break;
+        }
+        case Tid::WOLF_PACK:
+            pushFoe("Wolf", CharacterClass::ROGUE, 2 + roomCount_ / 2, 0, -2);
+            pushFoe("Wolf", CharacterClass::ROGUE, roomCount_ / 2, 0, -2);
+            if (roomCount_ >= 7) pushFoe("Wolf", CharacterClass::ROGUE, roomCount_ / 3, 0, -3);
+            break;
+        case Tid::OGRE_ROADBLOCK:
+            pushFoe("Ogre", CharacterClass::FIGHTER, 18 + roomCount_, 2, 0);
+            break;
+        default:
+            return false;
+    }
+
+    if (enemies_.empty()) return false;
+
+    activeSetPieceId_ = static_cast<int>(t.id);
+    pendingSetPieceXpBonus_ = t.xpBonus + (postStory ? 10 : 0);
+    pendingSetPieceGoldBonus_ = t.goldBonus + (postStory ? 5 : 0);
+    pendingSetPieceGuaranteedLoot_ = true;
+    pendingSetPieceClearFeed_ = t.clearFeed;
+
+    roomDescription_ = t.roomFlavor;
+    lastEvent_ = std::string("SET-PIECE! ") + t.displayName + " — stand ready!";
+    dmSay(t.telegraph);
+    addJournalEntry(std::string("Set-piece: ") + t.displayName + ".");
+    addChatMessage("System", lastEvent_);
+    return true;
+}
+
 void Game::maybeSpawnBossEncounter() {
     // Never soft-lock early story beginners: only procedural crawl / post-quest rooms.
     if (isSoloQuestScripted()) return;
@@ -1571,6 +1690,7 @@ bool Game::beginBossRaidFromCurrent() {
     pendingBossLootLuck_ = 0;
     pendingBossAllowLegendary_ = false;
     pendingBossGoldBonus_ = 0;
+    clearSetPiecePending();
 
     // Endgame gates active for this encounter (story must already be complete at menu).
     questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
@@ -1691,7 +1811,14 @@ void Game::grantKillLoot(Character* actor, const std::string& foeName) {
 }
 
 void Game::enterClearedRoom(Character* actor) {
-    int xpGained = 50 + (roomCount_ * 15) + pendingBossXpBonus_;
+    const int setPieceXp = pendingSetPieceXpBonus_;
+    const int setPieceGold = pendingSetPieceGoldBonus_;
+    const bool setPieceLoot = pendingSetPieceGuaranteedLoot_;
+    const std::string setPieceFeed = pendingSetPieceClearFeed_;
+    const bool wasSetPiece = activeSetPieceId_ != 0;
+    clearSetPiecePending();
+
+    int xpGained = 50 + (roomCount_ * 15) + pendingBossXpBonus_ + setPieceXp;
     pendingBossXpBonus_ = 0;
     for (auto& p : players_) {
         if (p->addXp(xpGained)) {
@@ -1699,6 +1826,20 @@ void Game::enterClearedRoom(Character* actor) {
         }
     }
     dmSay("The party gains " + std::to_string(xpGained) + " XP.");
+    if (setPieceGold > 0) {
+        Character* purse = actor;
+        if (!purse || purse->isDead) {
+            purse = nullptr;
+            for (auto& p : players_) {
+                if (p && !p->isDead) { purse = p.get(); break; }
+            }
+        }
+        if (purse) {
+            purse->gold += setPieceGold;
+            dmSay(purse->name + " claims +" + std::to_string(setPieceGold) + " gold from the set-piece cache.");
+            addChatMessage("Combat", purse->name + " claims +" + std::to_string(setPieceGold) + " set-piece gold.");
+        }
+    }
     int luck = pendingBossLootLuck_;
     pendingBossLootLuck_ = 0;
     // Capture before lantern / early-return paths discard the pending flag.
@@ -1725,16 +1866,55 @@ void Game::enterClearedRoom(Character* actor) {
                 addJournalEntry(actor->name + " claimed boss loot: " + pity->getDescription());
             }
         }
+        // Set-piece: guaranteed Common or Uncommon (never Legendary; respects drop nerfs).
+        if (setPieceLoot) {
+            ItemRarity r = (roomCount_ >= 8 || getRandomInt(0, 1) == 1)
+                ? ItemRarity::UNCOMMON : ItemRarity::COMMON;
+            int bonus = (roomCount_ / 5) + static_cast<int>(r);
+            if (bonus < 0) bonus = 0;
+            bool weapon = (getRandomInt(0, 1) == 0);
+            int cls = (preferA >= 0) ? preferA : preferB;
+            std::shared_ptr<Item> forced;
+            if (weapon) {
+                if (cls == 0) forced = Item::make("Fighter's Arming Sword", ItemType::WEAPON, bonus, r, 0);
+                else if (cls == 1) forced = Item::make("Wizard's Focus Rod", ItemType::WEAPON, bonus, r, 1);
+                else if (cls == 2) forced = Item::make("Rogue's Stiletto", ItemType::WEAPON, bonus, r, 2);
+                else if (cls == 3) forced = Item::make("Cleric's Warhammer", ItemType::WEAPON, bonus, r, 3);
+                else if (cls == 4) forced = Item::make("Bard's Stage Rapier", ItemType::WEAPON, bonus, r, 4);
+                else forced = Item::make("Traveler's Blade", ItemType::WEAPON, bonus, r, -1);
+            } else {
+                if (cls == 0) forced = Item::make("Fighter's Mail", ItemType::ARMOR, 3 + bonus, r, 0);
+                else if (cls == 1) forced = Item::make("Wizard's Robe", ItemType::ARMOR, bonus, r, 1);
+                else if (cls == 2) forced = Item::make("Rogue's Leathers", ItemType::ARMOR, 1 + bonus, r, 2);
+                else if (cls == 3) forced = Item::make("Cleric's Scale", ItemType::ARMOR, 4 + bonus, r, 3);
+                else if (cls == 4) forced = Item::make("Performer's Leathers", ItemType::ARMOR, 1 + bonus, r, 4);
+                else forced = Item::make("Sturdy Cloak", ItemType::ARMOR, bonus, r, -1);
+            }
+            if (forced) {
+                actor->addToInventory(forced);
+                dmSay(actor->name + " claims set-piece spoils: " + forced->getDescription()
+                      + " [" + forced->rarityLabel() + "] (Common/Uncommon guarantee).");
+                addJournalEntry(actor->name + " set-piece loot: " + forced->getDescription());
+                addChatMessage("Combat", actor->name + " set-piece loot: " + forced->getDescription()
+                               + " [" + forced->rarityLabel() + "]");
+            }
+        }
     }
     // Stay in this chamber so Short Rest / one Search / Onward are available.
     turnOrder_.clear();
     currentTurnIndex_ = 0;
     roomSearchUsed_ = false;
     roomDescription_ += " The foes lie still. You may Search, take a Short Rest, or press Onward.";
-    lastEvent_ = "Room cleared! Search, Rest, or Onward.";
+    if (wasSetPiece && !setPieceFeed.empty()) {
+        lastEvent_ = setPieceFeed + " Search, Rest, or Onward.";
+    } else {
+        lastEvent_ = "Room cleared! Search, Rest, or Onward.";
+    }
     addChatMessage("Combat", lastEvent_);
     if (questLanternRecovered_ && static_cast<SoloQuestBeat>(questBeat_) == SoloQuestBeat::LANTERN_VAULT) {
         dmSay("The vault is clear. Carry the Ashen Lantern Onward to the shrine — or Search and Rest first.");
+    } else if (wasSetPiece) {
+        dmSay("Set-piece cleared. Search for more, take a Short Rest, or press Onward.");
     } else {
         dmSay("The chamber is clear. Search for loot, take a Short Rest, or press Onward.");
     }
@@ -2814,6 +2994,7 @@ void Game::deserialize(const std::string& data) {
     pendingBossLootLuck_ = 0;
     pendingBossAllowLegendary_ = false;
     pendingBossGoldBonus_ = 0;
+    clearSetPiecePending();
     bossSeenGk_ = false;
     bossSeenSk_ = false;
     bossSeenDrake_ = false;
