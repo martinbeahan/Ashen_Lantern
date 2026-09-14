@@ -4,7 +4,7 @@
 
 ## Features
 
-1. **Item rarity + class gear** — Common / Uncommon / Rare / Epic (color-coded in Shop + Inventory). Items may be class-tagged (Fighter/Wizard/Rogue/Cleric) or Any; equipping enforces the tag. Shop stocks a rarity mix (cheap commons → expensive rares/epics by depth).
+1. **Item rarity + class gear** — Common / Uncommon / Rare / Epic (color-coded in Shop + Inventory). Items may be class-tagged (Fighter/Wizard/Rogue/Cleric/Bard) or Any; equipping enforces the tag. Shop stocks a rarity mix (cheap commons → expensive rares/epics by depth).
 2. **Inventory UI** — Sheet → **Open Inventory** (also from Merchant). Lists equipped + bag: rarity, class, Equip/Unequip, **Upgrade (Ng)**. Purchases and room drops go to the bag (potions still drink on buy).
 3. **Gold upgrades** — Spend gold to +1 bonus / upgrade tier on owned or equipped gear; cost scales with rarity and level. Fails clearly if broke.
 4. **Bosses** — Chance encounters (not early Easy soft-locks):

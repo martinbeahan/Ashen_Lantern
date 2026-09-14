@@ -31,7 +31,7 @@ Acts 1+2 unchanged; after Act 2 Settled, Onward starts Act 3 (not procedural). A
 ## 3) Boss Raid
 
 - Main menu **Boss Raid**; costs **1 Raid Key**.
-- Keys: max **2 held** and **2 granted per calendar day** (`raid_keys`, `raid_keys_date`, `raid_keys_granted_today`).
+- Keys: max **3 held** and **3 granted per calendar day** (`raid_keys`, `raid_keys_date`, `raid_keys_granted_today`).
 - Keys drop from endgame bosses (crawl + raid clears) when story complete.
 - Mode = focused endgame boss fight; strong XP/gold/Legendary/key chance.
 - **v2.6.3:** Raid loads the **same Continue save** (`beginBossRaidFromCurrent`) — does **not** call `resetGame` / class select. Pre-raid snapshot restores the story hero on wipe/menu; Onward after clear returns to prior adventure mode with spoils kept.

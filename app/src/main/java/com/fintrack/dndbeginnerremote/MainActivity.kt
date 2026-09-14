@@ -1117,12 +1117,12 @@ class MainActivity : AppCompatActivity() {
             val keys = raidKeysHeld()
             btnMenuRaid.isEnabled = storyDone
             btnMenuRaid.alpha = if (storyDone) 1f else 0.45f
-            btnMenuRaid.text = if (storyDone) "Boss Raid ($keys/2 keys)" else "Boss Raid (locked)"
+            btnMenuRaid.text = if (storyDone) "Boss Raid ($keys/3 keys)" else "Boss Raid (locked)"
             if (::mainMenuRaidHint.isInitialized) {
                 mainMenuRaidHint.text = when {
                     !storyDone -> "Finish the story first (Acts 1–3)"
-                    keys <= 0 -> "Need a Raid Key (drop from endgame bosses; max 2/day)"
-                    else -> "Costs 1 Raid Key · strong rewards · max 2 keys/day"
+                    keys <= 0 -> "Need a Raid Key (drop from endgame bosses; max 3/day)"
+                    else -> "Costs 1 Raid Key · strong rewards · max 3 keys/day"
                 }
             }
         }
@@ -1451,10 +1451,10 @@ class MainActivity : AppCompatActivity() {
         if (!show) return
         btnSettingsBossRaid.isEnabled = storyDone
         btnSettingsBossRaid.alpha = if (storyDone) 1f else 0.45f
-        btnSettingsBossRaid.text = if (storyDone) "Boss Raid ($keys/2 keys)" else "Boss Raid (locked)"
+        btnSettingsBossRaid.text = if (storyDone) "Boss Raid ($keys/3 keys)" else "Boss Raid (locked)"
         settingsRaidHint.text = when {
             !storyDone -> "Finish the story first (Acts 1–3)"
-            keys <= 0 -> "Need a Raid Key (endgame bosses; max 2/day)"
+            keys <= 0 -> "Need a Raid Key (endgame bosses; max 3/day)"
             else -> "Costs 1 key · continues your saved hero into the raid boss"
         }
     }
@@ -1493,7 +1493,7 @@ class MainActivity : AppCompatActivity() {
                 .setMessage(
                     "Boss Raid costs 1 Raid Key.\n\n" +
                     "Keys drop randomly from endgame bosses (deep crawl after story + raid clears).\n" +
-                    "You can hold and be granted at most 2 keys per calendar day."
+                    "You can hold and be granted at most 3 keys per calendar day."
                 )
                 .setPositiveButton("OK", null)
                 .show()
@@ -1504,7 +1504,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Boss Raid")
             .setMessage(
                 "Spend 1 Raid Key to enter a focused endgame boss fight with $hero?\n\n" +
-                "Keys held: $keys/2\n" +
+                "Keys held: $keys/3\n" +
                 "Your saved stats, gear, inventory, gold, companion, level, and Legendary upgrades carry over.\n" +
                 "Rewards: gold, XP, Legendary chance, possible key drop."
             )
@@ -1516,7 +1516,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 if (!startBossRaidFromSave()) {
                     // Refund key if we failed to start (save load / native).
-                    prefs().edit().putInt("raid_keys", (raidKeysHeld() + 1).coerceAtMost(2)).apply()
+                    prefs().edit().putInt("raid_keys", (raidKeysHeld() + 1).coerceAtMost(3)).apply()
                     Toast.makeText(this, "Could not start Boss Raid with your saved hero.", Toast.LENGTH_LONG).show()
                     refreshMainMenuButtons()
                     showStartDialog()
@@ -1615,7 +1615,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Story complete!")
             .setMessage(
                 "Acts 1–3 are finished. Endgame crawl, Legendary gear, and Boss Raids are unlocked.\n\n" +
-                "Raid Keys: $keys/2\n\n" +
+                "Raid Keys: $keys/3\n\n" +
                 "Open Boss Raid now, return to the main menu (progress saved), or keep exploring."
             )
             .setPositiveButton("Boss Raid") { _, _ ->
@@ -1680,7 +1680,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showClassSelection(mode: String, sid: String = "") {
-        val classes = arrayOf("Fighter", "Wizard", "Rogue", "Cleric")
+        val classes = arrayOf("Fighter", "Wizard", "Rogue", "Cleric", "Bard")
         val title = when (mode) {
             "join" -> "Choose your class"
             "crawl" -> "Dungeon Crawl — choose class"
@@ -1734,6 +1734,7 @@ class MainActivity : AppCompatActivity() {
         1 -> "Melf (NPC)"
         2 -> "Sable (NPC)"
         3 -> "Miren (NPC)"
+        4 -> "Jory (NPC)"
         else -> "Melf (NPC)"
     }
 
@@ -1742,7 +1743,8 @@ class MainActivity : AppCompatActivity() {
             "Fighter — Bren",
             "Wizard — Melf",
             "Rogue — Sable",
-            "Cleric — Miren"
+            "Cleric — Miren",
+            "Bard — Jory"
         )
         val title = when (mode) {
             "crawl" -> "Dungeon Crawl — companion class"
@@ -1913,7 +1915,7 @@ class MainActivity : AppCompatActivity() {
         val lvlLine = sheet.lineSequence().firstOrNull { it.startsWith("Lvl ") }.orEmpty()
         return Regex("""Lvl \d+ (\w+)""").find(lvlLine)?.groupValues?.getOrNull(1)?.let {
             when (it) {
-                "Fighter" -> 0; "Wizard" -> 1; "Rogue" -> 2; "Cleric" -> 3; else -> localClassId
+                "Fighter" -> 0; "Wizard" -> 1; "Rogue" -> 2; "Cleric" -> 3; "Bard" -> 4; else -> localClassId
             }
         } ?: localClassId
     }
@@ -2084,7 +2086,7 @@ class MainActivity : AppCompatActivity() {
             forName.equals(localPlayerName, true) -> localClassId
             else -> Regex("""Lvl \d+ (\w+)""").find(lvlLine)?.groupValues?.getOrNull(1)?.let {
                 when (it) {
-                    "Fighter" -> 0; "Wizard" -> 1; "Rogue" -> 2; "Cleric" -> 3; else -> 1
+                    "Fighter" -> 0; "Wizard" -> 1; "Rogue" -> 2; "Cleric" -> 3; "Bard" -> 4; else -> 1
                 }
             } ?: 1
         }
@@ -2157,7 +2159,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     2 -> {
-                        val classes = arrayOf("Fighter — Bren", "Wizard — Melf", "Rogue — Sable", "Cleric — Miren")
+                        val classes = arrayOf("Fighter — Bren", "Wizard — Melf", "Rogue — Sable", "Cleric — Miren", "Bard — Jory")
                         AlertDialog.Builder(this).setTitle("Companion class").setItems(classes) { _, cl ->
                             val ok = try { setCompanionClass(cl) } catch (_: Exception) { false }
                             if (ok) {
@@ -2380,7 +2382,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    /** Max 2 Raid Keys held; grants also capped at 2 per calendar day. */
+    /** Max 3 Raid Keys held; grants also capped at 3 per calendar day. */
     private fun syncRaidKeyDay() {
         val today = raidKeyToday()
         val prefs = prefs()
@@ -2394,30 +2396,30 @@ class MainActivity : AppCompatActivity() {
 
     private fun raidKeysHeld(): Int {
         syncRaidKeyDay()
-        return prefs().getInt("raid_keys", 0).coerceIn(0, 2)
+        return prefs().getInt("raid_keys", 0).coerceIn(0, 3)
     }
 
     private fun raidKeysGrantedToday(): Int {
         syncRaidKeyDay()
-        return prefs().getInt("raid_keys_granted_today", 0).coerceIn(0, 2)
+        return prefs().getInt("raid_keys_granted_today", 0).coerceIn(0, 3)
     }
 
     private fun tryGrantRaidKeyFromDrop(): Boolean {
         syncRaidKeyDay()
         val held = raidKeysHeld()
         if (held >= 2) {
-            Toast.makeText(this, "Raid Key found, but you already hold 2 (daily max).", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Raid Key found, but you already hold 3 (daily max).", Toast.LENGTH_LONG).show()
             return false
         }
-        if (raidKeysGrantedToday() >= 2) {
-            Toast.makeText(this, "Raid Key found, but daily grant cap (2) already reached.", Toast.LENGTH_LONG).show()
+        if (raidKeysGrantedToday() >= 3) {
+            Toast.makeText(this, "Raid Key found, but daily grant cap (3) already reached.", Toast.LENGTH_LONG).show()
             return false
         }
         prefs().edit()
             .putInt("raid_keys", held + 1)
             .putInt("raid_keys_granted_today", raidKeysGrantedToday() + 1)
             .apply()
-        Toast.makeText(this, "Raid Key obtained! (${held + 1}/2 held).", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "Raid Key obtained! (${held + 1}/3 held).", Toast.LENGTH_LONG).show()
         return true
     }
 
@@ -3072,6 +3074,7 @@ class MainActivity : AppCompatActivity() {
             1 -> R.drawable.sprite_wizard
             2 -> R.drawable.sprite_rogue
             3 -> R.drawable.sprite_cleric
+            4 -> R.drawable.sprite_wizard // temporary: reuse wizard until Bard CC0 art
             else -> R.drawable.sprite_fighter
         }
     }
