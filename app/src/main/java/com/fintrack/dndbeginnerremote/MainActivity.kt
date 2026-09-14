@@ -115,7 +115,9 @@ class MainActivity : AppCompatActivity() {
     /** Softens/disables full-screen flashes & rapid opacity strobes (photosensitive-friendly). Default OFF. */
     private var reduceFlashEnabled = false
     private var gameAudio: GameAudio? = null
-    private var lastCombatMusicState: Boolean? = null
+    private var lastAudioBed: GameAudio.Track? = null
+    /** Sticky while a boss / raid fight is active so bed stays BOSS after the event scrolls. */
+    private var bossFightActive = false
     private val handler = Handler(Looper.getMainLooper())
     private var uiLoopStarted = false
     private val uiTick = object : Runnable {
@@ -1067,6 +1069,31 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+
+    /**
+     * Pick one looping BGM bed from UI/game context. Music toggle still mutes entirely.
+     * Order: main menu / merchant → TOWN; boss/raid combat → BOSS; combat → COMBAT; else EXPLORE.
+     */
+    private fun syncAudioBedFromState() {
+        val audio = gameAudio ?: return
+        val onMenu = ::mainMenuRoot.isInitialized && mainMenuRoot.visibility == View.VISIBLE
+        val inCombat = try { isInCombat() } catch (_: Exception) { false }
+        if (!inCombat) bossFightActive = false
+        val merchant = try { isMerchantRoom() } catch (_: Exception) { false }
+        val raid = try { getSoloPlayMode() == 2 } catch (_: Exception) { false }
+        val resolved = when {
+            onMenu -> GameAudio.Track.TOWN
+            merchant -> GameAudio.Track.TOWN
+            inCombat && (raid || bossFightActive) -> GameAudio.Track.BOSS
+            inCombat -> GameAudio.Track.COMBAT
+            else -> GameAudio.Track.EXPLORE
+        }
+        if (lastAudioBed != resolved) {
+            lastAudioBed = resolved
+            audio.setBed(resolved)
+        }
+    }
+
     private fun showStartDialog() {
         Log.d(TAG, "Showing main menu")
         // Mode switch / Reset: drop any live Firebase listeners first.
@@ -1077,12 +1104,15 @@ class MainActivity : AppCompatActivity() {
         mainMenuRoot.visibility = View.VISIBLE
         mainMenuRoot.bringToFront()
         btnReset.visibility = View.GONE
+        bossFightActive = false
+        syncAudioBedFromState()
     }
 
     private fun hideMainMenu() {
         if (::mainMenuRoot.isInitialized) {
             mainMenuRoot.visibility = View.GONE
         }
+        syncAudioBedFromState()
     }
 
     private fun difficultyLabel(d: Int): String = when (d.coerceIn(0, 3)) {
@@ -1371,8 +1401,9 @@ class MainActivity : AppCompatActivity() {
                 "Full credits: ATTRIBUTION.md (repo / project docs).\n\n" +
                 "Art (CC0): LuizMelo idle/attack frames; Nidhoggn battlebacks; ansimuz Phantasy dungeon; " +
                 "quantumelle Dark forest path; Clint Bellanger Tiny Creatures.\n\n" +
-                "Audio (CC0): Ironchest Dungeon Loops; StarNinjas sword/clash SFX; Darsycho monster snarl; " +
-                "bart interface beep. DM voice uses on-device Text-to-Speech."
+                "Audio (CC0): Ironchest Dungeon Loops (explore / town / combat / boss beds); " +
+                "StarNinjas sword/clash SFX; Darsycho monster snarl; bart interface beep. " +
+                "DM voice uses on-device Text-to-Speech. See docs/AUDIO_BEDS.md."
         settingsRoot.visibility = View.VISIBLE
         settingsRoot.bringToFront()
     }
@@ -2987,11 +3018,7 @@ class MainActivity : AppCompatActivity() {
             gameAudio?.maybeSpeakDmFromChat(chat)
         }
 
-        val inCombatNow = try { isInCombat() } catch (_: Exception) { false }
-        if (lastCombatMusicState != inCombatNow) {
-            lastCombatMusicState = inCombatNow
-            gameAudio?.syncCombatMusic(inCombatNow)
-        }
+        syncAudioBedFromState()
 
         val roomKey = try { getRoomDescription().take(40) } catch (_: Exception) { "" } + "|" +
             (try { getPlayerStatus().lineSequence().firstOrNull { it.startsWith("Room") }.orEmpty() } catch (_: Exception) { "" })
@@ -3004,6 +3031,11 @@ class MainActivity : AppCompatActivity() {
         if (lastEv.isNotEmpty() && lastEv != lastProcessedEvent) {
             lastProcessedEvent = lastEv
             appendCombatFeed(lastEv)
+            if (lastEv.startsWith("BOSS!") || lastEv.contains("Boss encounter", ignoreCase = true)
+                || lastEv.contains("BOSS RAID", ignoreCase = true)) {
+                bossFightActive = true
+                syncAudioBedFromState()
+            }
             if (lastEv.startsWith("BOSS!") || lastEv.contains("Boss encounter", ignoreCase = true)
                 || lastEv.startsWith("SET-PIECE!")) {
                 Toast.makeText(this, lastEv, Toast.LENGTH_LONG).show()

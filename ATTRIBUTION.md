@@ -26,10 +26,16 @@ Attribution is not required by the licenses, but we credit creators here and in 
 
 ## Background music
 
-| Asset in app | Source title | Author | License | Link |
-|---|---|---|---|---|
-| `bgm_explore.ogg` (Ironchest_dungeon001) | Ironchest's Dungeon Loops | Ironchest Games | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://ironchestgames.itch.io/ironchests-dungeon-music-loops |
-| `bgm_tension.ogg` (Ironchest_dungeon006) | Ironchest's Dungeon Loops | Ironchest Games | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://ironchestgames.itch.io/ironchests-dungeon-music-loops |
+Context beds (one loop at a time). See `docs/AUDIO_BEDS.md` for cue map.
+
+| Asset in app | Code bed | Source title | Author | License | Link |
+|---|---|---|---|---|---|
+| `bgm_explore.ogg` (Ironchest_dungeon001) | `Track.EXPLORE` — dungeon / crawl / story explore | Ironchest's Dungeon Loops | Ironchest Games | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://ironchestgames.itch.io/ironchests-dungeon-music-loops |
+| `bgm_town.ogg` (Ironchest_dungeon005) | `Track.TOWN` — main menu, merchant, camp | Ironchest's Dungeon Loops | Ironchest Games | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://ironchestgames.itch.io/ironchests-dungeon-music-loops |
+| `bgm_tension.ogg` (Ironchest_dungeon006) | `Track.COMBAT` — normal combat | Ironchest's Dungeon Loops | Ironchest Games | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://ironchestgames.itch.io/ironchests-dungeon-music-loops |
+| `bgm_boss.ogg` (Ironchest_dungeon010) | `Track.BOSS` — boss encounter / Boss Raid | Ironchest's Dungeon Loops | Ironchest Games | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://ironchestgames.itch.io/ironchests-dungeon-music-loops |
+
+**Backup shortlist (not bundled):** JaggedStone *Loopable Dungeon Ambience* (CC0, OpenGameArt); RandomMind *Old Tower Inn* (CC0) — reserved for a later quieter town accent if needed.
 
 ## Sound effects
 
