@@ -84,7 +84,7 @@ object BeginnerGuide {
         2 -> "Constitution — hit points each level; helps Short Rest recovery. Spending CON also adds HP now."
         3 -> "Intelligence — Wizard weapon attacks/damage; Search checks for loot (or traps)."
         4 -> "Wisdom — Cleric weapon attacks/damage; boosts Healing Word amount."
-        5 -> "Charisma — classic sixth score; this adventure barely uses it in combat."
+        5 -> "Charisma — Bard weapon attacks/damage and Cutting Quip (psychic sting + rattle)."
         else -> "Attribute score — higher is usually better."
     }
 
@@ -94,7 +94,7 @@ object BeginnerGuide {
         2 -> "More HP; better rests"
         3 -> "Wizard hits; Search checks"
         4 -> "Cleric hits; Healing Word"
-        5 -> "Rarely used here"
+        5 -> "Bard hits; Cutting Quip"
         else -> ""
     }
 
@@ -103,6 +103,7 @@ object BeginnerGuide {
         1 -> "Wizard tip: prioritize Intelligence, then Constitution. Dexterity helps AC (light armor)."
         2 -> "Rogue tip: prioritize Dexterity (hits, damage, AC), then Constitution."
         3 -> "Cleric tip: prioritize Wisdom (attacks + Healing Word), then Constitution."
+        4 -> "Bard tip: prioritize Charisma (attacks + Cutting Quip), then Constitution. Dexterity still helps AC."
         else -> "Boost your class's main attack stat and Constitution for survivability."
     }
 
@@ -116,6 +117,7 @@ object BeginnerGuide {
         appendLine("• ${classStatTip(1)}")
         appendLine("• ${classStatTip(2)}")
         appendLine("• ${classStatTip(3)}")
+        appendLine("• ${classStatTip(4)}")
         appendLine()
         append("Level-up: clear rooms → earn XP → open Sheet when you (or an ally) level up and spend points.")
     }
@@ -125,6 +127,7 @@ object BeginnerGuide {
         1 -> "Magic Missile: three darts that always hit — great when you keep missing."
         2 -> "Sneak Attack: add extra damage dice when you catch a foe off-guard."
         3 -> "Healing Word: heal the ally with the lowest HP (includes you)."
+        4 -> "Cutting Quip: CHA attack vs AC — psychic sting and rattle (-2 on their next attack)."
         else -> "Your Special is a limited class power. Use it when it matters."
     }
 

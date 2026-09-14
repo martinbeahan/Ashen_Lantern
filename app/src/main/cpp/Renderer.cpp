@@ -85,6 +85,7 @@ static int modelIndexForPlayer(dnd::CharacterClass c) {
         case dnd::CharacterClass::WIZARD:  return 1;
         case dnd::CharacterClass::ROGUE:   return 2;
         case dnd::CharacterClass::CLERIC:  return 3;
+        case dnd::CharacterClass::BARD:    return 1; // reuse wizard model until Bard CC0 art
     }
     return 6;
 }

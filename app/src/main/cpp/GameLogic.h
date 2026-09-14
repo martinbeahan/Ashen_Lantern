@@ -14,7 +14,8 @@ enum class CharacterClass {
     FIGHTER,
     WIZARD,
     ROGUE,
-    CLERIC
+    CLERIC,
+    BARD  // ordinal 4 — append-only so old saves (0–3) stay valid
 };
 
 struct Attributes {
@@ -160,6 +161,7 @@ struct Item {
             case 1: return "Wizard";
             case 2: return "Rogue";
             case 3: return "Cleric";
+            case 4: return "Bard";
             default: return "Any";
         }
     }
@@ -335,6 +337,7 @@ struct Character {
             case CharacterClass::WIZARD:  attributes = {8, 14, 12, 16, 10, 10}; break;
             case CharacterClass::ROGUE:   attributes = {10, 16, 12, 12, 10, 14}; break;
             case CharacterClass::CLERIC:  attributes = {14, 10, 14, 10, 16, 12}; break;
+            case CharacterClass::BARD:    attributes = {10, 14, 12, 10, 10, 16}; break;
         }
         applyStatsForLevel();
         currentHp = maxHp;
@@ -355,6 +358,9 @@ struct Character {
         } else if (characterClass == CharacterClass::WIZARD) {
             equippedWeapon = Item::make("Quarterstaff", ItemType::WEAPON, 0, ItemRarity::COMMON, cls);
             equippedArmor = Item::make("Traveler Clothes", ItemType::ARMOR, 0, ItemRarity::COMMON, -1);
+        } else if (characterClass == CharacterClass::BARD) {
+            equippedWeapon = Item::make("Rapier", ItemType::WEAPON, 0, ItemRarity::COMMON, cls);
+            equippedArmor = Item::make("Leather Armor", ItemType::ARMOR, 1, ItemRarity::COMMON, cls);
         } else {
             equippedWeapon = Item::make("Mace", ItemType::WEAPON, 0, ItemRarity::COMMON, cls);
             equippedArmor = Item::make("Scale Mail", ItemType::ARMOR, 4, ItemRarity::COMMON, cls);
@@ -381,6 +387,9 @@ struct Character {
                 break;
             case CharacterClass::CLERIC:
                 maxResources = 2 + level;
+                break;
+            case CharacterClass::BARD:
+                maxResources = 2 + level; // Cutting Quip / performance uses
                 break;
         }
         int conMod = Attributes::getModifier(attributes.constitution);
@@ -539,6 +548,8 @@ struct Character {
 
     /** Once-per-fight shield charges (armor Legendary sub-effect). Not persisted mid-fight across saves. */
     mutable bool fightShieldUsed = false;
+    /** Temporary attack-roll penalty from Bard Cutting Quip (applied then cleared on next attack). */
+    int nextAttackPenalty = 0;
 
     std::string getDetailedSheet() const {
         std::stringstream ss;
@@ -569,6 +580,7 @@ struct Character {
             case CharacterClass::WIZARD: return "Wizard";
             case CharacterClass::ROGUE: return "Rogue";
             case CharacterClass::CLERIC: return "Cleric";
+            case CharacterClass::BARD: return "Bard";
         }
         return "Unknown";
     }
@@ -582,6 +594,7 @@ struct Character {
         if (c == CharacterClass::WIZARD) return "Intelligence";
         if (c == CharacterClass::ROGUE) return "Dexterity";
         if (c == CharacterClass::CLERIC) return "Wisdom";
+        if (c == CharacterClass::BARD) return "Charisma";
         return "Strength";
     }
 
@@ -589,6 +602,7 @@ struct Character {
         if (characterClass == CharacterClass::FIGHTER) return "Action Surge";
         if (characterClass == CharacterClass::WIZARD) return "Magic Missile";
         if (characterClass == CharacterClass::ROGUE) return "Sneak Attack";
+        if (characterClass == CharacterClass::BARD) return "Cutting Quip";
         return "Healing Word";
     }
 
@@ -596,6 +610,7 @@ struct Character {
         if (characterClass == CharacterClass::FIGHTER) return 10;
         if (characterClass == CharacterClass::WIZARD) return 6;
         if (characterClass == CharacterClass::ROGUE) return 8;
+        if (characterClass == CharacterClass::BARD) return 8;
         return 8; // cleric
     }
 
@@ -604,6 +619,7 @@ struct Character {
         if (characterClass == CharacterClass::FIGHTER) return 8;  // longsword
         if (characterClass == CharacterClass::ROGUE) return 6;    // shortsword
         if (characterClass == CharacterClass::WIZARD) return 6;   // quarterstaff
+        if (characterClass == CharacterClass::BARD) return 8;    // rapier
         return 6; // mace
     }
 
@@ -626,6 +642,7 @@ public:
         if (c.characterClass == CharacterClass::WIZARD) return Attributes::getModifier(c.effectiveAttr(3));
         if (c.characterClass == CharacterClass::ROGUE) return Attributes::getModifier(c.effectiveAttr(1));
         if (c.characterClass == CharacterClass::CLERIC) return Attributes::getModifier(c.effectiveAttr(4));
+        if (c.characterClass == CharacterClass::BARD) return Attributes::getModifier(c.effectiveAttr(5));
         return Attributes::getModifier(c.effectiveAttr(0));
     }
 
@@ -696,10 +713,10 @@ public:
         if (bonus < 0) bonus = 0;
         bool weapon = (rand() % 2) == 0;
 
-        int party[4];
+        int party[5];
         int partyN = 0;
         auto pushParty = [&](int c) {
-            if (c < 0 || c > 3) return;
+            if (c < 0 || c > 4) return;
             for (int i = 0; i < partyN; ++i) if (party[i] == c) return;
             party[partyN++] = c;
         };
@@ -712,9 +729,9 @@ public:
             if (pick < 62) cls = party[rand() % partyN];
             else if (pick < 92) cls = -1;
             else {
-                int off[4];
+                int off[5];
                 int offN = 0;
-                for (int c = 0; c < 4; ++c) {
+                for (int c = 0; c < 5; ++c) {
                     bool in = false;
                     for (int i = 0; i < partyN; ++i) if (party[i] == c) { in = true; break; }
                     if (!in) off[offN++] = c;
@@ -722,7 +739,7 @@ public:
                 cls = (offN > 0) ? off[rand() % offN] : -1;
             }
         } else {
-            if (pick < 40) cls = rand() % 4;
+            if (pick < 40) cls = rand() % 5;
             else cls = -1;
         }
 
@@ -732,12 +749,14 @@ public:
                 if (cls == 1) return Item::make("Starfall Focus", ItemType::WEAPON, bonus, rarity, 1);
                 if (cls == 2) return Item::make("Nightwhisper", ItemType::WEAPON, bonus, rarity, 2);
                 if (cls == 3) return Item::make("Dawnward Mace", ItemType::WEAPON, bonus, rarity, 3);
+                if (cls == 4) return Item::make("Songsteel Rapier", ItemType::WEAPON, bonus, rarity, 4);
                 return Item::make("Emberdeep Relic Blade", ItemType::WEAPON, bonus, rarity, -1);
             } else {
                 if (cls == 0) return Item::make("Aegis of Millhollow", ItemType::ARMOR, bonus + 3, rarity, 0);
                 if (cls == 1) return Item::make("Archsage Mantle", ItemType::ARMOR, bonus + 1, rarity, 1);
                 if (cls == 2) return Item::make("Veilwalker Hide", ItemType::ARMOR, bonus + 2, rarity, 2);
                 if (cls == 3) return Item::make("Sanctum Plate", ItemType::ARMOR, bonus + 3, rarity, 3);
+                if (cls == 4) return Item::make("Troubadour Coat", ItemType::ARMOR, bonus + 1, rarity, 4);
                 return Item::make("Emberdeep Relic Mail", ItemType::ARMOR, bonus + 2, rarity, -1);
             }
         }
@@ -749,12 +768,14 @@ public:
             if (cls == 1) return Item::make("Focus Staff", ItemType::WEAPON, bonus, rarity, 1);
             if (cls == 2) return Item::make("Silent Shortsword", ItemType::WEAPON, bonus, rarity, 2);
             if (cls == 3) return Item::make("Hallowed Mace", ItemType::WEAPON, bonus, rarity, 3);
+            if (cls == 4) return Item::make("Stage Rapier", ItemType::WEAPON, bonus, rarity, 4);
             return Item::make(names[ni], ItemType::WEAPON, bonus, rarity, -1);
         } else {
             if (cls == 0) return Item::make("Bulwark Mail", ItemType::ARMOR, bonus + 2, rarity, 0);
             if (cls == 1) return Item::make("Scholar Robes", ItemType::ARMOR, bonus, rarity, 1);
             if (cls == 2) return Item::make("Shadow Leathers", ItemType::ARMOR, bonus + 1, rarity, 2);
             if (cls == 3) return Item::make("Temple Vestments", ItemType::ARMOR, bonus + 2, rarity, 3);
+            if (cls == 4) return Item::make("Performer's Leathers", ItemType::ARMOR, bonus + 1, rarity, 4);
             return Item::make("Reinforced Mail", ItemType::ARMOR, bonus + 1, rarity, -1);
         }
     }

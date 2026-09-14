@@ -4,7 +4,7 @@
 
 ## Features
 
-1. **What stats do** — Sheet + level-up panel show short plain-English tips matching this build’s C++ rules (attack/AC/HP/Search/Healing Word). Help → “What do stats do?” plus a tutorial page. Per-class tips for Fighter / Wizard / Rogue / Cleric.
+1. **What stats do** — Sheet + level-up panel show short plain-English tips matching this build’s C++ rules (attack/AC/HP/Search/Healing Word). Help → “What do stats do?” plus a tutorial page. Per-class tips for Fighter / Wizard / Rogue / Cleric / Bard. Charisma is Bard's attack/Cutting Quip stat.
 2. **XP bar** — HUD under the turn banner (`XP L#` + gold bar + `current/need`). Sheet also shows XP toward next level. JNI: `getXpProgress(name)`, `getPartyXpProgress()`; sheet text includes `XP: cur/need`.
 3. **Level-up notification** — When pending points *increase* for hero or ally: toast, combat-feed line, dialog (“open Sheet to spend points”), and pulsing **Sheet!** button while points remain. Solo + companion; online party via `getPartyXpProgress`. Continue seeds snapshot so existing pending highlights without re-dialog.
 

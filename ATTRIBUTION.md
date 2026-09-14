@@ -141,3 +141,7 @@ Sprites reuse existing LuizMelo CC0 frames already shipped in the app (no new do
 ## Endgame / Act 3 / Boss Raids (v2.6)
 
 No new third-party art or audio. Act 3 / endgame / raid encounters reuse existing CC0 battle stages and monster sprites listed above (boss stage, cave, dungeon). Original names and flavor text only — not from any WotC module.
+
+## Temporary sprite mapping
+
+- **Bard (v2.7):** UI battle portrait and GL player model temporarily reuse the Wizard sprite/model until dedicated Bard CC0 art is added.

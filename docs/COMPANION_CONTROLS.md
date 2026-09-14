@@ -8,7 +8,7 @@
 
 | Feature | Behavior |
 |---------|----------|
-| **Companion class** | At Story / Crawl start, pick Fighter (Bren), Wizard (Melf), Rogue (Sable), or Cleric (Miren). Out of combat: Ally → Change class. |
+| **Companion class** | At Story / Crawl start, pick Fighter (Bren), Wizard (Melf), Rogue (Sable), Cleric (Miren), or Bard (Jory). Out of combat: Ally → Change class. |
 | **Companion sheet** | Top-bar **Ally** button, or tap the companion sprite (when not in Potion targeting mode). |
 | **Auto vs Player** | Ally dialog toggle. **Auto** = existing ally AI. **Player** = on their turn you use Attack / Special / Potion (same targeting UI). |
 | **Persist** | Class + `aiControlled` flag in save/Continue (backward compatible with older saves). |

@@ -70,7 +70,7 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
     players_.back()->aiControlled = false;
     {
         CharacterClass cc = companionClass;
-        if (static_cast<int>(cc) < 0 || static_cast<int>(cc) > 3) cc = CharacterClass::WIZARD;
+        if (static_cast<int>(cc) < 0 || static_cast<int>(cc) > 4) cc = CharacterClass::WIZARD;
         addAlly(companionNameForClass(cc), cc);
         if (!players_.empty()) {
             Character* ally = findNpcCompanion();
@@ -296,6 +296,7 @@ std::string Game::companionNameForClass(CharacterClass cl) {
         case CharacterClass::WIZARD: return "Melf (NPC)";
         case CharacterClass::ROGUE: return "Sable (NPC)";
         case CharacterClass::CLERIC: return "Miren (NPC)";
+        case CharacterClass::BARD: return "Jory (NPC)";
     }
     return "Melf (NPC)";
 }
@@ -331,7 +332,7 @@ bool Game::setCompanionClass(CharacterClass cl) {
     if (gameOver_ || isInCombat()) return false;
     Character* old = findNpcCompanion();
     if (!old) return false;
-    if (static_cast<int>(cl) < 0 || static_cast<int>(cl) > 3) return false;
+    if (static_cast<int>(cl) < 0 || static_cast<int>(cl) > 4) return false;
     if (old->characterClass == cl) {
         // Still refresh name if needed
         std::string want = companionNameForClass(cl);
@@ -383,12 +384,14 @@ bool Game::setCompanionClass(CharacterClass cl) {
                 if (cl == CharacterClass::FIGHTER) neu->equippedWeapon = Item::make("Longsword", ItemType::WEAPON, 0, ItemRarity::COMMON, cls);
                 else if (cl == CharacterClass::ROGUE) neu->equippedWeapon = Item::make("Shortsword", ItemType::WEAPON, 0, ItemRarity::COMMON, cls);
                 else if (cl == CharacterClass::WIZARD) neu->equippedWeapon = Item::make("Quarterstaff", ItemType::WEAPON, 0, ItemRarity::COMMON, cls);
+                else if (cl == CharacterClass::BARD) neu->equippedWeapon = Item::make("Rapier", ItemType::WEAPON, 0, ItemRarity::COMMON, cls);
                 else neu->equippedWeapon = Item::make("Mace", ItemType::WEAPON, 0, ItemRarity::COMMON, cls);
             }
             if (!neu->equippedArmor) {
                 if (cl == CharacterClass::FIGHTER) neu->equippedArmor = Item::make("Chain Shirt", ItemType::ARMOR, 3, ItemRarity::COMMON, cls);
                 else if (cl == CharacterClass::ROGUE) neu->equippedArmor = Item::make("Leather Armor", ItemType::ARMOR, 1, ItemRarity::COMMON, cls);
                 else if (cl == CharacterClass::WIZARD) neu->equippedArmor = Item::make("Traveler Clothes", ItemType::ARMOR, 0, ItemRarity::COMMON, -1);
+                else if (cl == CharacterClass::BARD) neu->equippedArmor = Item::make("Leather Armor", ItemType::ARMOR, 1, ItemRarity::COMMON, cls);
                 else neu->equippedArmor = Item::make("Scale Mail", ItemType::ARMOR, 4, ItemRarity::COMMON, cls);
             }
         }
@@ -410,7 +413,8 @@ bool Game::setCompanionClass(CharacterClass cl) {
     lastEvent_ = newName + " takes the field as a " +
         (cl == CharacterClass::FIGHTER ? "Fighter" :
          cl == CharacterClass::WIZARD ? "Wizard" :
-         cl == CharacterClass::ROGUE ? "Rogue" : "Cleric") + ".";
+         cl == CharacterClass::ROGUE ? "Rogue" :
+         cl == CharacterClass::BARD ? "Bard" : "Cleric") + ".";
     dmSay(lastEvent_);
     addChatMessage("System", lastEvent_);
     return true;
@@ -486,6 +490,9 @@ void Game::spawnSoloQuestEnemies() {
                     break;
                 case CharacterClass::CLERIC:
                     foe->attributes.wisdom = std::max(3, foe->attributes.wisdom + attackStatDelta);
+                    break;
+                case CharacterClass::BARD:
+                    foe->attributes.charisma = std::max(3, foe->attributes.charisma + attackStatDelta);
                     break;
             }
             foe->calculateAC();
@@ -904,13 +911,15 @@ void Game::restockShop() {
         if (cls == 0) return Item::make("Fighter's Arming Sword", ItemType::WEAPON, bonus, r, 0);
         if (cls == 1) return Item::make("Wizard's Focus Rod", ItemType::WEAPON, bonus, r, 1);
         if (cls == 2) return Item::make("Rogue's Stiletto", ItemType::WEAPON, bonus, r, 2);
-        return Item::make("Cleric's Warhammer", ItemType::WEAPON, bonus, r, 3);
+        if (cls == 3) return Item::make("Cleric's Warhammer", ItemType::WEAPON, bonus, r, 3);
+        return Item::make("Bard's Stage Rapier", ItemType::WEAPON, bonus, r, 4);
     };
     auto classArmor = [&](int cls, ItemRarity r, int bonus) {
         if (cls == 0) return Item::make("Knight Plate", ItemType::ARMOR, bonus, r, 0);
         if (cls == 1) return Item::make("Scholar Robes", ItemType::ARMOR, bonus, r, 1);
         if (cls == 2) return Item::make("Veil of Shadows", ItemType::ARMOR, bonus, r, 2);
-        return Item::make("Reliquary Mail", ItemType::ARMOR, bonus, r, 3);
+        if (cls == 3) return Item::make("Reliquary Mail", ItemType::ARMOR, bonus, r, 3);
+        return Item::make("Troubadour Coat", ItemType::ARMOR, bonus, r, 4);
     };
 
     // Always: Any commons + potions (usable by everyone).
@@ -935,7 +944,7 @@ void Game::restockShop() {
             shopInventory_.push_back(classArmor(preferB, ItemRarity::UNCOMMON, depthBonus + 1));
     }
     int off = -1;
-    for (int c = 0; c < 4; ++c) {
+    for (int c = 0; c < 5; ++c) {
         if (!isPartyClass(c)) { off = c; break; }
     }
     if (off >= 0) {
@@ -1308,6 +1317,8 @@ void Game::spawnNamedBoss(const std::string& name, int tier) {
     foe->resources = std::min(foe->maxResources, std::max(1, tier));
     if (cl == CharacterClass::ROGUE) foe->attributes.dexterity = std::max(8, foe->attributes.dexterity + atkDelta);
     else if (cl == CharacterClass::WIZARD) foe->attributes.intelligence = std::max(8, foe->attributes.intelligence + atkDelta);
+    else if (cl == CharacterClass::CLERIC) foe->attributes.wisdom = std::max(8, foe->attributes.wisdom + atkDelta);
+    else if (cl == CharacterClass::BARD) foe->attributes.charisma = std::max(8, foe->attributes.charisma + atkDelta);
     else foe->attributes.strength = std::max(8, foe->attributes.strength + atkDelta);
     enemies_.push_back(std::move(foe));
 }
@@ -1950,11 +1961,19 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
     int mod = CombatSystem::getPrimaryModifier(*actor);
     int pb = CombatSystem::proficiencyBonusForLevel(actor->level);
     int gearBonus = actor->equippedWeapon ? actor->equippedWeapon->bonus : 0;
+    int mockPenalty = 0;
+    if (actor->nextAttackPenalty > 0) {
+        mockPenalty = actor->nextAttackPenalty;
+        actor->nextAttackPenalty = 0;
+        result.total -= mockPenalty;
+    }
 
     std::stringstream ss;
     ss << actor->name << " attacks " << target.name << "! d20=" << result.dieRoll
        << " + " << mod << " (ability) + " << pb << " (prof) + " << gearBonus
-       << " (magic) = " << result.total << " vs AC " << target.armorClass << ". ";
+       << " (magic)";
+    if (mockPenalty > 0) ss << " - " << mockPenalty << " (rattled)";
+    ss << " = " << result.total << " vs AC " << target.armorClass << ". ";
 
     bool hit = result.total >= target.armorClass || result.isCriticalHit;
     if (result.isCriticalFail) hit = false;
@@ -2121,6 +2140,42 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
         pushVisualEvent(VisualEventType::ENEMY_DAMAGE, targetEnemyIndex);
         lastEvent_ = actor->name + " casts Magic Missile! Three darts deal " + std::to_string(total) + " force damage to " + enemy.name + ".";
         dmSay("Glowing darts streak unerringly to their mark.");
+        addChatMessage("Combat", lastEvent_);
+        if (enemy.currentHp <= 0) resolveEnemyDefeated(actor, targetEnemyIndex);
+        else currentTurnIndex_ = (currentTurnIndex_ + 1) % static_cast<int>(turnOrder_.size());
+        return;
+    }
+
+    if (actor->characterClass == CharacterClass::BARD) {
+        // Cutting Quip: CHA attack vs AC; psychic sting + rattle (-2 next attack). Original flavor.
+        dmSay(actor->name + " fires a Cutting Quip — a barbed line that bites deeper than steel.");
+        RollResult result = CombatSystem::performAttackRoll(*actor);
+        int mod = CombatSystem::getPrimaryModifier(*actor);
+        int pb = CombatSystem::proficiencyBonusForLevel(actor->level);
+        bool hit = result.total >= enemy.armorClass || result.isCriticalHit;
+        if (result.isCriticalFail) hit = false;
+        pushVisualEvent(VisualEventType::PLAYER_ATTACK, playerIdx);
+        std::stringstream ss;
+        ss << actor->name << " Cutting Quip vs " << enemy.name << "! d20=" << result.dieRoll
+           << " + " << mod << " (CHA) + " << pb << " (prof) = " << result.total
+           << " vs AC " << enemy.armorClass << ". ";
+        if (hit) {
+            int cha = Attributes::getModifier(actor->effectiveAttr(5));
+            int dmg = getRandomInt(1, 4) + cha;
+            if (result.isCriticalHit) dmg += getRandomInt(1, 4);
+            if (dmg < 1) dmg = 1;
+            enemy.takeDamage(dmg);
+            enemy.nextAttackPenalty = 2;
+            pushVisualEvent(VisualEventType::ENEMY_DAMAGE, targetEnemyIndex);
+            ss << (result.isCriticalHit ? "CRITICAL! " : "Hit! ")
+               << "Psychic sting " << dmg << ". " << enemy.name << " is rattled (-2 next attack).";
+            dmSay(enemy.name + " flinches at the cutting words.");
+        } else {
+            ss << "Miss!";
+            if (result.isCriticalFail) ss << " (natural 1)";
+            dmSay("The quip falls flat — " + enemy.name + " shrugs it off.");
+        }
+        lastEvent_ = ss.str();
         addChatMessage("Combat", lastEvent_);
         if (enemy.currentHp <= 0) resolveEnemyDefeated(actor, targetEnemyIndex);
         else currentTurnIndex_ = (currentTurnIndex_ + 1) % static_cast<int>(turnOrder_.size());
@@ -2517,6 +2572,9 @@ bool Game::allySpecialBeatsBasic(const Character& actor, const Character& enemy)
         case CharacterClass::CLERIC:
             // Healing Word is a heal, not an attack special.
             return false;
+        case CharacterClass::BARD:
+            // Cutting Quip: CHA attack + rattle — good vs high AC or to finish.
+            return hp <= 10 || enemy.armorClass >= 13 || actor.resources >= 2;
     }
     return false;
 }
@@ -2555,6 +2613,10 @@ void Game::enemyTurn() {
     auto doOneAttack = [&](bool sneak) {
         pushVisualEvent(VisualEventType::ENEMY_ATTACK, enemyIdx);
         RollResult result = CombatSystem::performAttackRoll(*enemy);
+        if (enemy->nextAttackPenalty > 0) {
+            result.total -= enemy->nextAttackPenalty;
+            enemy->nextAttackPenalty = 0;
+        }
         bool hit = (result.total >= hero.armorClass || result.isCriticalHit) && !result.isCriticalFail;
         if (hit) {
             int extra = sneak ? enemy->sneakAttackDice() : 0;
