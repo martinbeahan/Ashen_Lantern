@@ -5,20 +5,39 @@ import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.SoundPool
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import java.util.Locale
 
 /**
  * Copyright-safe BGM (MediaPlayer), SFX (SoundPool), and optional on-device TTS for DM lines.
+ * One looping BGM at a time; beds swap on menu / explore / combat / boss contexts.
  * All playback is fire-and-forget; never blocks the UI thread beyond lightweight calls.
  */
 class GameAudio(private val context: Context) : TextToSpeech.OnInitListener {
     companion object {
         private const val TAG = "GameAudio"
+        private const val BGM_VOLUME = 0.45f
+        private const val FADE_MS = 220L
+        private const val FADE_STEPS = 8
     }
 
-    enum class Track { EXPLORE, TENSION }
+    /**
+     * Named beds (CC0 Ironchest Dungeon Loops — see ATTRIBUTION.md / docs/AUDIO_BEDS.md).
+     * EXPLORE = dungeon001, TOWN = dungeon005, COMBAT = dungeon006, BOSS = dungeon010.
+     */
+    enum class Track {
+        /** Default dungeon / crawl / story exploration. */
+        EXPLORE,
+        /** Main menu, merchant, camp — quieter bed. */
+        TOWN,
+        /** Normal combat tension. */
+        COMBAT,
+        /** Boss encounter or Boss Raid. */
+        BOSS
+    }
 
     private var musicEnabled = true
     private var sfxEnabled = true
@@ -27,6 +46,8 @@ class GameAudio(private val context: Context) : TextToSpeech.OnInitListener {
     private var bgm: MediaPlayer? = null
     private var currentTrack: Track? = null
     private var pausedForLifecycle = false
+    private var fadeGeneration = 0
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     private var soundPool: SoundPool? = null
     private var sfxAttack = 0
@@ -45,10 +66,13 @@ class GameAudio(private val context: Context) : TextToSpeech.OnInitListener {
         dmVoiceEnabled = dmVoiceOn
         initSfx()
         if (dmVoiceEnabled) ensureTts()
-        if (musicEnabled) playTrack(Track.EXPLORE)
+        // App boots on main menu — quieter town bed.
+        if (musicEnabled) playTrack(Track.TOWN, fade = false)
     }
 
     fun release() {
+        fadeGeneration++
+        mainHandler.removeCallbacksAndMessages(null)
         stopBgm()
         soundPool?.release()
         soundPool = null
@@ -62,9 +86,10 @@ class GameAudio(private val context: Context) : TextToSpeech.OnInitListener {
     fun setMusicEnabled(enabled: Boolean) {
         musicEnabled = enabled
         if (!enabled) {
+            fadeGeneration++
             stopBgm()
         } else if (!pausedForLifecycle) {
-            playTrack(currentTrack ?: Track.EXPLORE)
+            playTrack(currentTrack ?: Track.TOWN, fade = false)
         }
     }
 
@@ -87,6 +112,7 @@ class GameAudio(private val context: Context) : TextToSpeech.OnInitListener {
     /** Pause looping BGM when the activity leaves the foreground. */
     fun onPause() {
         pausedForLifecycle = true
+        fadeGeneration++
         try {
             bgm?.let { if (it.isPlaying) it.pause() }
         } catch (e: Exception) {
@@ -107,17 +133,29 @@ class GameAudio(private val context: Context) : TextToSpeech.OnInitListener {
             if (player != null) {
                 if (!player.isPlaying) player.start()
             } else {
-                playTrack(currentTrack ?: Track.EXPLORE)
+                playTrack(currentTrack ?: Track.TOWN, fade = false)
             }
         } catch (e: Exception) {
             Log.w(TAG, "bgm resume failed", e)
-            playTrack(currentTrack ?: Track.EXPLORE)
+            playTrack(currentTrack ?: Track.TOWN, fade = false)
         }
     }
 
+    /**
+     * Swap to [track] if different. Clean stop/start with a short volume fade-out
+     * so beds never stack. No-ops when Music is off or lifecycle-paused.
+     */
+    fun setBed(track: Track) {
+        if (!musicEnabled || pausedForLifecycle) {
+            currentTrack = track
+            return
+        }
+        playTrack(track, fade = true)
+    }
+
+    /** @deprecated Prefer [setBed]; kept for any residual callers. */
     fun syncCombatMusic(inCombat: Boolean) {
-        if (!musicEnabled || pausedForLifecycle) return
-        playTrack(if (inCombat) Track.TENSION else Track.EXPLORE)
+        setBed(if (inCombat) Track.COMBAT else Track.EXPLORE)
     }
 
     fun playAttack() = playSfx(sfxAttack)
@@ -220,8 +258,11 @@ class GameAudio(private val context: Context) : TextToSpeech.OnInitListener {
         }
     }
 
-    private fun playTrack(track: Track) {
-        if (!musicEnabled) return
+    private fun playTrack(track: Track, fade: Boolean) {
+        if (!musicEnabled) {
+            currentTrack = track
+            return
+        }
         if (currentTrack == track && bgm != null) {
             try {
                 if (bgm?.isPlaying == false && !pausedForLifecycle) bgm?.start()
@@ -230,26 +271,72 @@ class GameAudio(private val context: Context) : TextToSpeech.OnInitListener {
                 // recreate below
             }
         }
-        stopBgm()
+        val startNew = {
+            stopBgmImmediate()
+            startPlayer(track)
+        }
+        if (fade && bgm != null) {
+            fadeOutThen(startNew)
+        } else {
+            fadeGeneration++
+            startNew()
+        }
+    }
+
+    private fun startPlayer(track: Track) {
         val resId = when (track) {
             Track.EXPLORE -> R.raw.bgm_explore
-            Track.TENSION -> R.raw.bgm_tension
+            Track.TOWN -> R.raw.bgm_town
+            Track.COMBAT -> R.raw.bgm_tension
+            Track.BOSS -> R.raw.bgm_boss
         }
         try {
             val player = MediaPlayer.create(context, resId) ?: return
             player.isLooping = true
-            player.setVolume(0.45f, 0.45f)
-            if (!pausedForLifecycle) player.start()
+            player.setVolume(BGM_VOLUME, BGM_VOLUME)
+            if (!pausedForLifecycle && musicEnabled) player.start()
             bgm = player
             currentTrack = track
         } catch (e: Exception) {
-            Log.e(TAG, "BGM start failed", e)
+            Log.e(TAG, "BGM start failed for $track", e)
             bgm = null
             currentTrack = null
         }
     }
 
+    private fun fadeOutThen(onDone: () -> Unit) {
+        val player = bgm
+        if (player == null) {
+            onDone()
+            return
+        }
+        val gen = ++fadeGeneration
+        val stepMs = FADE_MS / FADE_STEPS
+        var step = 0
+        fun tick() {
+            if (gen != fadeGeneration) return
+            step++
+            val fraction = 1f - (step.toFloat() / FADE_STEPS)
+            try {
+                val v = (BGM_VOLUME * fraction).coerceAtLeast(0f)
+                player.setVolume(v, v)
+            } catch (_: Exception) {
+            }
+            if (step >= FADE_STEPS) {
+                if (gen == fadeGeneration) onDone()
+            } else {
+                mainHandler.postDelayed({ tick() }, stepMs)
+            }
+        }
+        mainHandler.post { tick() }
+    }
+
     private fun stopBgm() {
+        fadeGeneration++
+        stopBgmImmediate()
+    }
+
+    private fun stopBgmImmediate() {
         try {
             bgm?.stop()
         } catch (_: Exception) {
