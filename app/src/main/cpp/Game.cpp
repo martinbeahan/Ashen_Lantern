@@ -40,6 +40,11 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
     bossSeenHydra_ = false;
     bossSeenNightfang_ = false;
     pendingRaidKeyDrop_ = false;
+    dqRoomsCleared_ = 0;
+    dqFightsWon_ = 0;
+    dqSearches_ = 0;
+    dqDamageDealt_ = 0;
+    dqBossesDefeated_ = 0;
     while(!visualEvents_.empty()) visualEvents_.pop();
 
     gameOver_ = false;
@@ -1536,6 +1541,7 @@ void Game::maybeSpawnBossEncounter() {
 void Game::noteBossDefeat(const std::string& foeName) {
     int tier = LootSystem::bossTier(foeName);
     if (tier <= 0) return;
+    dqBossesDefeated_++;
     // #46 base luck: 10+tier*8 — bosses better than trash, not BiS flood
     int xp = 40 * tier + roomCount_ * 2;
     int luck = 10 + tier * 8;
@@ -1813,6 +1819,8 @@ void Game::grantKillLoot(Character* actor, const std::string& foeName) {
 }
 
 void Game::enterClearedRoom(Character* actor) {
+    dqRoomsCleared_++;
+    dqFightsWon_++;
     // Preserve kill beat ("Felled …") so UI juice can toast it when this room clears.
     const std::string priorKillBeat =
         (lastEvent_.rfind("Felled ", 0) == 0) ? lastEvent_ : std::string();
@@ -2201,6 +2209,7 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
         }
         target.takeDamage(dmg);
         if (targetIsEnemy) {
+            noteDailyQuestDamage(dmg);
             applyLegendaryOnHit(actor, dmg);
         }
         pushVisualEvent(targetIsEnemy ? VisualEventType::ENEMY_DAMAGE : VisualEventType::PLAYER_DAMAGE, targetIndex);
@@ -2349,6 +2358,7 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
         int total = 0;
         for (int i = 0; i < 3; ++i) total += getRandomInt(1, 4) + 1;
         enemy.takeDamage(total);
+        noteDailyQuestDamage(total);
         pushVisualEvent(VisualEventType::PLAYER_ATTACK, playerIdx);
         pushVisualEvent(VisualEventType::ENEMY_DAMAGE, targetEnemyIndex);
         lastEvent_ = actor->name + " casts Magic Missile! Three darts deal " + std::to_string(total) + " force damage to " + enemy.name + ".";
@@ -2378,6 +2388,7 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
             if (result.isCriticalHit) dmg += getRandomInt(1, 4);
             if (dmg < 1) dmg = 1;
             enemy.takeDamage(dmg);
+            noteDailyQuestDamage(dmg);
             enemy.nextAttackPenalty = 2;
             pushVisualEvent(VisualEventType::ENEMY_DAMAGE, targetEnemyIndex);
             ss << (result.isCriticalHit ? "CRITICAL! " : "Hit! ")
@@ -2474,6 +2485,7 @@ void Game::playerInteract(const std::string& playerName) {
     }
     // One meaningful Search per room (success or fail locks further Search).
     roomSearchUsed_ = true;
+    dqSearches_++;
 
     if (trySoloQuestSearch(hero)) {
         // Story Search handled (clue / rune-key / shrine).
@@ -3260,6 +3272,43 @@ void Game::deserialize(const std::string& data) {
     }
 
     rebuildTurnOrder();
+}
+
+
+std::string Game::getDailyQuestCounters() const {
+    std::ostringstream ss;
+    ss << dqRoomsCleared_ << ',' << dqFightsWon_ << ',' << dqSearches_ << ','
+       << dqDamageDealt_ << ',' << dqBossesDefeated_;
+    return ss.str();
+}
+
+void Game::noteDailyQuestDamage(int dmg) {
+    if (dmg > 0) dqDamageDealt_ += dmg;
+}
+
+bool Game::grantDailyQuestSpoils(int gold, bool giveLoot) {
+    Character* purse = nullptr;
+    for (auto& p : players_) {
+        if (p && !p->isDead) { purse = p.get(); break; }
+    }
+    if (!purse) return false;
+    if (gold > 0) {
+        purse->gold += gold;
+        dmSay(purse->name + " claims " + std::to_string(gold) + " gold from today's errands.");
+        addChatMessage("Quest", purse->name + " claims " + std::to_string(gold) + " daily-quest gold.");
+        addJournalEntry("Daily quests: +" + std::to_string(gold) + " gold.");
+    }
+    if (giveLoot) {
+        auto potion = Item::make("Wayfarer's Tonic", ItemType::POTION, 10, ItemRarity::UNCOMMON, -1);
+        purse->inventory.push_back(potion);
+        dmSay(purse->name + " tucks away a Wayfarer's Tonic (Uncommon potion).");
+        addChatMessage("Quest", purse->name + " receives Wayfarer's Tonic.");
+        addJournalEntry("Daily quests: Wayfarer's Tonic.");
+        lastEvent_ = purse->name + " claimed daily-quest spoils.";
+    } else if (gold > 0) {
+        lastEvent_ = purse->name + " claimed " + std::to_string(gold) + " daily-quest gold.";
+    }
+    return true;
 }
 
 } // namespace dnd

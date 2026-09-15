@@ -147,6 +147,14 @@ public:
     }
     bool peekPendingRaidKeyDrop() const { return pendingRaidKeyDrop_; }
 
+    /**
+     * Session-lifetime daily-quest counters (not serialized).
+     * Format: rooms,fights,searches,damage,bosses — Kotlin diffs against last poll.
+     */
+    std::string getDailyQuestCounters() const;
+    /** Apply gold + optional small loot to the living party purse (solo Continue hero). */
+    bool grantDailyQuestSpoils(int gold, bool giveLoot);
+
     const std::vector<std::unique_ptr<Character>>& getPlayers() const { return players_; }
     const std::vector<std::unique_ptr<Character>>& getEnemies() const { return enemies_; }
 
@@ -201,6 +209,13 @@ private:
     bool bossSeenHydra_ = false;
     bool bossSeenNightfang_ = false;
     bool pendingRaidKeyDrop_ = false;
+    // Daily-quest session counters (live poll only; never written into save_state).
+    int dqRoomsCleared_ = 0;
+    int dqFightsWon_ = 0;
+    int dqSearches_ = 0;
+    int dqDamageDealt_ = 0;
+    int dqBossesDefeated_ = 0;
+    void noteDailyQuestDamage(int dmg);
 
     int turnCounter_;
     int roomCount_;

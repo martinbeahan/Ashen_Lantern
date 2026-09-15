@@ -106,6 +106,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSettingsClose: Button
     private lateinit var settingsAboutText: TextView
     private lateinit var settingsDifficultyText: TextView
+    private lateinit var mainMenuDailyQuests: TextView
+    private lateinit var btnMenuClaimDaily: Button
+    private lateinit var settingsDailyQuests: TextView
+    private lateinit var btnSettingsClaimDaily: Button
+    /** Last native daily-quest counter snap (rooms,fights,searches,damage,bosses). */
+    private var lastDqSnap = intArrayOf(0, 0, 0, 0, 0)
     /** One-shot CTA after Acts 1–3 so player can open Boss Raid / menu without relaunch. */
     private var storyCompleteRoutesShown = false
     // Audio prefs + GameAudio (BGM / SFX / optional on-device TTS).
@@ -248,6 +254,8 @@ class MainActivity : AppCompatActivity() {
     external fun consumePendingRaidKeyDrop(): Boolean
     external fun beginBossRaidFromCurrent(): Boolean
     external fun finishBossRaidKeepParty()
+    external fun getDailyQuestCounters(): String
+    external fun grantDailyQuestSpoils(gold: Int, giveLoot: Boolean): Boolean
     external fun recoverFromPartyWipe(): Boolean
     external fun startDmSession(dmName: String)
     external fun dmBeginDungeon()
@@ -536,6 +544,11 @@ class MainActivity : AppCompatActivity() {
         // Seed pending snapshot so Continue with unspent points highlights Sheet
         // without re-firing the level-up dialog.
         seedPendingSnapshot(notifyHighlightOnly = true)
+        resetDailyQuestSnap()
+        // Solo only: deliver stashed daily spoils into save_state (never online).
+        if (armCrashGuard) {
+            applyPendingDailySpoilsIfAny()
+        }
     }
 
     private fun seedPendingSnapshot(notifyHighlightOnly: Boolean) {
@@ -1197,6 +1210,7 @@ class MainActivity : AppCompatActivity() {
                 mainMenuRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = true)
             }
         }
+        refreshDailyQuestsUi()
     }
 
     private fun showDifficultyPicker(lockForRun: Boolean) {
@@ -1245,6 +1259,8 @@ class MainActivity : AppCompatActivity() {
         btnMenuQuit = findViewById(R.id.btnMenuQuit)
         mainMenuSubtitle = findViewById(R.id.mainMenuSubtitle)
         mainMenuDifficultyLabel = findViewById(R.id.mainMenuDifficultyLabel)
+        mainMenuDailyQuests = findViewById(R.id.mainMenuDailyQuests)
+        btnMenuClaimDaily = findViewById(R.id.btnMenuClaimDaily)
 
         settingsRoot = findViewById(R.id.settingsRoot)
         chkBeginnerTips = findViewById(R.id.chkBeginnerTips)
@@ -1260,6 +1276,8 @@ class MainActivity : AppCompatActivity() {
         btnSettingsClose = findViewById(R.id.btnSettingsClose)
         settingsAboutText = findViewById(R.id.settingsAboutText)
         settingsDifficultyText = findViewById(R.id.settingsDifficultyText)
+        settingsDailyQuests = findViewById(R.id.settingsDailyQuests)
+        btnSettingsClaimDaily = findViewById(R.id.btnSettingsClaimDaily)
 
         btnMenuContinue.setOnClickListener {
             // Menu stays until continueSavedGame succeeds (activateSession) or
@@ -1358,6 +1376,8 @@ class MainActivity : AppCompatActivity() {
         }
         btnSettingsAbandon.setOnClickListener { confirmAbandonAdventure() }
         btnSettingsClose.setOnClickListener { hideSettingsOverlay() }
+        btnMenuClaimDaily.setOnClickListener { claimDailyQuestsRewards() }
+        btnSettingsClaimDaily.setOnClickListener { claimDailyQuestsRewards() }
     }
 
     private fun showSettingsOverlay() {
@@ -1411,6 +1431,7 @@ class MainActivity : AppCompatActivity() {
         btnSettingsAbandon.visibility = if (sessionActive) View.VISIBLE else View.GONE
         btnSettingsReturnMenu.visibility = if (sessionActive) View.VISIBLE else View.GONE
         refreshSettingsRaidEntry()
+        refreshDailyQuestsUi()
         updateSettingsDifficultyText()
         settingsDifficultyText.setOnClickListener {
             if (sessionActive && runDifficulty >= 0) {
@@ -2589,6 +2610,7 @@ class MainActivity : AppCompatActivity() {
                 settingsRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = false)
             }
         }
+        refreshDailyQuestsUi()
     }
 
     private fun startMenuRaidKeyCountdown() {
@@ -2659,6 +2681,146 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) { }
     }
 
+    private fun resetDailyQuestSnap() {
+        lastDqSnap = intArrayOf(0, 0, 0, 0, 0)
+        if (!nativeReady) return
+        try {
+            val parts = getDailyQuestCounters().split(',')
+            for (i in 0 until 5) {
+                lastDqSnap[i] = parts.getOrNull(i)?.toIntOrNull() ?: 0
+            }
+        } catch (_: Exception) { }
+    }
+
+    /** Progress only for solo story-complete sessions — never Host/Join. */
+    private fun canTrackDailyQuests(): Boolean {
+        if (!sessionActive || !nativeReady) return false
+        if (isOnlineHost || isOnlineClient) return false
+        if (!isMetaStoryComplete()) return false
+        return true
+    }
+
+    private fun pollDailyQuestProgress() {
+        if (!canTrackDailyQuests()) return
+        try {
+            val parts = getDailyQuestCounters().split(',')
+            if (parts.size < 5) return
+            val snap = IntArray(5) { i -> parts[i].toIntOrNull() ?: 0 }
+            val dRooms = (snap[0] - lastDqSnap[0]).coerceAtLeast(0)
+            val dFights = (snap[1] - lastDqSnap[1]).coerceAtLeast(0)
+            val dSearches = (snap[2] - lastDqSnap[2]).coerceAtLeast(0)
+            val dDamage = (snap[3] - lastDqSnap[3]).coerceAtLeast(0)
+            val dBosses = (snap[4] - lastDqSnap[4]).coerceAtLeast(0)
+            lastDqSnap = snap
+            if (DailyQuests.applyDelta(prefs(), dRooms, dFights, dSearches, dDamage, dBosses)) {
+                // Soft toast when an objective just completed
+                val st = DailyQuests.readForUi(prefs(), true, livableSavedState() != null)
+                if (st.objectives.any { it.complete && it.progress >= it.target }) {
+                    // No spam: only when claimable flips
+                    if (st.claimable) {
+                        Toast.makeText(this, "Daily Quests complete — claim from the menu!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "daily quest poll failed", e)
+        }
+    }
+
+    private fun refreshDailyQuestsUi() {
+        if (!::mainMenuDailyQuests.isInitialized && !::settingsDailyQuests.isInitialized) return
+        val storyDone = isMetaStoryComplete()
+        val hasSave = livableSavedState() != null
+        val state = DailyQuests.readForUi(prefs(), storyDone, hasSave)
+        val summary = DailyQuests.summaryLines(state)
+        val refreshHint = if (state.lockedReason == null && !state.claimed) {
+            val ms = DailyQuests.msUntilLocalMidnight()
+            " · refreshes in ${formatRaidKeyCountdown(ms)}"
+        } else if (state.claimed) {
+            val ms = DailyQuests.msUntilLocalMidnight()
+            " · new board in ${formatRaidKeyCountdown(ms)}"
+        } else ""
+        if (::mainMenuDailyQuests.isInitialized) {
+            mainMenuDailyQuests.text = summary + refreshHint
+        }
+        if (::btnMenuClaimDaily.isInitialized) {
+            btnMenuClaimDaily.visibility = if (state.claimable) View.VISIBLE else View.GONE
+        }
+        if (::settingsDailyQuests.isInitialized) {
+            settingsDailyQuests.text = summary + refreshHint
+        }
+        if (::btnSettingsClaimDaily.isInitialized) {
+            btnSettingsClaimDaily.visibility = if (state.claimable) View.VISIBLE else View.GONE
+        }
+    }
+
+    private fun claimDailyQuestsRewards() {
+        val storyDone = isMetaStoryComplete()
+        val hasSave = livableSavedState() != null
+        syncRaidKeyDay()
+        val result = DailyQuests.tryClaim(
+            prefs = prefs(),
+            storyComplete = storyDone,
+            hasContinueSave = hasSave,
+            raidKeysHeld = raidKeysHeld(),
+            raidKeysGrantedToday = raidKeysGrantedToday(),
+            grantRaidKey = {
+                // Fixed 1-key grant under held + daily caps (meta prefs only).
+                tryGrantRaidKeyFromDrop()
+            }
+        ) ?: run {
+            Toast.makeText(this, "Nothing to claim yet.", Toast.LENGTH_SHORT).show()
+            refreshDailyQuestsUi()
+            return
+        }
+        val appliedNow = tryApplyDailySpoilsNow(result.gold, result.loot)
+        if (!appliedNow) {
+            DailyQuests.stashPendingSpoils(prefs(), result.gold, result.loot)
+            Toast.makeText(
+                this,
+                result.message + " — spoils apply next Continue.",
+                Toast.LENGTH_LONG
+            ).show()
+        } else {
+            Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+        }
+        refreshMainMenuButtons()
+        refreshDailyQuestsUi()
+    }
+
+    /** Grant gold/loot into the live solo party and persist save_state (never online). */
+    private fun tryApplyDailySpoilsNow(gold: Int, loot: Boolean): Boolean {
+        if (!nativeReady) return false
+        if (isOnlineHost || isOnlineClient) return false
+        if (!sessionActive) return false
+        return try {
+            val ok = grantDailyQuestSpoils(gold, loot)
+            if (ok) syncAndSave()
+            ok
+        } catch (e: Exception) {
+            Log.e(TAG, "grantDailyQuestSpoils failed", e)
+            false
+        }
+    }
+
+    private fun applyPendingDailySpoilsIfAny() {
+        if (!nativeReady || !sessionActive) return
+        if (isOnlineHost || isOnlineClient) return
+        val (gold, loot) = DailyQuests.takePendingSpoils(prefs())
+        if (gold <= 0 && !loot) return
+        try {
+            if (grantDailyQuestSpoils(gold, loot)) {
+                syncAndSave()
+                Toast.makeText(this, "Daily quest spoils delivered (+${gold}g).", Toast.LENGTH_LONG).show()
+            } else {
+                // Put back if party not ready
+                DailyQuests.stashPendingSpoils(prefs(), gold, loot)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "pending daily spoils failed", e)
+            DailyQuests.stashPendingSpoils(prefs(), gold, loot)
+        }
+    }
 
     private fun wearerClassLabel(forName: String): String {
         return try {
@@ -3025,6 +3187,7 @@ class MainActivity : AppCompatActivity() {
         val status = getPlayerStatus()
         markMetaStoryCompleteIfNeeded()
         pollRaidKeyDrop()
+        pollDailyQuestProgress()
         val isShop = isMerchantRoom()
 
         // Compact HUD — full sheet stays behind Sheet

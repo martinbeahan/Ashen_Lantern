@@ -547,4 +547,17 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getPartyXpProgress(JNIEnv *env,
     return env->NewStringUTF(ss.str().c_str());
 }
 
+
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getDailyQuestCounters(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return env->NewStringUTF(g_Game.getDailyQuestCounters().c_str());
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_grantDailyQuestSpoils(JNIEnv *env, jobject thiz, jint gold, jboolean giveLoot) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return g_Game.grantDailyQuestSpoils(static_cast<int>(gold), giveLoot == JNI_TRUE) ? JNI_TRUE : JNI_FALSE;
+}
+
 } // extern "C"
