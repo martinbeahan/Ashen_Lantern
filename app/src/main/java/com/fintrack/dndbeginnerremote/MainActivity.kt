@@ -135,6 +135,20 @@ class MainActivity : AppCompatActivity() {
             handler.postDelayed(this, 300)
         }
     }
+    /** Live raid-key countdown while the main menu (or Settings raid hint) is visible. */
+    private val menuRaidKeyTick = object : Runnable {
+        override fun run() {
+            val menuVisible = ::mainMenuRoot.isInitialized && mainMenuRoot.visibility == View.VISIBLE
+            val settingsVisible = ::settingsRoot.isInitialized && settingsRoot.visibility == View.VISIBLE
+            if (!menuVisible && !settingsVisible) return
+            try {
+                refreshRaidKeyCountdownUi()
+            } catch (e: Exception) {
+                Log.e(TAG, "raid key countdown tick failed", e)
+            }
+            handler.postDelayed(this, 1000)
+        }
+    }
     private var lastProcessedEvent = ""
     private var lastRoomDesc = ""
     private var lastChatHistory = ""
@@ -433,6 +447,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         handler.removeCallbacks(uiTick)
+        handler.removeCallbacks(menuRaidKeyTick)
         uiLoopStarted = false
         gameAudio?.release()
         gameAudio = null
@@ -1106,12 +1121,14 @@ class MainActivity : AppCompatActivity() {
         btnReset.visibility = View.GONE
         bossFightActive = false
         syncAudioBedFromState()
+        startMenuRaidKeyCountdown()
     }
 
     private fun hideMainMenu() {
         if (::mainMenuRoot.isInitialized) {
             mainMenuRoot.visibility = View.GONE
         }
+        stopMenuRaidKeyCountdownIfIdle()
         syncAudioBedFromState()
     }
 
@@ -1152,11 +1169,7 @@ class MainActivity : AppCompatActivity() {
             btnMenuRaid.alpha = if (storyDone) 1f else 0.45f
             btnMenuRaid.text = if (storyDone) "Boss Raid ($keys/3 keys)" else "Boss Raid (locked)"
             if (::mainMenuRaidHint.isInitialized) {
-                mainMenuRaidHint.text = when {
-                    !storyDone -> "Finish the story first (Acts 1–3)"
-                    keys <= 0 -> "Need a Raid Key (drop from endgame bosses; max 3/day)"
-                    else -> "Costs 1 Raid Key · strong rewards · max 3 keys/day"
-                }
+                mainMenuRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = true)
             }
         }
     }
@@ -1412,6 +1425,7 @@ class MainActivity : AppCompatActivity() {
         if (::settingsRoot.isInitialized) {
             settingsRoot.visibility = View.GONE
         }
+        stopMenuRaidKeyCountdownIfIdle()
     }
 
     private fun confirmAbandonAdventure() {
@@ -1494,11 +1508,8 @@ class MainActivity : AppCompatActivity() {
         btnSettingsBossRaid.isEnabled = storyDone
         btnSettingsBossRaid.alpha = if (storyDone) 1f else 0.45f
         btnSettingsBossRaid.text = if (storyDone) "Boss Raid ($keys/3 keys)" else "Boss Raid (locked)"
-        settingsRaidHint.text = when {
-            !storyDone -> "Finish the story first (Acts 1–3)"
-            keys <= 0 -> "Need a Raid Key (endgame bosses; max 3/day)"
-            else -> "Costs 1 key · continues your saved hero into the raid boss"
-        }
+        settingsRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = false)
+        startMenuRaidKeyCountdown()
     }
 
     /** Shared Boss Raid entry — loads the saved story hero, then spawns the raid boss. */
@@ -1534,6 +1545,7 @@ class MainActivity : AppCompatActivity() {
                 .setTitle("Boss Raid")
                 .setMessage(
                     "Boss Raid costs 1 Raid Key.\n\n" +
+                    "${raidKeyCountdownLabel(keys)}\n\n" +
                     "Keys drop randomly from endgame bosses (deep crawl after story + raid clears).\n" +
                     "You can hold and be granted at most 3 keys per calendar day."
                 )
@@ -1546,7 +1558,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Boss Raid")
             .setMessage(
                 "Spend 1 Raid Key to enter a focused endgame boss fight with $hero?\n\n" +
-                "Keys held: $keys/3\n" +
+                "Keys held: $keys/3 · ${raidKeyCountdownLabel(keys)}\n" +
                 "Your saved stats, gear, inventory, gold, companion, level, and Legendary upgrades carry over.\n" +
                 "Rewards: gold, XP, Legendary chance, possible key drop."
             )
@@ -1657,7 +1669,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Story complete!")
             .setMessage(
                 "Acts 1–3 are finished. Endgame crawl, Legendary gear, and Boss Raids are unlocked.\n\n" +
-                "Raid Keys: $keys/3\n\n" +
+                "Raid Keys: $keys/3 · ${raidKeyCountdownLabel(keys)}\n\n" +
                 "Open Boss Raid now, return to the main menu (progress saved), or keep exploring."
             )
             .setPositiveButton("Boss Raid") { _, _ ->
@@ -2447,10 +2459,100 @@ class MainActivity : AppCompatActivity() {
         return prefs().getInt("raid_keys_granted_today", 0).coerceIn(0, 3)
     }
 
+    /** Milliseconds until local midnight, when raid_keys_granted_today resets. */
+    private fun msUntilRaidKeyDayRollover(): Long {
+        val cal = java.util.Calendar.getInstance()
+        cal.add(java.util.Calendar.DAY_OF_MONTH, 1)
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        return (cal.timeInMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+    }
+
+    /** Human-readable countdown: "3h 12m" or "12m 05s" under one hour. */
+    private fun formatRaidKeyCountdown(ms: Long): String {
+        val totalSec = ((ms + 999) / 1000).coerceAtLeast(0L)
+        val h = totalSec / 3600
+        val m = (totalSec % 3600) / 60
+        val s = totalSec % 60
+        return if (h > 0) {
+            "${h}h ${m}m"
+        } else {
+            String.format("%dm %02ds", m, s)
+        }
+    }
+
+    /**
+     * Raid-key refresh uses the existing calendar-day grant window (`raid_keys_date`).
+     * Below max: countdown to local midnight (when daily grants refresh).
+     * At max: "Keys full".
+     */
+    private fun raidKeyCountdownLabel(keys: Int): String {
+        return if (keys >= 3) {
+            "Keys full"
+        } else {
+            "Next key in ${formatRaidKeyCountdown(msUntilRaidKeyDayRollover())}"
+        }
+    }
+
+    private fun raidKeyHintText(storyDone: Boolean, keys: Int, forMainMenu: Boolean): String {
+        if (!storyDone) return "Finish the story first (Acts 1–3)"
+        val countdown = raidKeyCountdownLabel(keys)
+        return if (forMainMenu) {
+            when {
+                keys >= 3 -> "Keys full · Costs 1 Raid Key · strong rewards"
+                keys <= 0 -> "$countdown · drops from endgame bosses (max 3/day)"
+                else -> "$countdown · Costs 1 Raid Key · max 3/day"
+            }
+        } else {
+            when {
+                keys >= 3 -> "Keys full · continues your saved hero into the raid boss"
+                keys <= 0 -> "$countdown · earn from endgame bosses (max 3/day)"
+                else -> "$countdown · Costs 1 key · continues your saved hero"
+            }
+        }
+    }
+
+    private fun refreshRaidKeyCountdownUi() {
+        syncRaidKeyDay()
+        val storyDone = isMetaStoryComplete()
+        val keys = raidKeysHeld()
+        if (::mainMenuRoot.isInitialized && mainMenuRoot.visibility == View.VISIBLE) {
+            if (::btnMenuRaid.isInitialized && storyDone) {
+                btnMenuRaid.text = "Boss Raid ($keys/3 keys)"
+            }
+            if (::mainMenuRaidHint.isInitialized) {
+                mainMenuRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = true)
+            }
+        }
+        if (::settingsRoot.isInitialized && settingsRoot.visibility == View.VISIBLE) {
+            if (::btnSettingsBossRaid.isInitialized && storyDone) {
+                btnSettingsBossRaid.text = "Boss Raid ($keys/3 keys)"
+            }
+            if (::settingsRaidHint.isInitialized) {
+                settingsRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = false)
+            }
+        }
+    }
+
+    private fun startMenuRaidKeyCountdown() {
+        handler.removeCallbacks(menuRaidKeyTick)
+        handler.post(menuRaidKeyTick)
+    }
+
+    private fun stopMenuRaidKeyCountdownIfIdle() {
+        val menuVisible = ::mainMenuRoot.isInitialized && mainMenuRoot.visibility == View.VISIBLE
+        val settingsVisible = ::settingsRoot.isInitialized && settingsRoot.visibility == View.VISIBLE
+        if (!menuVisible && !settingsVisible) {
+            handler.removeCallbacks(menuRaidKeyTick)
+        }
+    }
+
     private fun tryGrantRaidKeyFromDrop(): Boolean {
         syncRaidKeyDay()
         val held = raidKeysHeld()
-        if (held >= 2) {
+        if (held >= 3) {
             Toast.makeText(this, "Raid Key found, but you already hold 3 (daily max).", Toast.LENGTH_LONG).show()
             return false
         }

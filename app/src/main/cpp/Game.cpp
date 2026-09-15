@@ -1561,7 +1561,7 @@ void Game::maybeGrantRaidKeyFromBoss(const std::string& foeName) {
     int chance = isBossRaid() ? 55 : (LootSystem::isEndgameBossName(foeName) ? 40 : 22);
     if (getRandomInt(1, 100) <= chance) {
         pendingRaidKeyDrop_ = true;
-        dmSay("A Raid Key glints among the spoils — check the menu (max 2 held per calendar day).");
+        dmSay("A Raid Key glints among the spoils — check the menu (max 3 held per calendar day).");
         addJournalEntry("Raid Key recovered from " + foeName + ".");
     }
 }
