@@ -36,6 +36,13 @@ public:
     bool beginBossRaidFromCurrent();
     /** After raid clear/wipe-recover: restore prior story/crawl mode without wiping the party. */
     void finishBossRaidKeepParty();
+    /**
+     * Challenge Dungeon (story-complete endgame): same saved hero as Boss Raid.
+     * legendaryChancePercent comes from Kotlin prefs (dynamic formula).
+     */
+    bool beginChallengeDungeonFromCurrent(int legendaryChancePercent);
+    /** After challenge clear/wipe-recover: restore prior mode; party preserved. */
+    void finishChallengeDungeonKeepParty();
     void startDmSession(const std::string& dmName);
     void addAlly(const std::string& name, CharacterClass cl);
     /** Solo NPC companion helpers (host/solo). Empty name if none. */
@@ -135,7 +142,12 @@ public:
     bool isBossRaid() const {
         return soloPlayMode_ == static_cast<int>(SoloPlayMode::RAID);
     }
-    /** Acts 1–3 finished — gates Legendary loot, endgame bosses, Boss Raid meta. */
+    bool isChallengeDungeon() const {
+        return soloPlayMode_ == static_cast<int>(SoloPlayMode::CHALLENGE);
+    }
+    /** Boss Raid or Challenge Dungeon — focused endgame run on the Continue hero. */
+    bool isFocusedEndgameRun() const { return isBossRaid() || isChallengeDungeon(); }
+    /** Acts 1–3 finished — gates Legendary loot, endgame bosses, Boss Raid / Challenge meta. */
     bool isStoryFullyComplete() const { return questAct3Complete_; }
     bool isQuestAct2Complete() const { return questAct2Complete_; }
     bool isQuestAct3Complete() const { return questAct3Complete_; }
@@ -146,6 +158,19 @@ public:
         return v;
     }
     bool peekPendingRaidKeyDrop() const { return pendingRaidKeyDrop_; }
+
+    /** Challenge Dungeon: Legendary rolled this kill — Kotlin applies per-drop decay in prefs. */
+    bool consumePendingChallengeLegendaryFound() {
+        bool v = pendingChallengeLegendaryFound_;
+        pendingChallengeLegendaryFound_ = false;
+        return v;
+    }
+    int getChallengeLegendaryChance() const { return challengeLegendaryChance_; }
+    void setChallengeLegendaryChance(int percent) {
+        if (percent < 0) percent = 0;
+        if (percent > 100) percent = 100;
+        challengeLegendaryChance_ = percent;
+    }
 
     /**
      * Session-lifetime daily-quest counters (not serialized).
@@ -193,8 +218,11 @@ private:
     std::vector<std::shared_ptr<Item>> shopInventory_;
     int pendingBossXpBonus_ = 0;
     int pendingBossLootLuck_ = 0;
-    /** Set by noteBossDefeat for Hollow Crown / Ember Hydra / Nightfang / Boss Raid only. */
+    /** Set by noteBossDefeat for Hollow Crown / Ember Hydra / Nightfang / Boss Raid / Challenge only. */
     bool pendingBossAllowLegendary_ = false;
+    /** Challenge Dungeon dynamic Legendary % (synced from prefs; default 18). */
+    int challengeLegendaryChance_ = 18;
+    bool pendingChallengeLegendaryFound_ = false;
     int pendingBossGoldBonus_ = 0;
     /** Active authored set-piece (AA step 2); cleared on room clear / new spawn. */
     int activeSetPieceId_ = 0; // EncounterAuthorship::TemplateId as int
@@ -235,7 +263,7 @@ private:
     bool questAct3SealFound_ = false;
     int soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
     int difficulty_ = static_cast<int>(Difficulty::EASY);
-    /** Snapshot when entering raid from a loaded adventure (-1 = none). */
+    /** Snapshot when entering raid/challenge from a loaded adventure (-1 = none). */
     int preRaidSoloPlayMode_ = -1;
     int preRaidRoomCount_ = 0;
     std::string dmName_;
