@@ -154,6 +154,40 @@
                 android:textSize="11sp"
                 android:paddingBottom="6dp" />
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="DAILY QUESTS"
+                android:textColor="@color/ink"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp" />
+
+            <TextView
+                android:id="@+id/mainMenuDailyQuests"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:fontFamily="serif"
+                android:text="Finish the story to unlock Daily Quests"
+                android:textColor="@color/ink"
+                android:textSize="11sp"
+                android:paddingBottom="4dp" />
+
+            <Button
+                android:id="@+id/btnMenuClaimDaily"
+                style="@style/Widget.DnD.ActionButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="40dp"
+                android:layout_marginBottom="6dp"
+                android:text="Claim daily rewards"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
             <Button
                 android:id="@+id/btnMenuHost"
                 style="@style/Widget.DnD.ActionButton"
