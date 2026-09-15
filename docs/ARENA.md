@@ -33,4 +33,4 @@ Meta prefs track **best score**, **best waves cleared**, and **runs completed** 
 - Mid-run wave + score serialized in the save header (optional trailing fields; older saves ignore).
 
 ## Out of scope
-Endless Deep Crawl, Act 4.
+Act 4. (Endless Deep shipped separately — see docs/ENDLESS_DEEP.md).

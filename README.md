@@ -14,10 +14,29 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Inventory & loot** — rarity tiers, class-tagged gear, shop, sell, gold upgrades; early bosses (Goblin King, Skeleton King, Ashen Drake)
 - **Boss Raids** — story-complete endgame mode; spends a Raid Key; focused boss fight with strong rewards (Legendary chance)
 - **Daily Quests** — local-midnight errands for story-complete Continue heroes (gold / tonic / optional Raid Key)
-- **Challenge Dungeon** — story-complete *Cinder Crucible* vault (no Raid Key cost; dynamic Legendary chance) — ships when [#62](https://github.com/martinbeahan/DnD_beginner_remote/pull/62) is merged
+- **Challenge Dungeon** — story-complete *Cinder Crucible* vault (no Raid Key cost; dynamic Legendary chance)
+- **Arena (Ember Ring)** — see Endgame modes below
+- **Endless Deep (Ashen Deep)** — see Endgame modes below
 - **Online multiplayer** — **Host online (DM)** / **Join session** via Firebase Realtime Database (host acts as DM)
 - **Settings** — music on/off, sound effects on/off, reduce flashing (photosensitive-friendly), tutorial, return to main menu, About
 - **Audio beds** — biome / combat / boss loops (CC0); optional DM voice via Android Text-to-Speech
+
+## Endgame modes (story-complete)
+
+Unlocked after Acts 1–3 with a livable **Continue** save. Same hero, gear, and gold — Host/Join never overwrite the solo save. **No D&D / WotC module text**; SRD-safe monsters only.
+
+| Mode | Venue | Shape | Key cost | Legendary |
+|------|-------|-------|----------|-----------|
+| **Boss Raid** | Apex hunt | One focused boss fight | Yes (Raid Key) | Flat **7%** on clear |
+| **Challenge Dungeon** | *Cinder Crucible* | One vault apex + adds | No | **Dynamic** 18%± (floor 5%, cap 28%) |
+| **Arena** | *Ember Ring* | **5 scored waves**; Onward between waves | No | Waves 1–4 Rare/Epic only; **Wave 5** apex flat **7%** |
+| **Endless Deep** | *Ashen Deep* | **Endless** depth-scaling rooms | No | Apex every **10** depths, flat **7%** |
+
+### Arena — Ember Ring
+Wave-based scored fights on your Continue hero. Clear a wave → **Onward** for the next; Wave 5 is an endgame apex. Soft end on wipe (Easy–Hard Continue restores the hero; Nightmare restores the pre-Arena snapshot). Meta prefs track **best score**, **best waves**, and **runs**. Details: [`docs/ARENA.md`](docs/ARENA.md).
+
+### Endless Deep — Ashen Deep
+Distinct from normal Dungeon Crawl: depth rises forever; foe density/HP scale with depth. Soft end via **death**, Settings **Retreat**, or **milestone** (every 5 depths) — spoils stay on the Continue hero. Rewards (gold/XP/loot luck) scale with depth. Meta prefs track **best depth**. Details: [`docs/ENDLESS_DEEP.md`](docs/ENDLESS_DEEP.md).
 
 ## Build & run
 
@@ -60,7 +79,9 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`docs/ACT2_CRAWL_DIFFICULTY.md`](docs/ACT2_CRAWL_DIFFICULTY.md) | Act 2, crawl, difficulty |
 | [`docs/ENDGAME_ACT3_RAIDS.md`](docs/ENDGAME_ACT3_RAIDS.md) | Act 3, Boss Raids, Legendary rules |
 | [`docs/DAILY_QUESTS.md`](docs/DAILY_QUESTS.md) | Daily Quests |
-| `docs/CHALLENGE_DUNGEON.md` | Challenge Dungeon (lands with [#62](https://github.com/martinbeahan/DnD_beginner_remote/pull/62)) |
+| [`docs/CHALLENGE_DUNGEON.md`](docs/CHALLENGE_DUNGEON.md) | Challenge Dungeon / Cinder Crucible |
+| [`docs/ARENA.md`](docs/ARENA.md) | Arena / Ember Ring |
+| [`docs/ENDLESS_DEEP.md`](docs/ENDLESS_DEEP.md) | Endless Deep / Ashen Deep |
 | [`BUILD_HELP.md`](BUILD_HELP.md) | Build troubleshooting |
 | [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md) | Online multiplayer setup |
 

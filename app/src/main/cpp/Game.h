@@ -49,6 +49,12 @@ public:
     bool beginArenaFromCurrent();
     /** After arena clear/wipe-recover: restore prior mode; party preserved. */
     void finishArenaKeepParty();
+    /**
+     * Endless Deep / Ashen Deep (story-complete endgame): depth-scaling rooms on Continue hero.
+     */
+    bool beginEndlessDeepFromCurrent();
+    /** After death/retreat/milestone exit: restore prior mode; party preserved. */
+    void finishEndlessDeepKeepParty();
     void startDmSession(const std::string& dmName);
     void addAlly(const std::string& name, CharacterClass cl);
     /** Solo NPC companion helpers (host/solo). Empty name if none. */
@@ -154,8 +160,13 @@ public:
     bool isArena() const {
         return soloPlayMode_ == static_cast<int>(SoloPlayMode::ARENA);
     }
-    /** Boss Raid / Challenge Dungeon / Arena — focused endgame run on the Continue hero. */
-    bool isFocusedEndgameRun() const { return isBossRaid() || isChallengeDungeon() || isArena(); }
+    bool isEndlessDeep() const {
+        return soloPlayMode_ == static_cast<int>(SoloPlayMode::ENDLESS);
+    }
+    /** Boss Raid / Challenge / Arena / Endless Deep — focused endgame run on the Continue hero. */
+    bool isFocusedEndgameRun() const {
+        return isBossRaid() || isChallengeDungeon() || isArena() || isEndlessDeep();
+    }
     /** Acts 1–3 finished — gates Legendary loot, endgame bosses, Boss Raid / Challenge meta. */
     bool isStoryFullyComplete() const { return questAct3Complete_; }
     bool isQuestAct2Complete() const { return questAct2Complete_; }
@@ -185,6 +196,11 @@ public:
     int getArenaWave() const { return arenaWave_; }
     int getArenaScore() const { return arenaScore_; }
     int getArenaWavesCleared() const { return arenaWavesCleared_; }
+
+    static constexpr int ENDLESS_MILESTONE_EVERY = 5;
+    static constexpr int ENDLESS_APEX_EVERY = 10;
+    int getEndlessDepth() const { return endlessDepth_; }
+    int getEndlessBestDepthThisRun() const { return endlessBestDepthThisRun_; }
 
     /**
      * Session-lifetime daily-quest counters (not serialized).
@@ -242,6 +258,9 @@ private:
     int arenaWave_ = 0;
     int arenaScore_ = 0;
     int arenaWavesCleared_ = 0;
+    /** Endless Deep — current depth (1+) and best reached this run. */
+    int endlessDepth_ = 0;
+    int endlessBestDepthThisRun_ = 0;
     /** Active authored set-piece (AA step 2); cleared on room clear / new spawn. */
     int activeSetPieceId_ = 0; // EncounterAuthorship::TemplateId as int
     int pendingSetPieceXpBonus_ = 0;
@@ -328,6 +347,7 @@ private:
     bool endgameContentAllowed() const;
     void maybeGrantRaidKeyFromBoss(const std::string& foeName);
     void spawnArenaWave(int wave);
+    void spawnEndlessDepth(int depth);
     void applyLegendaryOnHit(Character* actor, int damageDealt);
     void tryFightShield(Character* defender, int& incomingDamage);
     void revivePartyForDifficulty();
