@@ -33,4 +33,4 @@ Attempt counter increments when a run **successfully starts**. The +4 boost appl
 - Character/gear: same `save_state` Continue slot as solo (pre-run snapshot `pre_challenge_save_state` for wipe restore).
 
 ## Out of scope
-Endless Deep Crawl, Act 4. (Arena shipped separately — see docs/ARENA.md).
+Act 4. (Arena — docs/ARENA.md; Endless Deep — docs/ENDLESS_DEEP.md).

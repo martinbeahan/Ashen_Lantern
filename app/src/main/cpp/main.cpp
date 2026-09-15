@@ -472,6 +472,30 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaWavesCleared(JNIEnv *en
     return static_cast<jint>(g_Game.getArenaWavesCleared());
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_beginEndlessDeepFromCurrent(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return g_Game.beginEndlessDeepFromCurrent() ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_finishEndlessDeepKeepParty(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    g_Game.finishEndlessDeepKeepParty();
+}
+
+JNIEXPORT jint JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getEndlessDepth(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return static_cast<jint>(g_Game.getEndlessDepth());
+}
+
+JNIEXPORT jint JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getEndlessBestDepthThisRun(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return static_cast<jint>(g_Game.getEndlessBestDepthThisRun());
+}
+
 
 
 JNIEXPORT jboolean JNICALL

@@ -213,6 +213,39 @@
                 android:text="" />
 
             <Button
+                android:id="@+id/btnSettingsEndless"
+                style="@style/Widget.DnD.ActionButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="44dp"
+                android:layout_marginBottom="6dp"
+                android:text="Endless Deep (Ashen Deep)"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/settingsEndlessHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textColor="@color/parchment_dark"
+                android:textSize="11sp"
+                android:paddingBottom="6dp"
+                android:visibility="gone"
+                android:text="" />
+
+            <Button
+                android:id="@+id/btnSettingsEndlessRetreat"
+                style="@style/Widget.DnD.ActionButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="44dp"
+                android:layout_marginBottom="6dp"
+                android:text="Retreat from Ashen Deep"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
+            <Button
                 android:id="@+id/btnSettingsAbandon"
                 style="@style/Widget.DnD.ActionButton"
                 android:layout_width="match_parent"

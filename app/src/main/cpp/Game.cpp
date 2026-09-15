@@ -36,6 +36,8 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
     arenaWave_ = 0;
     arenaScore_ = 0;
     arenaWavesCleared_ = 0;
+    endlessDepth_ = 0;
+    endlessBestDepthThisRun_ = 0;
     clearSetPiecePending();
     bossSeenGk_ = false;
     bossSeenSk_ = false;
@@ -68,6 +70,8 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
         soloPlayMode_ = static_cast<int>(SoloPlayMode::CHALLENGE);
     else if (soloPlayMode == static_cast<int>(SoloPlayMode::ARENA))
         soloPlayMode_ = static_cast<int>(SoloPlayMode::ARENA);
+    else if (soloPlayMode == static_cast<int>(SoloPlayMode::ENDLESS))
+        soloPlayMode_ = static_cast<int>(SoloPlayMode::ENDLESS);
     else
         soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
     difficulty_ = difficulty;
@@ -1554,7 +1558,10 @@ void Game::noteBossDefeat(const std::string& foeName) {
     int xp = 40 * tier + roomCount_ * 2;
     int luck = 10 + tier * 8;
     int gold = 20 * tier + getRandomInt(5, 15);
-    const bool endgameBossLoot = LootSystem::isEndgameBossName(foeName) || isFocusedEndgameRun();
+    // Endless Deep: Legendary only from endgame apex names (depth 10/20/…); other focused
+    // modes (Raid/Challenge/Arena) allow Legendary on any focused-run boss defeat.
+    const bool endgameBossLoot = LootSystem::isEndgameBossName(foeName)
+        || (isFocusedEndgameRun() && !isEndlessDeep());
     if (endgameBossLoot) {
         xp += 80;
         luck += 18; // XP/gold/luck bump only; Legendary gated by allowLegendary flag
@@ -1691,7 +1698,8 @@ bool Game::beginBossRaidFromCurrent() {
     // Preserve party (stats, gear, inventory, gold, companion, level, Legendary upgrades).
     if (soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)
         && soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)) {
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ENDLESS)) {
         preRaidSoloPlayMode_ = soloPlayMode_;
         preRaidRoomCount_ = roomCount_;
     }
@@ -1710,6 +1718,8 @@ bool Game::beginBossRaidFromCurrent() {
     arenaWave_ = 0;
     arenaScore_ = 0;
     arenaWavesCleared_ = 0;
+    endlessDepth_ = 0;
+    endlessBestDepthThisRun_ = 0;
     clearSetPiecePending();
 
     // Endgame gates active for this encounter (story must already be complete at menu).
@@ -1779,7 +1789,8 @@ bool Game::beginChallengeDungeonFromCurrent(int legendaryChancePercent) {
 
     if (soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)
         && soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)) {
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ENDLESS)) {
         preRaidSoloPlayMode_ = soloPlayMode_;
         preRaidRoomCount_ = roomCount_;
     }
@@ -1799,6 +1810,8 @@ bool Game::beginChallengeDungeonFromCurrent(int legendaryChancePercent) {
     arenaWave_ = 0;
     arenaScore_ = 0;
     arenaWavesCleared_ = 0;
+    endlessDepth_ = 0;
+    endlessBestDepthThisRun_ = 0;
     clearSetPiecePending();
 
     questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
@@ -1948,7 +1961,8 @@ bool Game::beginArenaFromCurrent() {
 
     if (soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)
         && soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)) {
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ENDLESS)) {
         preRaidSoloPlayMode_ = soloPlayMode_;
         preRaidRoomCount_ = roomCount_;
     }
@@ -1957,6 +1971,8 @@ bool Game::beginArenaFromCurrent() {
     arenaWave_ = 1;
     arenaScore_ = 0;
     arenaWavesCleared_ = 0;
+    endlessDepth_ = 0;
+    endlessBestDepthThisRun_ = 0;
     gameOver_ = false;
     dmOnlyTable_ = false;
     isHost_ = true;
@@ -2017,6 +2033,164 @@ void Game::finishArenaKeepParty() {
     addJournalEntry("Ember Ring Arena concluded; score " + std::to_string(arenaScore_) + ".");
 }
 
+void Game::spawnEndlessDepth(int depth) {
+    enemies_.clear();
+    shopInventory_.clear();
+    isMerchantRoom_ = false;
+    roomSearchUsed_ = false;
+    clearSetPiecePending();
+    pendingBossXpBonus_ = 0;
+    pendingBossLootLuck_ = 0;
+    pendingBossAllowLegendary_ = false;
+    pendingBossGoldBonus_ = 0;
+
+    auto pushFoe = [&](const std::string& name, CharacterClass cl, int hpFlat, int acFlat, int atkDelta) {
+        auto foe = std::make_unique<Character>(name, cl, name + "-ed-" + std::to_string(getRandomInt(0, 1000000)));
+        foe->maxHp = std::max(6, foe->maxHp + hpFlat);
+        foe->currentHp = foe->maxHp;
+        foe->armorClass += acFlat;
+        if (atkDelta != 0) {
+            foe->attributes.strength = std::max(1, foe->attributes.strength + atkDelta);
+            foe->attributes.dexterity = std::max(1, foe->attributes.dexterity + atkDelta);
+        }
+        enemies_.push_back(std::move(foe));
+    };
+
+    const int d = std::max(1, depth);
+    endlessDepth_ = d;
+    endlessBestDepthThisRun_ = std::max(endlessBestDepthThisRun_, d);
+    roomCount_ = std::max(roomCount_, 15 + d);
+
+    const int hpScale = d * 2 + d / 3;
+    const int acScale = std::min(4, d / 5);
+    const int atkScale = (d >= 12) ? 1 : ((d >= 6) ? 0 : -1);
+
+    if (d % ENDLESS_APEX_EVERY == 0) {
+        int pick = getRandomInt(0, 2);
+        if (pick == 0) spawnNamedBoss("Hollow Crown", 4);
+        else if (pick == 1) spawnNamedBoss("Ember Hydra", 5);
+        else spawnNamedBoss("Nightfang Matriarch", 4);
+        // Scale apex with depth beyond first apex.
+        if (!enemies_.empty() && d > ENDLESS_APEX_EVERY) {
+            Character* apex = enemies_.back().get();
+            const int extra = (d / ENDLESS_APEX_EVERY - 1) * 10;
+            apex->maxHp += extra;
+            apex->currentHp = apex->maxHp;
+            apex->armorClass += std::min(3, d / 20);
+        }
+        if (d >= 15 || difficulty_ >= static_cast<int>(Difficulty::MEDIUM)) {
+            pushFoe("Wolf", CharacterClass::ROGUE, 4 + hpScale / 2, 0, -1);
+        }
+        roomDescription_ = "Ashen Deep — Depth " + std::to_string(d)
+            + " (Apex). The Deep opens a throne of cinders. Legendary possible (7%).";
+        lastEvent_ = "ENDLESS APEX DEPTH " + std::to_string(d) + "! Stand ready!";
+        dmSay("Ashen Deep apex at depth " + std::to_string(d) + ". Endgame foe — Legendary gated at 7%.");
+    } else if (d % ENDLESS_MILESTONE_EVERY == 0) {
+        pushFoe("Ogre", CharacterClass::FIGHTER, 14 + hpScale, 1 + acScale, atkScale);
+        if (d >= 10 || difficulty_ >= static_cast<int>(Difficulty::MEDIUM)) {
+            pushFoe("Skeleton", CharacterClass::FIGHTER, 4 + hpScale / 2, acScale, -1);
+        }
+        if (difficulty_ >= static_cast<int>(Difficulty::HARD)) {
+            pushFoe("Wolf", CharacterClass::ROGUE, 2 + hpScale / 2, 0, -1);
+        }
+        roomDescription_ = "Ashen Deep — Depth " + std::to_string(d)
+            + " (Milestone). An elite pack bars the shaft. Retreat is wise — or press deeper.";
+        lastEvent_ = "ENDLESS MILESTONE DEPTH " + std::to_string(d) + "!";
+        dmSay("Milestone depth " + std::to_string(d) + ". You may Retreat from Settings with spoils, or Onward deeper.");
+    } else {
+        // Trash pack — denser with depth.
+        pushFoe("Goblin", CharacterClass::ROGUE, 2 + hpScale, acScale / 2, -2 + (d >= 8 ? 1 : 0));
+        pushFoe("Goblin", CharacterClass::ROGUE, hpScale, 0, -2);
+        if (d >= 3) pushFoe("Wolf", CharacterClass::ROGUE, 2 + hpScale / 2, 0, -2 + (atkScale > 0 ? 1 : 0));
+        if (d >= 6) pushFoe("Skeleton", CharacterClass::FIGHTER, 2 + hpScale / 2, acScale, -1);
+        if (d >= 9) pushFoe("Goblin", CharacterClass::ROGUE, hpScale / 2, 0, -1);
+        if (d >= 14) pushFoe("Skeleton", CharacterClass::FIGHTER, 4 + hpScale / 2, acScale, atkScale);
+        roomDescription_ = "Ashen Deep — Depth " + std::to_string(d)
+            + ". Ashen shafts plunge without end. Foes thicken with every descent.";
+        lastEvent_ = "ENDLESS DEPTH " + std::to_string(d) + "! Stand ready!";
+        dmSay("Ashen Deep depth " + std::to_string(d) + ".");
+    }
+    if (!enemies_.empty()) rollInitiative();
+    else { turnOrder_.clear(); currentTurnIndex_ = 0; }
+}
+
+bool Game::beginEndlessDeepFromCurrent() {
+    if (players_.empty()) return false;
+
+    if (soloPlayMode_ != static_cast<int>(SoloPlayMode::ENDLESS)
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)) {
+        preRaidSoloPlayMode_ = soloPlayMode_;
+        preRaidRoomCount_ = roomCount_;
+    }
+
+    soloPlayMode_ = static_cast<int>(SoloPlayMode::ENDLESS);
+    endlessDepth_ = 1;
+    endlessBestDepthThisRun_ = 1;
+    arenaWave_ = 0;
+    arenaScore_ = 0;
+    arenaWavesCleared_ = 0;
+    gameOver_ = false;
+    dmOnlyTable_ = false;
+    isHost_ = true;
+    dmName_.clear();
+    pendingRaidKeyDrop_ = false;
+    pendingBossXpBonus_ = 0;
+    pendingBossLootLuck_ = 0;
+    pendingBossAllowLegendary_ = false;
+    pendingBossGoldBonus_ = 0;
+    pendingChallengeLegendaryFound_ = false;
+    clearSetPiecePending();
+
+    questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
+    questComplete_ = true;
+    questAct2Complete_ = true;
+    questAct3Complete_ = true;
+
+    roomCount_ = std::max(roomCount_, 16);
+    spawnEndlessDepth(1);
+    addChatMessage("System", "Ashen Deep begins (difficulty: "
+                   + std::string(difficultyName(difficulty_)) + ") — same hero preserved. Endless.");
+    addJournalEntry("Descended into the Ashen Deep (Endless Deep).");
+    return true;
+}
+
+void Game::finishEndlessDeepKeepParty() {
+    if (!isEndlessDeep() && preRaidSoloPlayMode_ < 0) return;
+
+    enemies_.clear();
+    shopInventory_.clear();
+    isMerchantRoom_ = false;
+    roomSearchUsed_ = false;
+    turnOrder_.clear();
+    currentTurnIndex_ = 0;
+    gameOver_ = false;
+
+    if (preRaidSoloPlayMode_ >= 0) {
+        soloPlayMode_ = preRaidSoloPlayMode_;
+        if (preRaidRoomCount_ > 0) roomCount_ = preRaidRoomCount_;
+    } else {
+        soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
+    }
+    preRaidSoloPlayMode_ = -1;
+    preRaidRoomCount_ = 0;
+    // Keep endlessDepth_ / endlessBestDepthThisRun_ for Kotlin meta until next begin.
+
+    questComplete_ = true;
+    questAct2Complete_ = true;
+    questAct3Complete_ = true;
+    questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
+
+    generateRoomDescription();
+    lastEvent_ = "Ashen Deep ended — depth " + std::to_string(endlessBestDepthThisRun_)
+        + ". Your hero and gear are intact. Return to the menu or press Onward to keep exploring.";
+    dmSay(lastEvent_);
+    addChatMessage("System", "Endless Deep finished — story character preserved. Best depth "
+                   + std::to_string(endlessBestDepthThisRun_) + ".");
+    addJournalEntry("Ashen Deep concluded; depth " + std::to_string(endlessBestDepthThisRun_) + ".");
+}
+
 
 bool Game::recoverFromPartyWipe() {
     if (!gameOver_) return false;
@@ -2052,6 +2226,15 @@ bool Game::recoverFromPartyWipe() {
         dmSay(lastEvent_);
         addChatMessage("System", lastEvent_);
         addJournalEntry(std::string("Arena wipe Continue on ") + dname + " — character preserved.");
+        return true;
+    }
+    if (isEndlessDeep()) {
+        finishEndlessDeepKeepParty();
+        const char* dname = difficultyName(difficulty_);
+        lastEvent_ = std::string("Continue (") + dname + ") — Ashen Deep aborted; your story hero stands again.";
+        dmSay(lastEvent_);
+        addChatMessage("System", lastEvent_);
+        addJournalEntry(std::string("Endless Deep wipe Continue on ") + dname + " — character preserved.");
         return true;
     }
     rollbackOneRoomOrBeat();
@@ -2144,6 +2327,32 @@ void Game::enterClearedRoom(Character* actor) {
         addChatMessage("Arena", "Wave " + std::to_string(arenaWave_) + "/"
                        + std::to_string(ARENA_MAX_WAVES) + " clear — score "
                        + std::to_string(arenaScore_) + ".");
+    }
+    // Ashen Deep: depth-scaled gold + loot luck; Legendary only via apex noteBossDefeat.
+    if (isEndlessDeep() && endlessDepth_ >= 1) {
+        endlessBestDepthThisRun_ = std::max(endlessBestDepthThisRun_, endlessDepth_);
+        pendingBossLootLuck_ += 4 + endlessDepth_ * 2;
+        int depthGold = 8 + endlessDepth_ * 3;
+        if (endlessDepth_ % ENDLESS_MILESTONE_EVERY == 0) {
+            depthGold += 15 + endlessDepth_; // milestone soft-exit bonus
+        }
+        Character* purse = actor;
+        if (!purse || purse->isDead) {
+            purse = nullptr;
+            for (auto& p : players_) {
+                if (p && !p->isDead) { purse = p.get(); break; }
+            }
+        }
+        if (purse) {
+            purse->gold += depthGold;
+            dmSay(purse->name + " claims +" + std::to_string(depthGold)
+                  + " gold from the Ashen Deep (depth " + std::to_string(endlessDepth_) + ").");
+            addChatMessage("Endless", purse->name + " +" + std::to_string(depthGold) + " gold (depth "
+                           + std::to_string(endlessDepth_) + ").");
+        }
+        dmSay("Depth " + std::to_string(endlessDepth_) + " cleared! Ashen Deep continues — Onward, or Retreat from Settings.");
+        addChatMessage("Endless", "Depth " + std::to_string(endlessDepth_)
+                       + " clear — luck/gold scale with depth.");
     }
 
     int luck = pendingBossLootLuck_;
@@ -2859,6 +3068,15 @@ void Game::playerAdvanceFromCleared() {
                        + std::to_string(arenaScore_) + ".");
         return;
     }
+    if (isEndlessDeep()) {
+        const int next = endlessDepth_ + 1;
+        spawnEndlessDepth(next);
+        lastEvent_ = "Onward — Ashen Deep Depth " + std::to_string(next)
+            + " (best this run " + std::to_string(endlessBestDepthThisRun_) + ").";
+        addChatMessage("Endless", lastEvent_);
+        addJournalEntry("Descended to Endless Deep depth " + std::to_string(next) + ".");
+        return;
+    }
 
     // Solo story: Act 1 → Act 2 → Act 3 → procedural endgame.
     if (isSoloQuestScripted()) {
@@ -3252,6 +3470,8 @@ std::string Game::getPartyStatus() const {
     else if (isChallengeDungeon()) ss << "Mode: Challenge Dungeon (Legendary chance " << challengeLegendaryChance_ << "%)\n";
     else if (isArena()) ss << "Mode: Ember Ring Arena — Wave " << arenaWave_ << "/"
                            << ARENA_MAX_WAVES << " · Score " << arenaScore_ << "\n";
+    else if (isEndlessDeep()) ss << "Mode: Ashen Deep (Endless) — Depth " << endlessDepth_
+                                 << " · Best " << endlessBestDepthThisRun_ << "\n";
     else if (isSoloCrawl()) ss << "Mode: Dungeon Crawl\n";
     else if (questAct3Complete_) ss << "Story complete: Acts 1–3 (endgame unlocked)\n";
     else if (isAct3Beat(questBeat_)) ss << "Quest: Emberdeep Breach — " << soloQuestBeatName(questBeat_) << "\n";
@@ -3319,7 +3539,8 @@ std::string Game::serialize() {
        << "," << (bossSeenGk_ ? 1 : 0) << "," << (bossSeenSk_ ? 1 : 0) << "," << (bossSeenDrake_ ? 1 : 0)
        << "," << (questAct3Complete_ ? 1 : 0) << "," << (questAct3SealFound_ ? 1 : 0)
        << "," << (bossSeenHollow_ ? 1 : 0) << "," << (bossSeenHydra_ ? 1 : 0) << "," << (bossSeenNightfang_ ? 1 : 0)
-       << "," << arenaWave_ << "," << arenaScore_ << "," << arenaWavesCleared_ << "|";
+       << "," << arenaWave_ << "," << arenaScore_ << "," << arenaWavesCleared_
+       << "," << endlessDepth_ << "," << endlessBestDepthThisRun_ << "|";
     // Section 1: Descriptions
     ss << roomDescription_ << "~" << lastEvent_ << "|";
     // Section 2: Players
@@ -3439,6 +3660,11 @@ void Game::deserialize(const std::string& data) {
             else arenaScore_ = 0;
             if (std::getline(ss_sub, val, ',')) arenaWavesCleared_ = std::stoi(val);
             else arenaWavesCleared_ = 0;
+            // Endless Deep depth (backward compatible)
+            if (std::getline(ss_sub, val, ',')) endlessDepth_ = std::stoi(val);
+            else endlessDepth_ = 0;
+            if (std::getline(ss_sub, val, ',')) endlessBestDepthThisRun_ = std::stoi(val);
+            else endlessBestDepthThisRun_ = endlessDepth_;
         }
     }
 

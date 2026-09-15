@@ -89,6 +89,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mainMenuChallengeHint: TextView
     private lateinit var btnMenuArena: Button
     private lateinit var mainMenuArenaHint: TextView
+    private lateinit var btnMenuEndless: Button
+    private lateinit var mainMenuEndlessHint: TextView
     private lateinit var btnMenuDifficulty: Button
     private lateinit var btnMenuHost: Button
     private lateinit var btnMenuJoin: Button
@@ -111,6 +113,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var settingsChallengeHint: TextView
     private lateinit var btnSettingsArena: Button
     private lateinit var settingsArenaHint: TextView
+    private lateinit var btnSettingsEndless: Button
+    private lateinit var settingsEndlessHint: TextView
+    private lateinit var btnSettingsEndlessRetreat: Button
     private lateinit var btnSettingsClose: Button
     private lateinit var settingsAboutText: TextView
     private lateinit var settingsDifficultyText: TextView
@@ -272,6 +277,10 @@ class MainActivity : AppCompatActivity() {
     external fun getArenaWave(): Int
     external fun getArenaScore(): Int
     external fun getArenaWavesCleared(): Int
+    external fun beginEndlessDeepFromCurrent(): Boolean
+    external fun finishEndlessDeepKeepParty()
+    external fun getEndlessDepth(): Int
+    external fun getEndlessBestDepthThisRun(): Int
     external fun getDailyQuestCounters(): String
     external fun grantDailyQuestSpoils(gold: Int, giveLoot: Boolean): Boolean
     external fun recoverFromPartyWipe(): Boolean
@@ -1013,6 +1022,22 @@ class MainActivity : AppCompatActivity() {
                     clearArenaSessionFlags()
                 }
             }
+            // Endless Deep clear/wipe leaves soloPlayMode != ENDLESS (5).
+            if (prefs().getBoolean("endless_active", false)) {
+                val mode = try { getSoloPlayMode() } catch (_: Exception) { 5 }
+                if (mode != 5) {
+                    val depth = try { getEndlessBestDepthThisRun() } catch (_: Exception) { 0 }
+                    EndlessDeep.onRunFinished(prefs(), depth)
+                    if (depth > 0) {
+                        Toast.makeText(
+                            this,
+                            "Ashen Deep depth $depth (best ${EndlessDeep.bestDepth(prefs())}).",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    clearEndlessSessionFlags()
+                }
+            }
             // Challenge Dungeon: apply per-Legendary decay into meta prefs (Host/Join never).
             if (!isOnlineHost && !isOnlineClient) {
                 try {
@@ -1304,6 +1329,24 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        if (::btnMenuEndless.isInitialized) {
+            val storyDone = isMetaStoryComplete()
+            val hasSave = livableSavedState() != null
+            val unlocked = storyDone && hasSave
+            btnMenuEndless.isEnabled = unlocked
+            btnMenuEndless.alpha = if (unlocked) 1f else 0.45f
+            val best = EndlessDeep.bestDepth(prefs())
+            btnMenuEndless.text = if (unlocked) {
+                if (best > 0) "Endless Deep · best $best" else "Endless Deep (Ashen Deep)"
+            } else "Endless Deep (locked)"
+            if (::mainMenuEndlessHint.isInitialized) {
+                mainMenuEndlessHint.text = when {
+                    !storyDone -> "Finish the story first (Acts 1–3)"
+                    !hasSave -> "Need a Continue save (same hero as Boss Raid)"
+                    else -> EndlessDeep.summaryLine(prefs())
+                }
+            }
+        }
         refreshDailyQuestsUi()
     }
 
@@ -1350,6 +1393,8 @@ class MainActivity : AppCompatActivity() {
         mainMenuChallengeHint = findViewById(R.id.mainMenuChallengeHint)
         btnMenuArena = findViewById(R.id.btnMenuArena)
         mainMenuArenaHint = findViewById(R.id.mainMenuArenaHint)
+        btnMenuEndless = findViewById(R.id.btnMenuEndless)
+        mainMenuEndlessHint = findViewById(R.id.mainMenuEndlessHint)
         btnMenuDifficulty = findViewById(R.id.btnMenuDifficulty)
         btnMenuHost = findViewById(R.id.btnMenuHost)
         btnMenuJoin = findViewById(R.id.btnMenuJoin)
@@ -1374,6 +1419,9 @@ class MainActivity : AppCompatActivity() {
         settingsChallengeHint = findViewById(R.id.settingsChallengeHint)
         btnSettingsArena = findViewById(R.id.btnSettingsArena)
         settingsArenaHint = findViewById(R.id.settingsArenaHint)
+        btnSettingsEndless = findViewById(R.id.btnSettingsEndless)
+        settingsEndlessHint = findViewById(R.id.settingsEndlessHint)
+        btnSettingsEndlessRetreat = findViewById(R.id.btnSettingsEndlessRetreat)
         btnSettingsAbandon = findViewById(R.id.btnSettingsAbandon)
         btnSettingsClose = findViewById(R.id.btnSettingsClose)
         settingsAboutText = findViewById(R.id.settingsAboutText)
@@ -1406,6 +1454,9 @@ class MainActivity : AppCompatActivity() {
         }
         btnMenuArena.setOnClickListener {
             promptArenaEntry(fromInAdventure = false)
+        }
+        btnMenuEndless.setOnClickListener {
+            promptEndlessDeepEntry(fromInAdventure = false)
         }
         btnMenuDifficulty.setOnClickListener {
             showDifficultyPicker(lockForRun = false)
@@ -1489,6 +1540,13 @@ class MainActivity : AppCompatActivity() {
         btnSettingsArena.setOnClickListener {
             hideSettingsOverlay()
             promptArenaEntry(fromInAdventure = sessionActive)
+        }
+        btnSettingsEndless.setOnClickListener {
+            hideSettingsOverlay()
+            promptEndlessDeepEntry(fromInAdventure = sessionActive)
+        }
+        btnSettingsEndlessRetreat.setOnClickListener {
+            promptEndlessRetreat()
         }
         btnSettingsAbandon.setOnClickListener { confirmAbandonAdventure() }
         btnSettingsClose.setOnClickListener { hideSettingsOverlay() }
@@ -1627,6 +1685,7 @@ class MainActivity : AppCompatActivity() {
         clearRaidSessionFlags()
         clearChallengeSessionFlags()
         clearArenaSessionFlags()
+        clearEndlessSessionFlags()
         Toast.makeText(
             this,
             if (leavingOnline) "Left online session. Local story save kept."
@@ -1706,6 +1765,7 @@ class MainActivity : AppCompatActivity() {
         }
         refreshSettingsChallengeEntry()
         refreshSettingsArenaEntry()
+        refreshSettingsEndlessEntry()
     }
 
     private fun refreshSettingsChallengeEntry() {
@@ -1748,6 +1808,36 @@ class MainActivity : AppCompatActivity() {
             !storyDone -> "Finish the story first (Acts 1–3)"
             !hasSave -> "Need a Continue save"
             else -> Arena.summaryLine(prefs())
+        }
+    }
+
+    private fun refreshSettingsEndlessEntry() {
+        if (!::btnSettingsEndless.isInitialized) return
+        val storyDone = isMetaStoryComplete()
+        val hasSave = livableSavedState() != null
+        val show = sessionActive || storyDone
+        val inEndless = prefs().getBoolean("endless_active", false)
+        btnSettingsEndless.visibility = if (show) View.VISIBLE else View.GONE
+        settingsEndlessHint.visibility = if (show) View.VISIBLE else View.GONE
+        if (::btnSettingsEndlessRetreat.isInitialized) {
+            btnSettingsEndlessRetreat.visibility = if (inEndless && sessionActive) View.VISIBLE else View.GONE
+        }
+        if (!show) return
+        val unlocked = storyDone && hasSave
+        val best = EndlessDeep.bestDepth(prefs())
+        btnSettingsEndless.isEnabled = unlocked
+        btnSettingsEndless.alpha = if (unlocked) 1f else 0.45f
+        btnSettingsEndless.text = if (unlocked) {
+            if (best > 0) "Endless Deep · best $best" else "Endless Deep (Ashen Deep)"
+        } else "Endless Deep (locked)"
+        settingsEndlessHint.text = when {
+            !storyDone -> "Finish the story first (Acts 1–3)"
+            !hasSave -> "Need a Continue save"
+            inEndless -> {
+                val d = try { getEndlessDepth() } catch (_: Exception) { 0 }
+                "In Ashen Deep — depth $d. Use Retreat to soft-exit with spoils."
+            }
+            else -> EndlessDeep.summaryLine(prefs())
         }
     }
 
@@ -1893,6 +1983,13 @@ class MainActivity : AppCompatActivity() {
         prefs().edit()
             .remove("pre_arena_save_state")
             .putBoolean("arena_active", false)
+            .apply()
+    }
+
+    private fun clearEndlessSessionFlags() {
+        prefs().edit()
+            .remove("pre_endless_save_state")
+            .putBoolean("endless_active", false)
             .apply()
     }
 
@@ -2144,7 +2241,159 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Shared Endless Deep entry — loads Continue hero into Ashen Deep (no Raid Key). */
+    private fun promptEndlessDeepEntry(fromInAdventure: Boolean) {
+        if (fromInAdventure && sessionActive) {
+            returnToMainMenuSaving(confirm = false)
+            handler.post { promptEndlessDeepEntry(fromInAdventure = false) }
+            return
+        }
+        if (!isMetaStoryComplete()) {
+            AlertDialog.Builder(this)
+                .setTitle("Endless Deep locked")
+                .setMessage("Finish the story first (Acts 1–3). The Ashen Deep unlocks after Breach Sealed.")
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
+        val save = livableSavedState()
+        if (save == null) {
+            AlertDialog.Builder(this)
+                .setTitle("Endless Deep — Ashen Deep")
+                .setMessage("No saved hero found. Finish the story (Acts 1–3) and keep a Continue save, then descend with that same character.")
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
+        val hero = heroNameFromSave(save)
+        val best = EndlessDeep.bestDepth(prefs())
+        AlertDialog.Builder(this)
+            .setTitle("Endless Deep — Ashen Deep")
+            .setMessage(
+                "Descend into the Ashen Deep with $hero?\n\n" +
+                "Endless depth-scaling rooms. Soft end via death, Retreat, or milestone.\n" +
+                "Your saved stats, gear, inventory, gold, companion, level, and Legendary upgrades carry over.\n" +
+                "Solo save is preserved (Host/Join never overwrite it).\n\n" +
+                "Rewards scale with depth. Legendary only on apex depths (10, 20, …) at 7% — same as Boss Raid, not Challenge Dungeon.\n" +
+                (if (best > 0) "Your best depth: $best.\n" else "") +
+                "No Raid Key required."
+            )
+            .setPositiveButton("Descend") { _, _ ->
+                if (!startEndlessDeepFromSave()) {
+                    Toast.makeText(this, "Could not start Endless Deep with your saved hero.", Toast.LENGTH_LONG).show()
+                    refreshMainMenuButtons()
+                    showStartDialog()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
 
+    private fun startEndlessDeepFromSave(): Boolean {
+        if (!nativeReady) {
+            Toast.makeText(this, "Native library not ready — can't start Endless Deep.", Toast.LENGTH_LONG).show()
+            return false
+        }
+        val data = livableSavedState() ?: return false
+        if (saveIsGameOver(data)) {
+            Toast.makeText(this, "Your save is mid–Game Over. Continue the wipe first, then descend.", Toast.LENGTH_LONG).show()
+            return false
+        }
+        detachOnlineSession()
+        prefs().edit()
+            .putString("pre_endless_save_state", data)
+            .putBoolean("endless_active", true)
+            .apply()
+        localPlayerName = heroNameFromSave(data)
+        localClassId = prefs().getInt("hero_class", 0)
+        try {
+            loadGameState(data)
+        } catch (e: Exception) {
+            Log.e(TAG, "Endless Deep load save failed", e)
+            clearEndlessSessionFlags()
+            return false
+        }
+        val ok = try {
+            beginEndlessDeepFromCurrent()
+        } catch (e: Exception) {
+            Log.e(TAG, "beginEndlessDeepFromCurrent failed", e)
+            false
+        }
+        if (!ok) {
+            clearEndlessSessionFlags()
+            return false
+        }
+        lastBattleRoster = ""
+        lastRoomDesc = ""
+        lastChatHistory = ""
+        lastProcessedEvent = ""
+        lastCoachTip = ""
+        lastCoachTurnKey = ""
+        wipeDialogShowing = false
+        storyCompleteRoutesShown = true
+        runDifficulty = try { getDifficulty() } catch (_: Exception) { preferredDifficulty.coerceIn(0, 3) }
+        setHost(true)
+        hideMainMenu()
+        activateSession()
+        btnReset.visibility = View.GONE
+        syncAndSave()
+        updateUi()
+        Toast.makeText(
+            this,
+            "Endless Deep — $localPlayerName descends into the Ashen Deep!",
+            Toast.LENGTH_SHORT
+        ).show()
+        return true
+    }
+
+    private fun restorePreEndlessSaveOrKeepCurrent(reason: String) {
+        val pre = prefs().getString("pre_endless_save_state", null)
+        if (!pre.isNullOrBlank()) {
+            prefs().edit()
+                .putString("save_state", pre)
+                .putBoolean("endless_active", false)
+                .remove("pre_endless_save_state")
+                .apply()
+            Log.i(TAG, "Restored pre-endless save ($reason)")
+        } else {
+            clearEndlessSessionFlags()
+            Log.w(TAG, "No pre-endless snapshot ($reason) — keeping current save_state")
+        }
+    }
+
+    /** Soft exit: keep spoils on Continue hero, record best depth, leave Endless mode. */
+    private fun promptEndlessRetreat() {
+        if (!prefs().getBoolean("endless_active", false)) {
+            Toast.makeText(this, "Not in the Ashen Deep.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val depth = try { getEndlessBestDepthThisRun() } catch (_: Exception) { 0 }
+        AlertDialog.Builder(this)
+            .setTitle("Retreat from Ashen Deep?")
+            .setMessage(
+                "Leave at depth $depth with your spoils on the Continue hero?\n\n" +
+                "Best depth will be recorded. Soft ending — you can descend again later."
+            )
+            .setPositiveButton("Retreat") { _, _ ->
+                hideSettingsOverlay()
+                try { finishEndlessDeepKeepParty() } catch (e: Exception) {
+                    Log.e(TAG, "finishEndlessDeepKeepParty failed", e)
+                }
+                EndlessDeep.onRunFinished(prefs(), depth)
+                try { syncAndSave() } catch (_: Exception) {}
+                clearEndlessSessionFlags()
+                sessionActive = false
+                runDifficulty = -1
+                Toast.makeText(
+                    this,
+                    "Retreated at depth $depth (best ${EndlessDeep.bestDepth(prefs())}). Spoils kept.",
+                    Toast.LENGTH_LONG
+                ).show()
+                showStartDialog()
+            }
+            .setNegativeButton("Stay", null)
+            .show()
+    }
 
     /** Restore the pre-raid adventure save (same hero) without starting a blank character. */
     private fun restorePreRaidSaveOrKeepCurrent(reason: String) {
@@ -2171,7 +2420,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Story complete!")
             .setMessage(
-                "Acts 1–3 are finished. Endgame crawl, Legendary gear, Boss Raids, Challenge Dungeon, and Arena (Ember Ring) are unlocked.\n\n" +
+                "Acts 1–3 are finished. Endgame crawl, Legendary gear, Boss Raids, Challenge Dungeon, Arena (Ember Ring), and Endless Deep (Ashen Deep) are unlocked.\n\n" +
                 "Raid Keys: $keys/3 · ${raidKeyCountdownLabel(keys)}\n\n" +
                 "Open Boss Raid now, return to the main menu (progress saved), or keep exploring."
             )
@@ -4637,6 +4886,8 @@ class MainActivity : AppCompatActivity() {
             try { getSoloPlayMode() == 3 } catch (_: Exception) { false }
         val inArena = prefs().getBoolean("arena_active", false) ||
             try { getSoloPlayMode() == 4 } catch (_: Exception) { false }
+        val inEndless = prefs().getBoolean("endless_active", false) ||
+            try { getSoloPlayMode() == 5 } catch (_: Exception) { false }
         if (d == 3) {
             wipeDialogShowing = true
             if (inRaid) {
@@ -4697,6 +4948,26 @@ class MainActivity : AppCompatActivity() {
                         showStartDialog()
                     }
                     .show()
+            } else if (inEndless) {
+                val depth = try { getEndlessBestDepthThisRun() } catch (_: Exception) { 0 }
+                EndlessDeep.onRunFinished(prefs(), depth)
+                restorePreEndlessSaveOrKeepCurrent("nightmare endless wipe")
+                AlertDialog.Builder(this)
+                    .setTitle("Game Over — Nightmare Endless Deep")
+                    .setMessage(
+                        "The party fell in the Ashen Deep. Nightmare ends the attempt, " +
+                        "but your story hero save is restored (no blank character)."
+                    )
+                    .setCancelable(false)
+                    .setPositiveButton("Main menu") { _, _ ->
+                        wipeDialogShowing = false
+                        runDifficulty = -1
+                        sessionActive = false
+                        detachOnlineSession()
+                        clearEndlessSessionFlags()
+                        showStartDialog()
+                    }
+                    .show()
             } else {
                 clearSave("nightmare wipe")
                 AlertDialog.Builder(this)
@@ -4716,11 +4987,11 @@ class MainActivity : AppCompatActivity() {
         wipeDialogShowing = true
         val title = "Game Over — ${difficultyLabel(d)}"
         val msg = when {
-            (inRaid || inChallenge || inArena) && d == 0 ->
+            (inRaid || inChallenge || inArena || inEndless) && d == 0 ->
                 "Easy wipe: Continue revives your story hero (full HP) and ends the focused run without a new character."
-            (inRaid || inChallenge || inArena) && d == 1 ->
+            (inRaid || inChallenge || inArena || inEndless) && d == 1 ->
                 "Medium wipe: Continue revives your story hero (half HP) and ends the focused run without a new character."
-            inRaid || inChallenge || inArena ->
+            inRaid || inChallenge || inArena || inEndless ->
                 "Hard wipe: Continue revives your story hero (gear/gold stripped to starters) and ends the focused run."
             d == 0 -> "Easy: no loss of stats, gear, or gold. Continue revives the party with full HP one chamber back."
             d == 1 -> "Medium: no loss of stats, gear, or gold. Continue revives with half HP one chamber back."
@@ -4743,9 +5014,14 @@ class MainActivity : AppCompatActivity() {
                         val waves = try { getArenaWavesCleared() } catch (_: Exception) { 0 }
                         Arena.onRunFinished(prefs(), score, waves)
                     }
+                    if (inEndless) {
+                        val depth = try { getEndlessBestDepthThisRun() } catch (_: Exception) { 0 }
+                        EndlessDeep.onRunFinished(prefs(), depth)
+                    }
                     clearRaidSessionFlags()
                     clearChallengeSessionFlags()
                     clearArenaSessionFlags()
+                    clearEndlessSessionFlags()
                     syncAndSave()
                     updateUi()
                     Toast.makeText(this, "The party rises…", Toast.LENGTH_SHORT).show()
@@ -4755,6 +5031,7 @@ class MainActivity : AppCompatActivity() {
                         inRaid -> restorePreRaidSaveOrKeepCurrent("recover failed raid")
                         inChallenge -> restorePreChallengeSaveOrKeepCurrent("recover failed challenge")
                         inArena -> restorePreArenaSaveOrKeepCurrent("recover failed arena")
+                        inEndless -> restorePreEndlessSaveOrKeepCurrent("recover failed endless")
                         else -> clearSave("recover failed")
                     }
                     resetToStartMenu()
@@ -4770,6 +5047,11 @@ class MainActivity : AppCompatActivity() {
                         val waves = try { getArenaWavesCleared() } catch (_: Exception) { 0 }
                         Arena.onRunFinished(prefs(), score, waves)
                         restorePreArenaSaveOrKeepCurrent("wipe quit to menu arena")
+                    }
+                    inEndless -> {
+                        val depth = try { getEndlessBestDepthThisRun() } catch (_: Exception) { 0 }
+                        EndlessDeep.onRunFinished(prefs(), depth)
+                        restorePreEndlessSaveOrKeepCurrent("wipe quit to menu endless")
                     }
                     else -> clearSave("wipe quit to menu")
                 }
