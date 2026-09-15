@@ -34,7 +34,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:fontFamily="serif"
-                android:text="D&amp;D Beginner"
+                android:text="@string/app_name"
                 android:textColor="@color/ink"
                 android:textSize="26sp"
                 android:letterSpacing="0.02"
