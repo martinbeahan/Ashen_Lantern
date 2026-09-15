@@ -8,7 +8,7 @@ namespace dnd {
 /**
  * Solo story acts — original wording only.
  * Act 1 "Ashen Lantern" (beats 1–6). Act 2 "Millhollow's Debt" (beats 8–13).
- * Act 3 "Emberdeep Breach" (beats 14–19).
+ * Act 3 "Emberdeep Breach" (beats 14–19). Act 4 "Ashwake Vigil" (beats 20–25).
  * POST_QUEST (7) = procedural rooms after full story (or legacy mid-save).
  * Compatible with 5e SRD monster/rule concepts only. Not an official D&D product.
  */
@@ -21,7 +21,7 @@ enum class SoloQuestBeat : int {
     BONE_GALLERY = 4,
     LANTERN_VAULT = 5,
     RESOLUTION = 6,    // Ashen Shrine
-    POST_QUEST = 7,    // Procedural after full story (legacy + post–Act 3)
+    POST_QUEST = 7,    // Procedural after full story (legacy + post–Act 4)
     // Act 2 — Millhollow's Debt
     ACT2_GREEN = 8,
     ACT2_WEIR = 9,
@@ -35,7 +35,14 @@ enum class SoloQuestBeat : int {
     ACT3_ROOTS = 16,   // Root labyrinth
     ACT3_RELIC = 17,   // Search for Ember Seal
     ACT3_WARDEN = 18,  // Breach Warden fight
-    ACT3_SEALED = 19   // Breach sealed / resolution
+    ACT3_SEALED = 19,  // Breach sealed / resolution
+    // Act 4 — Ashwake Vigil
+    ACT4_WATCH = 20,   // Dusk vigil on Millhollow green
+    ACT4_MARSH = 21,   // Greyfen Marsh
+    ACT4_CAUSEWAY = 22,// Fen Causeway
+    ACT4_EMBER = 23,   // Search for Vigil Ember
+    ACT4_HERALD = 24,  // Ashwake Herald fight
+    ACT4_KINDLED = 25  // Vigil Kindled / resolution
 };
 
 enum class Difficulty : int {
@@ -85,12 +92,20 @@ inline const char* soloQuestBeatName(int beat) {
         case SoloQuestBeat::ACT3_RELIC: return "Ember Seal Niche";
         case SoloQuestBeat::ACT3_WARDEN: return "Breach Threshold";
         case SoloQuestBeat::ACT3_SEALED: return "Breach Sealed";
+        case SoloQuestBeat::ACT4_WATCH: return "Vigil Watch";
+        case SoloQuestBeat::ACT4_MARSH: return "Greyfen Marsh";
+        case SoloQuestBeat::ACT4_CAUSEWAY: return "Fen Causeway";
+        case SoloQuestBeat::ACT4_EMBER: return "Vigil Niche";
+        case SoloQuestBeat::ACT4_HERALD: return "Ashwake Threshold";
+        case SoloQuestBeat::ACT4_KINDLED: return "Vigil Kindled";
         default: return "Wander";
     }
 }
 
 inline const char* soloQuestActTitle(int beat) {
     const auto b = static_cast<SoloQuestBeat>(beat);
+    if (b >= SoloQuestBeat::ACT4_WATCH && b <= SoloQuestBeat::ACT4_KINDLED)
+        return "Ashwake Vigil";
     if (b >= SoloQuestBeat::ACT3_RUMOR && b <= SoloQuestBeat::ACT3_SEALED)
         return "Emberdeep Breach";
     if (b >= SoloQuestBeat::ACT2_GREEN && b <= SoloQuestBeat::ACT2_SETTLED)
@@ -115,12 +130,21 @@ inline bool isAct3Beat(int beat) {
         && beat <= static_cast<int>(SoloQuestBeat::ACT3_SEALED);
 }
 
+inline bool isAct4Beat(int beat) {
+    return beat >= static_cast<int>(SoloQuestBeat::ACT4_WATCH)
+        && beat <= static_cast<int>(SoloQuestBeat::ACT4_KINDLED);
+}
+
 inline bool isScriptedSoloBeat(int beat) {
-    return isAct1Beat(beat) || isAct2Beat(beat) || isAct3Beat(beat);
+    return isAct1Beat(beat) || isAct2Beat(beat) || isAct3Beat(beat) || isAct4Beat(beat);
 }
 
 /** Previous scripted beat for wipe rollback. */
 inline int previousScriptedBeat(int beat) {
+    if (beat == static_cast<int>(SoloQuestBeat::ACT4_WATCH))
+        return static_cast<int>(SoloQuestBeat::ACT3_SEALED);
+    if (isAct4Beat(beat) && beat > static_cast<int>(SoloQuestBeat::ACT4_WATCH))
+        return beat - 1;
     if (beat == static_cast<int>(SoloQuestBeat::ACT3_RUMOR))
         return static_cast<int>(SoloQuestBeat::ACT2_SETTLED);
     if (isAct3Beat(beat) && beat > static_cast<int>(SoloQuestBeat::ACT3_RUMOR))
@@ -297,9 +321,63 @@ inline const QuestBeatScript kEmberdeepBreachBeats[] = {
         19,
         "Breach Sealed",
         "The Ember Seal locks into the arch. Ember-light dies to a dull coal. Cool air returns to Millhollow's well. "
-        "You may Rest, return to the menu, or press Onward into deep endgame rooms and Boss Raids.",
-        "Emberdeep Breach is sealed. Story complete — endgame crawl bosses, Legendary gear, and Boss Raids unlock.",
+        "You may Rest — then Onward: dusk thins on the green, and a colder vigil waits west in Greyfen.",
+        "Emberdeep Breach is sealed. Rest if you need — then Onward for Act 4: Ashwake Vigil.",
         "Emberdeep Breach complete — Ember Seal set; Millhollow's undercroft quiet again."
+    }
+};
+
+
+// Act 4 — Ashwake Vigil (beat IDs 20–25). Original plot; SRD-flavored foes only.
+inline const QuestBeatScript kAshwakeVigilBeats[] = {
+    {
+        20,
+        "Vigil Watch",
+        "Dusk settles on Millhollow's green. The Ashen Lantern burns — but thinner each night, as if something drinks the glow from afar. "
+        "Elders point west toward Greyfen Marsh, where an abandoned fen-tower once held a twin ember called the Vigil Flame.",
+        "Act 4 — Ashwake Vigil. Seal the breach was not enough: a second thirst stirs in the marsh. "
+        "Cross Greyfen; recover the Vigil Ember; kindle the Vigil Spire before Millhollow's light fades for good.",
+        "Millhollow's lantern thins at dusk — the party must kindle the Vigil west in Greyfen."
+    },
+    {
+        21,
+        "Greyfen Marsh",
+        "Greyfen sucks at boots and cloak. Fog hangs low; reed-mats hide black water. "
+        "Ash-grey footprints spiral toward a timber causeway. Something scavenges among the willows — quick and wet.",
+        "The marsh remembers light it was denied. Clear the scavengers and keep to the causeway.",
+        "The party entered Greyfen Marsh on the trail of the Vigil Flame."
+    },
+    {
+        22,
+        "Fen Causeway",
+        "A raised timber path crosses deeper fen. Boards groan; pale fungi cling to posts. "
+        "Ahead, stone niches rise from the mist — old watch-crypts that once fed the Vigil Spire.",
+        "Undead cling to the causeway posts. Press through — the Vigil Niche waits beyond.",
+        "The party crossed the Fen Causeway toward the Vigil Spire."
+    },
+    {
+        23,
+        "Vigil Niche",
+        "A quiet alcove cut into warm fen-stone beneath the tower. An iron cinder — the Vigil Ember — rests in a soot-black cup, still faintly alive. "
+        "No foes here unless you leave without it and return later.",
+        "Search for the Vigil Ember. Soft open — claim the ember, then press Onward to the Ashwake Threshold.",
+        "The party reached the Vigil Niche beneath the fen-tower."
+    },
+    {
+        24,
+        "Ashwake Threshold",
+        "The Vigil Spire's threshold yawns. Ash-mist pours from cracked glass. The Ashwake Herald — a hulking ash-and-bone sentinel wreathed in guttering grey flame — "
+        "bars the stair with a cracked iron bill.",
+        "The Ashwake Herald will not yield. Defeat it, then kindle the Vigil with the Vigil Ember.",
+        "The party faced the Ashwake Herald at the Vigil Spire threshold."
+    },
+    {
+        25,
+        "Vigil Kindled",
+        "The Vigil Ember seats in the Spire's brazier. Twin ash-light answers Millhollow's lantern across the marsh. Fog thins; night-things withdraw. "
+        "You may Rest, return to the menu, or press Onward into deep endgame rooms and Boss Raids.",
+        "Ashwake Vigil is kindled. Story complete — endgame crawl bosses, Legendary gear, and Boss Raids unlock.",
+        "Ashwake Vigil complete — Vigil Ember set; Millhollow's twin lights hold the night."
     }
 };
 
@@ -311,6 +389,9 @@ inline const QuestBeatScript* findQuestBeat(int beatId) {
         if (b.beatId == beatId) return &b;
     }
     for (const auto& b : kEmberdeepBreachBeats) {
+        if (b.beatId == beatId) return &b;
+    }
+    for (const auto& b : kAshwakeVigilBeats) {
         if (b.beatId == beatId) return &b;
     }
     return nullptr;

@@ -3,7 +3,7 @@
 Story-complete endgame **side mode** — the **Ember Ring**. Distinct from Boss Raid (single key-cost apex) and Challenge Dungeon / Cinder Crucible (dynamic Legendary forge). Uses the **same Continue save** as raids (no class select / no wipe of solo save). Host/Join never write into `save_state`.
 
 ## Gate
-- Acts 1–3 complete (`story_fully_complete` / `questAct3Complete_`) **and** a livable Continue save.
+- Acts 1–4 complete (`story_fully_complete` / `questAct4Complete_`; Act 3-complete saves grandfathered) **and** a livable Continue save.
 - Main menu **Arena (Ember Ring)** + Settings entry (same gate as Boss Raid / Challenge).
 - **No Raid Key cost**.
 

@@ -144,7 +144,7 @@ public:
     int getQuestBeat() const { return questBeat_; }
     bool isQuestLanternRecovered() const { return questLanternRecovered_; }
     bool isQuestComplete() const { return questComplete_; }
-    /** Solo scripted Act 1–3; false for crawl / raid / Host-as-DM / online. */
+    /** Solo scripted Act 1–4; false for crawl / raid / Host-as-DM / online. */
     bool isSoloQuestScripted() const {
         return isScriptedSoloBeat(questBeat_);
     }
@@ -167,10 +167,11 @@ public:
     bool isFocusedEndgameRun() const {
         return isBossRaid() || isChallengeDungeon() || isArena() || isEndlessDeep();
     }
-    /** Acts 1–3 finished — gates Legendary loot, endgame bosses, Boss Raid / Challenge meta. */
-    bool isStoryFullyComplete() const { return questAct3Complete_; }
+    /** Acts 1–4 finished — gates Legendary loot, endgame bosses, Boss Raid / Challenge meta. */
+    bool isStoryFullyComplete() const { return questAct4Complete_; }
     bool isQuestAct2Complete() const { return questAct2Complete_; }
     bool isQuestAct3Complete() const { return questAct3Complete_; }
+    bool isQuestAct4Complete() const { return questAct4Complete_; }
     /** Pending raid-key drop for Kotlin SharedPreferences (consume after read). */
     bool consumePendingRaidKeyDrop() {
         bool v = pendingRaidKeyDrop_;
@@ -296,8 +297,10 @@ private:
     bool questCryptKeyFound_ = false;
     bool questAct2Complete_ = false;   // Act 2 (Millhollow's Debt) finished
     bool questAct2LedgerFound_ = false;
-    bool questAct3Complete_ = false;   // Act 3 (Emberdeep Breach) finished — endgame gate
+    bool questAct3Complete_ = false;   // Act 3 (Emberdeep Breach) finished
     bool questAct3SealFound_ = false;
+    bool questAct4Complete_ = false;   // Act 4 (Ashwake Vigil) finished — story-complete / endgame gate
+    bool questAct4EmberFound_ = false;
     int soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
     int difficulty_ = static_cast<int>(Difficulty::EASY);
     /** Snapshot when entering raid/challenge from a loaded adventure (-1 = none). */
@@ -343,6 +346,7 @@ private:
     void maybeFinishQuestOnResolutionEnter();
     void maybeFinishAct2OnSettledEnter();
     void maybeFinishAct3OnSealedEnter();
+    void maybeFinishAct4OnKindledEnter();
     bool trySoloQuestSearch(Character* hero);
     bool endgameContentAllowed() const;
     void maybeGrantRaidKeyFromBoss(const std::string& foeName);

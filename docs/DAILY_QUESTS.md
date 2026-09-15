@@ -3,7 +3,7 @@
 Local-midnight errands for story-complete Continue heroes. Meta prefs only — never writes Host/Join into `save_state`.
 
 ## Gate
-- Default: **story complete** (Acts 1–3 / `story_fully_complete`) **and** a Continue save.
+- Default: **story complete** (Acts 1–4 / `story_fully_complete` / `questAct4Complete_`) **and** a Continue save.
 - Progress tracked only in **solo** sessions (story endgame / crawl / Boss Raid). Host/Join never contribute.
 
 ## Refresh

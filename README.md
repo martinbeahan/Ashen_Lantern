@@ -4,9 +4,15 @@
 
 Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons product.
 
+## What's new (v2.15 / 54)
+
+- **Act 4 — Ashwake Vigil** — original story after Emberdeep: Greyfen Marsh, Vigil Ember, Ashwake Herald climax; story-complete / endgame gate moves to Vigil Kindled
+- Continue saves preserved (no wipe); Host/Join still isolated from solo `save_state`
+- Builds atop Endless Deep / Ashen Deep (v2.14) when that lands — **Merge after #65**
+
 ## Features
 
-- **Story adventure** — original scripted acts (Act 1 *Ashen Lantern*, Act 2 *Millhollow's Debt*, Act 3 *Emberdeep Breach*), with Continue mid-quest
+- **Story adventure** — original scripted acts (Act 1 *Ashen Lantern*, Act 2 *Millhollow's Debt*, Act 3 *Emberdeep Breach*, Act 4 *Ashwake Vigil*), with Continue mid-quest
 - **Dungeon Crawl** — procedural rooms from the start (skip the scripted quest)
 - **Difficulty** — Easy / Medium / Hard / Nightmare (locked for the run; wipe rules differ by tier)
 - **Classes** — Fighter, Wizard, Rogue, Cleric, and **Bard** (CHA-based; Cutting Quip special)
@@ -23,7 +29,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 ## Endgame modes (story-complete)
 
-Unlocked after Acts 1–3 with a livable **Continue** save. Same hero, gear, and gold — Host/Join never overwrite the solo save. **No D&D / WotC module text**; SRD-safe monsters only.
+Unlocked after Acts 1–4 with a livable **Continue** save. Same hero, gear, and gold — Host/Join never overwrite the solo save. **No D&D / WotC module text**; SRD-safe monsters only.
 
 | Mode | Venue | Shape | Key cost | Legendary |
 |------|-------|-------|----------|-----------|
@@ -78,6 +84,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`docs/ASHEN_LANTERN.md`](docs/ASHEN_LANTERN.md) | Act 1 playtest notes |
 | [`docs/ACT2_CRAWL_DIFFICULTY.md`](docs/ACT2_CRAWL_DIFFICULTY.md) | Act 2, crawl, difficulty |
 | [`docs/ENDGAME_ACT3_RAIDS.md`](docs/ENDGAME_ACT3_RAIDS.md) | Act 3, Boss Raids, Legendary rules |
+| [`docs/ACT4_ASHWAKE_VIGIL.md`](docs/ACT4_ASHWAKE_VIGIL.md) | Act 4 Ashwake Vigil |
 | [`docs/DAILY_QUESTS.md`](docs/DAILY_QUESTS.md) | Daily Quests |
 | [`docs/CHALLENGE_DUNGEON.md`](docs/CHALLENGE_DUNGEON.md) | Challenge Dungeon / Cinder Crucible |
 | [`docs/ARENA.md`](docs/ARENA.md) | Arena / Ember Ring |
