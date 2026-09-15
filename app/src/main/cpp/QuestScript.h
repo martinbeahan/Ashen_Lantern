@@ -49,7 +49,8 @@ enum class SoloPlayMode : int {
     STORY = 0,
     CRAWL = 1,
     RAID = 2,
-    CHALLENGE = 3  // Challenge Dungeon (story-complete endgame)
+    CHALLENGE = 3,  // Challenge Dungeon (story-complete endgame)
+    ARENA = 4       // Ember Ring Arena (story-complete wave mode)
 };
 
 inline const char* difficultyName(int d) {

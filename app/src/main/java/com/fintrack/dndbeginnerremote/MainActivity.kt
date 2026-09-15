@@ -87,6 +87,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mainMenuRaidHint: TextView
     private lateinit var btnMenuChallenge: Button
     private lateinit var mainMenuChallengeHint: TextView
+    private lateinit var btnMenuArena: Button
+    private lateinit var mainMenuArenaHint: TextView
     private lateinit var btnMenuDifficulty: Button
     private lateinit var btnMenuHost: Button
     private lateinit var btnMenuJoin: Button
@@ -107,6 +109,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var settingsRaidHint: TextView
     private lateinit var btnSettingsChallenge: Button
     private lateinit var settingsChallengeHint: TextView
+    private lateinit var btnSettingsArena: Button
+    private lateinit var settingsArenaHint: TextView
     private lateinit var btnSettingsClose: Button
     private lateinit var settingsAboutText: TextView
     private lateinit var settingsDifficultyText: TextView
@@ -263,6 +267,11 @@ class MainActivity : AppCompatActivity() {
     external fun consumePendingChallengeLegendaryFound(): Boolean
     external fun getChallengeLegendaryChance(): Int
     external fun setChallengeLegendaryChance(percent: Int)
+    external fun beginArenaFromCurrent(): Boolean
+    external fun finishArenaKeepParty()
+    external fun getArenaWave(): Int
+    external fun getArenaScore(): Int
+    external fun getArenaWavesCleared(): Int
     external fun getDailyQuestCounters(): String
     external fun grantDailyQuestSpoils(gold: Int, giveLoot: Boolean): Boolean
     external fun recoverFromPartyWipe(): Boolean
@@ -987,6 +996,23 @@ class MainActivity : AppCompatActivity() {
                 val mode = try { getSoloPlayMode() } catch (_: Exception) { 3 }
                 if (mode != 3) clearChallengeSessionFlags()
             }
+            // Arena clear/wipe leaves soloPlayMode != ARENA (4).
+            if (prefs().getBoolean("arena_active", false)) {
+                val mode = try { getSoloPlayMode() } catch (_: Exception) { 4 }
+                if (mode != 4) {
+                    val score = try { getArenaScore() } catch (_: Exception) { 0 }
+                    val waves = try { getArenaWavesCleared() } catch (_: Exception) { 0 }
+                    Arena.onRunFinished(prefs(), score, waves)
+                    if (score > 0) {
+                        Toast.makeText(
+                            this,
+                            "Ember Ring score $score (best ${Arena.bestScore(prefs())}).",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    clearArenaSessionFlags()
+                }
+            }
             // Challenge Dungeon: apply per-Legendary decay into meta prefs (Host/Join never).
             if (!isOnlineHost && !isOnlineClient) {
                 try {
@@ -1164,7 +1190,7 @@ class MainActivity : AppCompatActivity() {
         val merchant = try { isMerchantRoom() } catch (_: Exception) { false }
         val raid = try {
             val m = getSoloPlayMode()
-            m == 2 || m == 3
+            m == 2 || m == 3 || m == 4
         } catch (_: Exception) { false }
         val resolved = when {
             onMenu -> GameAudio.Track.TOWN
@@ -1260,6 +1286,24 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        if (::btnMenuArena.isInitialized) {
+            val storyDone = isMetaStoryComplete()
+            val hasSave = livableSavedState() != null
+            val unlocked = storyDone && hasSave
+            btnMenuArena.isEnabled = unlocked
+            btnMenuArena.alpha = if (unlocked) 1f else 0.45f
+            val best = Arena.bestScore(prefs())
+            btnMenuArena.text = if (unlocked) {
+                if (best > 0) "Arena (Ember Ring) · best $best" else "Arena (Ember Ring)"
+            } else "Arena (locked)"
+            if (::mainMenuArenaHint.isInitialized) {
+                mainMenuArenaHint.text = when {
+                    !storyDone -> "Finish the story first (Acts 1–3)"
+                    !hasSave -> "Need a Continue save (same hero as Boss Raid)"
+                    else -> Arena.summaryLine(prefs())
+                }
+            }
+        }
         refreshDailyQuestsUi()
     }
 
@@ -1304,6 +1348,8 @@ class MainActivity : AppCompatActivity() {
         mainMenuRaidHint = findViewById(R.id.mainMenuRaidHint)
         btnMenuChallenge = findViewById(R.id.btnMenuChallenge)
         mainMenuChallengeHint = findViewById(R.id.mainMenuChallengeHint)
+        btnMenuArena = findViewById(R.id.btnMenuArena)
+        mainMenuArenaHint = findViewById(R.id.mainMenuArenaHint)
         btnMenuDifficulty = findViewById(R.id.btnMenuDifficulty)
         btnMenuHost = findViewById(R.id.btnMenuHost)
         btnMenuJoin = findViewById(R.id.btnMenuJoin)
@@ -1326,6 +1372,8 @@ class MainActivity : AppCompatActivity() {
         settingsRaidHint = findViewById(R.id.settingsRaidHint)
         btnSettingsChallenge = findViewById(R.id.btnSettingsChallenge)
         settingsChallengeHint = findViewById(R.id.settingsChallengeHint)
+        btnSettingsArena = findViewById(R.id.btnSettingsArena)
+        settingsArenaHint = findViewById(R.id.settingsArenaHint)
         btnSettingsAbandon = findViewById(R.id.btnSettingsAbandon)
         btnSettingsClose = findViewById(R.id.btnSettingsClose)
         settingsAboutText = findViewById(R.id.settingsAboutText)
@@ -1355,6 +1403,9 @@ class MainActivity : AppCompatActivity() {
         }
         btnMenuChallenge.setOnClickListener {
             promptChallengeDungeonEntry(fromInAdventure = false)
+        }
+        btnMenuArena.setOnClickListener {
+            promptArenaEntry(fromInAdventure = false)
         }
         btnMenuDifficulty.setOnClickListener {
             showDifficultyPicker(lockForRun = false)
@@ -1434,6 +1485,10 @@ class MainActivity : AppCompatActivity() {
         btnSettingsChallenge.setOnClickListener {
             hideSettingsOverlay()
             promptChallengeDungeonEntry(fromInAdventure = sessionActive)
+        }
+        btnSettingsArena.setOnClickListener {
+            hideSettingsOverlay()
+            promptArenaEntry(fromInAdventure = sessionActive)
         }
         btnSettingsAbandon.setOnClickListener { confirmAbandonAdventure() }
         btnSettingsClose.setOnClickListener { hideSettingsOverlay() }
@@ -1569,6 +1624,9 @@ class MainActivity : AppCompatActivity() {
         runDifficulty = -1
         wipeDialogShowing = false
         storyCompleteRoutesShown = false
+        clearRaidSessionFlags()
+        clearChallengeSessionFlags()
+        clearArenaSessionFlags()
         Toast.makeText(
             this,
             if (leavingOnline) "Left online session. Local story save kept."
@@ -1647,6 +1705,7 @@ class MainActivity : AppCompatActivity() {
             startMenuRaidKeyCountdown()
         }
         refreshSettingsChallengeEntry()
+        refreshSettingsArenaEntry()
     }
 
     private fun refreshSettingsChallengeEntry() {
@@ -1667,6 +1726,28 @@ class MainActivity : AppCompatActivity() {
             !storyDone -> "Finish the story first (Acts 1–3)"
             !hasSave -> "Need a Continue save"
             else -> ChallengeDungeon.summaryLine(prefs())
+        }
+    }
+
+    private fun refreshSettingsArenaEntry() {
+        if (!::btnSettingsArena.isInitialized) return
+        val storyDone = isMetaStoryComplete()
+        val hasSave = livableSavedState() != null
+        val show = sessionActive || storyDone
+        btnSettingsArena.visibility = if (show) View.VISIBLE else View.GONE
+        settingsArenaHint.visibility = if (show) View.VISIBLE else View.GONE
+        if (!show) return
+        val unlocked = storyDone && hasSave
+        val best = Arena.bestScore(prefs())
+        btnSettingsArena.isEnabled = unlocked
+        btnSettingsArena.alpha = if (unlocked) 1f else 0.45f
+        btnSettingsArena.text = if (unlocked) {
+            if (best > 0) "Arena (Ember Ring) · best $best" else "Arena (Ember Ring)"
+        } else "Arena (locked)"
+        settingsArenaHint.text = when {
+            !storyDone -> "Finish the story first (Acts 1–3)"
+            !hasSave -> "Need a Continue save"
+            else -> Arena.summaryLine(prefs())
         }
     }
 
@@ -1808,6 +1889,13 @@ class MainActivity : AppCompatActivity() {
             .apply()
     }
 
+    private fun clearArenaSessionFlags() {
+        prefs().edit()
+            .remove("pre_arena_save_state")
+            .putBoolean("arena_active", false)
+            .apply()
+    }
+
     /** Shared Challenge Dungeon entry — loads Continue hero (no Raid Key). */
     private fun promptChallengeDungeonEntry(fromInAdventure: Boolean) {
         if (fromInAdventure && sessionActive) {
@@ -1937,6 +2025,126 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Shared Arena entry — loads Continue hero into Ember Ring (no Raid Key). */
+    private fun promptArenaEntry(fromInAdventure: Boolean) {
+        if (fromInAdventure && sessionActive) {
+            returnToMainMenuSaving(confirm = false)
+            handler.post { promptArenaEntry(fromInAdventure = false) }
+            return
+        }
+        if (!isMetaStoryComplete()) {
+            AlertDialog.Builder(this)
+                .setTitle("Arena locked")
+                .setMessage("Finish the story first (Acts 1–3). The Ember Ring unlocks after Breach Sealed.")
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
+        val save = livableSavedState()
+        if (save == null) {
+            AlertDialog.Builder(this)
+                .setTitle("Arena — Ember Ring")
+                .setMessage("No saved hero found. Finish the story (Acts 1–3) and keep a Continue save, then enter with that same character.")
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
+        val hero = heroNameFromSave(save)
+        val best = Arena.bestScore(prefs())
+        AlertDialog.Builder(this)
+            .setTitle("Arena — Ember Ring")
+            .setMessage(
+                "Enter the Ember Ring with $hero?\n\n" +
+                "Five scored waves. Your saved stats, gear, inventory, gold, companion, level, and Legendary upgrades carry over.\n" +
+                "Solo save is preserved (Host/Join never overwrite it).\n\n" +
+                "Rewards: gold + Rare/Epic loot on waves 1–4; Wave 5 apex may drop Legendary at 7% (same as Boss Raid — not Challenge Dungeon\u2019s dynamic forge).\n" +
+                (if (best > 0) "Your best score: $best.\n" else "") +
+                "No Raid Key required."
+            )
+            .setPositiveButton("Enter ring") { _, _ ->
+                if (!startArenaFromSave()) {
+                    Toast.makeText(this, "Could not start Arena with your saved hero.", Toast.LENGTH_LONG).show()
+                    refreshMainMenuButtons()
+                    showStartDialog()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun startArenaFromSave(): Boolean {
+        if (!nativeReady) {
+            Toast.makeText(this, "Native library not ready — can't start Arena.", Toast.LENGTH_LONG).show()
+            return false
+        }
+        val data = livableSavedState() ?: return false
+        if (saveIsGameOver(data)) {
+            Toast.makeText(this, "Your save is mid–Game Over. Continue the wipe first, then enter Arena.", Toast.LENGTH_LONG).show()
+            return false
+        }
+        detachOnlineSession()
+        prefs().edit()
+            .putString("pre_arena_save_state", data)
+            .putBoolean("arena_active", true)
+            .apply()
+        localPlayerName = heroNameFromSave(data)
+        localClassId = prefs().getInt("hero_class", 0)
+        try {
+            loadGameState(data)
+        } catch (e: Exception) {
+            Log.e(TAG, "Arena load save failed", e)
+            clearArenaSessionFlags()
+            return false
+        }
+        val ok = try {
+            beginArenaFromCurrent()
+        } catch (e: Exception) {
+            Log.e(TAG, "beginArenaFromCurrent failed", e)
+            false
+        }
+        if (!ok) {
+            clearArenaSessionFlags()
+            return false
+        }
+        lastBattleRoster = ""
+        lastRoomDesc = ""
+        lastChatHistory = ""
+        lastProcessedEvent = ""
+        lastCoachTip = ""
+        lastCoachTurnKey = ""
+        wipeDialogShowing = false
+        storyCompleteRoutesShown = true
+        runDifficulty = try { getDifficulty() } catch (_: Exception) { preferredDifficulty.coerceIn(0, 3) }
+        setHost(true)
+        hideMainMenu()
+        activateSession()
+        btnReset.visibility = View.GONE
+        syncAndSave()
+        updateUi()
+        Toast.makeText(
+            this,
+            "Arena — $localPlayerName enters the Ember Ring!",
+            Toast.LENGTH_SHORT
+        ).show()
+        return true
+    }
+
+    private fun restorePreArenaSaveOrKeepCurrent(reason: String) {
+        val pre = prefs().getString("pre_arena_save_state", null)
+        if (!pre.isNullOrBlank()) {
+            prefs().edit()
+                .putString("save_state", pre)
+                .putBoolean("arena_active", false)
+                .remove("pre_arena_save_state")
+                .apply()
+            Log.i(TAG, "Restored pre-arena save ($reason)")
+        } else {
+            clearArenaSessionFlags()
+            Log.w(TAG, "No pre-arena snapshot ($reason) — keeping current save_state")
+        }
+    }
+
+
 
     /** Restore the pre-raid adventure save (same hero) without starting a blank character. */
     private fun restorePreRaidSaveOrKeepCurrent(reason: String) {
@@ -1963,7 +2171,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Story complete!")
             .setMessage(
-                "Acts 1–3 are finished. Endgame crawl, Legendary gear, Boss Raids, and Challenge Dungeon are unlocked.\n\n" +
+                "Acts 1–3 are finished. Endgame crawl, Legendary gear, Boss Raids, Challenge Dungeon, and Arena (Ember Ring) are unlocked.\n\n" +
                 "Raid Keys: $keys/3 · ${raidKeyCountdownLabel(keys)}\n\n" +
                 "Open Boss Raid now, return to the main menu (progress saved), or keep exploring."
             )
@@ -2135,7 +2343,7 @@ class MainActivity : AppCompatActivity() {
         runDifficulty = preferredDifficulty.coerceIn(0, 3)
         resetGame(heroClass, localPlayerName, playMode, runDifficulty, companionClass, companionAutoAi)
         setHost(true)
-        storyCompleteRoutesShown = (playMode == 2 || playMode == 3) // raid/challenge already past story gate
+        storyCompleteRoutesShown = (playMode == 2 || playMode == 3 || playMode == 4) // raid/challenge/arena past story gate
         maybeOfferTutorialThenCoach()
         activateSession()
         btnReset.visibility = View.GONE
@@ -4427,6 +4635,8 @@ class MainActivity : AppCompatActivity() {
             try { getSoloPlayMode() == 2 } catch (_: Exception) { false }
         val inChallenge = prefs().getBoolean("challenge_active", false) ||
             try { getSoloPlayMode() == 3 } catch (_: Exception) { false }
+        val inArena = prefs().getBoolean("arena_active", false) ||
+            try { getSoloPlayMode() == 4 } catch (_: Exception) { false }
         if (d == 3) {
             wipeDialogShowing = true
             if (inRaid) {
@@ -4466,6 +4676,27 @@ class MainActivity : AppCompatActivity() {
                         showStartDialog()
                     }
                     .show()
+            } else if (inArena) {
+                val score = try { getArenaScore() } catch (_: Exception) { 0 }
+                val waves = try { getArenaWavesCleared() } catch (_: Exception) { 0 }
+                Arena.onRunFinished(prefs(), score, waves)
+                restorePreArenaSaveOrKeepCurrent("nightmare arena wipe")
+                AlertDialog.Builder(this)
+                    .setTitle("Game Over — Nightmare Arena")
+                    .setMessage(
+                        "The party fell in the Ember Ring. Nightmare ends the attempt, " +
+                        "but your story hero save is restored (no blank character)."
+                    )
+                    .setCancelable(false)
+                    .setPositiveButton("Main menu") { _, _ ->
+                        wipeDialogShowing = false
+                        runDifficulty = -1
+                        sessionActive = false
+                        detachOnlineSession()
+                        clearArenaSessionFlags()
+                        showStartDialog()
+                    }
+                    .show()
             } else {
                 clearSave("nightmare wipe")
                 AlertDialog.Builder(this)
@@ -4485,11 +4716,11 @@ class MainActivity : AppCompatActivity() {
         wipeDialogShowing = true
         val title = "Game Over — ${difficultyLabel(d)}"
         val msg = when {
-            (inRaid || inChallenge) && d == 0 ->
+            (inRaid || inChallenge || inArena) && d == 0 ->
                 "Easy wipe: Continue revives your story hero (full HP) and ends the focused run without a new character."
-            (inRaid || inChallenge) && d == 1 ->
+            (inRaid || inChallenge || inArena) && d == 1 ->
                 "Medium wipe: Continue revives your story hero (half HP) and ends the focused run without a new character."
-            inRaid || inChallenge ->
+            inRaid || inChallenge || inArena ->
                 "Hard wipe: Continue revives your story hero (gear/gold stripped to starters) and ends the focused run."
             d == 0 -> "Easy: no loss of stats, gear, or gold. Continue revives the party with full HP one chamber back."
             d == 1 -> "Medium: no loss of stats, gear, or gold. Continue revives with half HP one chamber back."
@@ -4507,8 +4738,14 @@ class MainActivity : AppCompatActivity() {
                 }
                 if (ok) {
                     btnReset.visibility = View.GONE
+                    if (inArena) {
+                        val score = try { getArenaScore() } catch (_: Exception) { 0 }
+                        val waves = try { getArenaWavesCleared() } catch (_: Exception) { 0 }
+                        Arena.onRunFinished(prefs(), score, waves)
+                    }
                     clearRaidSessionFlags()
                     clearChallengeSessionFlags()
+                    clearArenaSessionFlags()
                     syncAndSave()
                     updateUi()
                     Toast.makeText(this, "The party rises…", Toast.LENGTH_SHORT).show()
@@ -4517,6 +4754,7 @@ class MainActivity : AppCompatActivity() {
                     when {
                         inRaid -> restorePreRaidSaveOrKeepCurrent("recover failed raid")
                         inChallenge -> restorePreChallengeSaveOrKeepCurrent("recover failed challenge")
+                        inArena -> restorePreArenaSaveOrKeepCurrent("recover failed arena")
                         else -> clearSave("recover failed")
                     }
                     resetToStartMenu()
@@ -4527,6 +4765,12 @@ class MainActivity : AppCompatActivity() {
                 when {
                     inRaid -> restorePreRaidSaveOrKeepCurrent("wipe quit to menu raid")
                     inChallenge -> restorePreChallengeSaveOrKeepCurrent("wipe quit to menu challenge")
+                    inArena -> {
+                        val score = try { getArenaScore() } catch (_: Exception) { 0 }
+                        val waves = try { getArenaWavesCleared() } catch (_: Exception) { 0 }
+                        Arena.onRunFinished(prefs(), score, waves)
+                        restorePreArenaSaveOrKeepCurrent("wipe quit to menu arena")
+                    }
                     else -> clearSave("wipe quit to menu")
                 }
                 runDifficulty = -1

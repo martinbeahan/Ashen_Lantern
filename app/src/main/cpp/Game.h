@@ -43,6 +43,12 @@ public:
     bool beginChallengeDungeonFromCurrent(int legendaryChancePercent);
     /** After challenge clear/wipe-recover: restore prior mode; party preserved. */
     void finishChallengeDungeonKeepParty();
+    /**
+     * Ember Ring Arena (story-complete endgame): wave-based scored fights on Continue hero.
+     */
+    bool beginArenaFromCurrent();
+    /** After arena clear/wipe-recover: restore prior mode; party preserved. */
+    void finishArenaKeepParty();
     void startDmSession(const std::string& dmName);
     void addAlly(const std::string& name, CharacterClass cl);
     /** Solo NPC companion helpers (host/solo). Empty name if none. */
@@ -145,8 +151,11 @@ public:
     bool isChallengeDungeon() const {
         return soloPlayMode_ == static_cast<int>(SoloPlayMode::CHALLENGE);
     }
-    /** Boss Raid or Challenge Dungeon — focused endgame run on the Continue hero. */
-    bool isFocusedEndgameRun() const { return isBossRaid() || isChallengeDungeon(); }
+    bool isArena() const {
+        return soloPlayMode_ == static_cast<int>(SoloPlayMode::ARENA);
+    }
+    /** Boss Raid / Challenge Dungeon / Arena — focused endgame run on the Continue hero. */
+    bool isFocusedEndgameRun() const { return isBossRaid() || isChallengeDungeon() || isArena(); }
     /** Acts 1–3 finished — gates Legendary loot, endgame bosses, Boss Raid / Challenge meta. */
     bool isStoryFullyComplete() const { return questAct3Complete_; }
     bool isQuestAct2Complete() const { return questAct2Complete_; }
@@ -171,6 +180,11 @@ public:
         if (percent > 100) percent = 100;
         challengeLegendaryChance_ = percent;
     }
+
+    static constexpr int ARENA_MAX_WAVES = 5;
+    int getArenaWave() const { return arenaWave_; }
+    int getArenaScore() const { return arenaScore_; }
+    int getArenaWavesCleared() const { return arenaWavesCleared_; }
 
     /**
      * Session-lifetime daily-quest counters (not serialized).
@@ -224,6 +238,10 @@ private:
     int challengeLegendaryChance_ = 18;
     bool pendingChallengeLegendaryFound_ = false;
     int pendingBossGoldBonus_ = 0;
+    /** Ember Ring Arena — current wave (1..ARENA_MAX_WAVES) and running score. */
+    int arenaWave_ = 0;
+    int arenaScore_ = 0;
+    int arenaWavesCleared_ = 0;
     /** Active authored set-piece (AA step 2); cleared on room clear / new spawn. */
     int activeSetPieceId_ = 0; // EncounterAuthorship::TemplateId as int
     int pendingSetPieceXpBonus_ = 0;
@@ -309,6 +327,7 @@ private:
     bool trySoloQuestSearch(Character* hero);
     bool endgameContentAllowed() const;
     void maybeGrantRaidKeyFromBoss(const std::string& foeName);
+    void spawnArenaWave(int wave);
     void applyLegendaryOnHit(Character* actor, int damageDealt);
     void tryFightShield(Character* defender, int& incomingDamage);
     void revivePartyForDifficulty();

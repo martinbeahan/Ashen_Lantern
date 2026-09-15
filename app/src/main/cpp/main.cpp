@@ -442,6 +442,37 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_setChallengeLegendaryChance(JNI
     g_Game.setChallengeLegendaryChance(static_cast<int>(percent));
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_beginArenaFromCurrent(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return g_Game.beginArenaFromCurrent() ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_finishArenaKeepParty(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    g_Game.finishArenaKeepParty();
+}
+
+JNIEXPORT jint JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaWave(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return static_cast<jint>(g_Game.getArenaWave());
+}
+
+JNIEXPORT jint JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaScore(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return static_cast<jint>(g_Game.getArenaScore());
+}
+
+JNIEXPORT jint JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaWavesCleared(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return static_cast<jint>(g_Game.getArenaWavesCleared());
+}
+
+
 
 JNIEXPORT jboolean JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_recoverFromPartyWipe(JNIEnv *env, jobject thiz) {

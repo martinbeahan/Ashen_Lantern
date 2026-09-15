@@ -680,10 +680,11 @@ public:
      * luckBonus: 0 normal; bosses add mild luck (see noteBossDefeat).
      * Drop chance and rarity use separate rolls (#46 hotfix): trash stays nerfed;
      * bosses better than trash but not BiS-guaranteed.
-     * allowLegendary: true ONLY for endgame boss / Boss Raid / Challenge Dungeon defeat loot.
+     * allowLegendary: true ONLY for endgame boss / Boss Raid / Challenge Dungeon / Arena Wave-5 defeat loot.
      *   Never from trash, Search, shop, early GK/SK/Ashen Drake, or pity.
      * legendaryChancePercent: used when allowLegendary (normal endgame/raid = 7;
-     *   Challenge Dungeon uses a dynamic chance from prefs — see docs/CHALLENGE_DUNGEON.md).
+     *   Challenge Dungeon uses a dynamic chance from prefs — see docs/CHALLENGE_DUNGEON.md;
+     *   Arena Wave 5 uses flat 7% like Boss Raid — see docs/ARENA.md).
      * preferClass / preferClass2: party class tags (-1 = unused).
      */
     static std::shared_ptr<Item> generateLoot(int roomDepth, int luckBonus = 0,
