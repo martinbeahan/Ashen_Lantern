@@ -10,7 +10,7 @@ Story-complete endgame **side mode** — the **Ashen Deep**. Distinct from:
 Uses the **same Continue save** as raids (no class select / no wipe of solo save). Host/Join never write into `save_state`.
 
 ## Gate
-- Acts 1–3 complete (`story_fully_complete` / `questAct3Complete_`) **and** a livable Continue save.
+- Acts 1–4 complete (`story_fully_complete` / `questAct4Complete_`; Act 3-complete saves grandfathered) **and** a livable Continue save.
 - Main menu **Endless Deep (Ashen Deep)** + Settings entry (same gate as Boss Raid / Challenge / Arena).
 - **No Raid Key cost**.
 
@@ -47,4 +47,3 @@ Prefs track **best depth**, **best milestone**, and **runs completed** (`endless
 - Mid-run depth serialized in the save header (optional trailing field after Arena fields; older saves ignore).
 
 ## Out of scope
-Act 4 story.

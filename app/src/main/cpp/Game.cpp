@@ -84,6 +84,8 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
     questAct2LedgerFound_ = false;
     questAct3Complete_ = false;
     questAct3SealFound_ = false;
+    questAct4Complete_ = false;
+    questAct4EmberFound_ = false;
 
     players_.push_back(std::make_unique<Character>(playerName, selectedClass, "local-player"));
     players_.back()->aiControlled = false;
@@ -103,6 +105,7 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
         questComplete_ = true;
         questAct2Complete_ = true;
         questAct3Complete_ = true; // endgame loot/gates active for this run
+        questAct4Complete_ = true;
         roomCount_ = 20;
         generateRoomDescription();
         // Force an endgame boss immediately
@@ -144,7 +147,7 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
         return;
     }
 
-    // Story Solo: Act 1 → Act 2 → Act 3, then endgame procedural.
+    // Story Solo: Act 1 → Act 2 → Act 3 → Act 4, then endgame procedural.
     questBeat_ = static_cast<int>(SoloQuestBeat::MILLHOLLOW);
     applyStarterPaddingForStory();
     applySoloQuestRoom();
@@ -448,6 +451,8 @@ void Game::resetSoloQuestState() {
     questAct2LedgerFound_ = false;
     questAct3Complete_ = false;
     questAct3SealFound_ = false;
+    questAct4Complete_ = false;
+    questAct4EmberFound_ = false;
     pendingRaidKeyDrop_ = false;
     soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
 }
@@ -475,6 +480,7 @@ void Game::applySoloQuestRoom() {
     maybeFinishQuestOnResolutionEnter();
     maybeFinishAct2OnSettledEnter();
     maybeFinishAct3OnSealedEnter();
+    maybeFinishAct4OnKindledEnter();
 
     if (enemies_.empty()) {
         // Soft-open story beats: Search / Rest / Onward available immediately.
@@ -617,6 +623,30 @@ void Game::spawnSoloQuestEnemies() {
             break;
         case SoloQuestBeat::ACT3_SEALED:
             break;
+        case SoloQuestBeat::ACT4_WATCH:
+            makeFoe("Ashwake Scout", CharacterClass::ROGUE, 4, 0, /*resourceCap=*/0, /*attackStatDelta=*/-1);
+            break;
+        case SoloQuestBeat::ACT4_MARSH:
+            makeFoe("Marsh Goblin", CharacterClass::ROGUE, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+            makeFoe("Giant Rat", CharacterClass::ROGUE, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+            break;
+        case SoloQuestBeat::ACT4_CAUSEWAY:
+            makeFoe("Skeleton", CharacterClass::FIGHTER, 6, 0, /*resourceCap=*/0, /*attackStatDelta=*/-1);
+            makeFoe("Skeleton", CharacterClass::FIGHTER, 4, 0, /*resourceCap=*/0, /*attackStatDelta=*/-1);
+            break;
+        case SoloQuestBeat::ACT4_EMBER:
+            // Soft open: Search for Vigil Ember
+            break;
+        case SoloQuestBeat::ACT4_HERALD:
+            makeFoe("Ashwake Herald", CharacterClass::FIGHTER, 26, 2, /*resourceCap=*/2, /*attackStatDelta=*/0);
+            {
+                Character* ally = findNpcCompanion();
+                std::string who = ally ? ally->name : "your companion";
+                dmSay("The Ashwake Herald bars the Vigil Spire. Keep potions ready — " + who + " will help.");
+            }
+            break;
+        case SoloQuestBeat::ACT4_KINDLED:
+            break;
         default:
             break;
     }
@@ -687,19 +717,41 @@ void Game::maybeFinishAct3OnSealedEnter() {
         questAct2Complete_ = true;
         questComplete_ = true;
         dmSay("The Ember Seal locks. Ember-light dies. Cool air returns up the well to Millhollow.");
-        dmSay("Story complete (Acts 1–3). Endgame crawl bosses, Legendary gear, and Boss Raids unlock.");
-        addJournalEntry("Emberdeep Breach complete — story finished; endgame unlocked.");
-        addChatMessage("Quest", "Act 3 done — Story complete! Endgame unlocked.");
+        dmSay("Act 3 complete. Rest if you need — then Onward for Act 4: Ashwake Vigil.");
+        addJournalEntry("Emberdeep Breach complete — Act 4 Ashwake Vigil awaits.");
+        addChatMessage("Quest", "Act 3 done — Emberdeep Breach. Act 4 awaits.");
         if (!players_.empty() && players_[0]) {
             players_[0]->gold += 60;
         }
     }
 }
 
+void Game::maybeFinishAct4OnKindledEnter() {
+    if (static_cast<SoloQuestBeat>(questBeat_) != SoloQuestBeat::ACT4_KINDLED) return;
+    if (!questAct4EmberFound_) {
+        questAct4EmberFound_ = true;
+        addJournalEntry("Safety: Vigil Ember counted as recovered at Vigil Kindled.");
+    }
+    if (!questAct4Complete_) {
+        questAct4Complete_ = true;
+        questAct3Complete_ = true;
+        questAct2Complete_ = true;
+        questComplete_ = true;
+        dmSay("The Vigil Ember seats. Twin ash-light answers Millhollow across Greyfen. The Ashwake thins.");
+        dmSay("Story complete (Acts 1–4). Endgame crawl bosses, Legendary gear, and Boss Raids unlock.");
+        addJournalEntry("Ashwake Vigil complete — story finished; endgame unlocked.");
+        addChatMessage("Quest", "Act 4 done — Story complete! Endgame unlocked.");
+        if (!players_.empty() && players_[0]) {
+            players_[0]->gold += 80;
+        }
+    }
+}
+
 bool Game::endgameContentAllowed() const {
-    // Focused endgame runs always treat endgame as open; otherwise require Act 3 complete.
+    // Focused endgame runs always treat endgame as open.
+    // Act 4 is the story-complete gate; Act 3-complete saves keep endgame (grandfather).
     if (isFocusedEndgameRun()) return true;
-    return questAct3Complete_;
+    return questAct4Complete_ || questAct3Complete_;
 }
 
 bool Game::trySoloQuestSearch(Character* hero) {
@@ -780,8 +832,32 @@ bool Game::trySoloQuestSearch(Character* hero) {
     }
     if (beat == SoloQuestBeat::ACT3_SEALED) {
         lastEvent_ = hero->name + " finds cooling ash where the breach once roared — the seal holds.";
-        dmSay("Nothing more to take. Story is complete — Onward opens endgame rooms.");
+        dmSay("Nothing more to take. Onward leads west — Act 4: Ashwake Vigil.");
         addJournalEntry("Searched after Breach Sealed — Act 3 already won.");
+        addChatMessage("Search", lastEvent_);
+        return true;
+    }
+    if (beat == SoloQuestBeat::ACT4_WATCH) {
+        hero->gold += 14;
+        lastEvent_ = hero->name + " hears an elder whisper: \"The Vigil Ember sleeps in a niche under the fen-tower — only it can kindle the Spire.\"";
+        dmSay("Clue: recover the Vigil Ember past Greyfen, then face whatever guards the Ashwake Threshold.");
+        addJournalEntry("Clue: Vigil Ember lies beneath the Vigil Spire in Greyfen.");
+        addChatMessage("Search", lastEvent_);
+        return true;
+    }
+    if (beat == SoloQuestBeat::ACT4_EMBER) {
+        questAct4EmberFound_ = true;
+        hero->gold += 25;
+        lastEvent_ = hero->name + " lifts the Vigil Ember — iron cinder, still warm, etched with twin ash-runes.";
+        dmSay("You have the Vigil Ember. Onward to the Ashwake Threshold — the Herald waits.");
+        addJournalEntry("Recovered the Vigil Ember (questAct4EmberFound).");
+        addChatMessage("Search", lastEvent_);
+        return true;
+    }
+    if (beat == SoloQuestBeat::ACT4_KINDLED) {
+        lastEvent_ = hero->name + " finds twin ash-light steady in the brazier — the Vigil holds.";
+        dmSay("Nothing more to take. Story is complete — Onward opens endgame rooms.");
+        addJournalEntry("Searched after Vigil Kindled — Act 4 already won.");
         addChatMessage("Search", lastEvent_);
         return true;
     }
@@ -793,12 +869,14 @@ void Game::generateRoomDescription() {
         // Description already set by applySoloQuestRoom; keep procedural helper for post-quest / DM.
         return;
     }
-    if (questAct3Complete_ || questAct2Complete_ || (questComplete_ && questBeat_ == static_cast<int>(SoloQuestBeat::POST_QUEST))) {
+    if (questAct4Complete_ || questAct3Complete_ || questAct2Complete_
+        || (questComplete_ && questBeat_ == static_cast<int>(SoloQuestBeat::POST_QUEST))) {
         std::vector<std::string> adjectives = {"dark", "damp", "ancient", "dusty", "eerie", "forgotten", "cursed"};
         std::vector<std::string> rooms = {"chamber", "hallway", "library", "crypt", "vault", "shrine", "laboratory"};
         std::stringstream ss;
-        const char* tag = questAct3Complete_ ? "[Endgame] "
-            : (questAct2Complete_ ? "[After Act 2] " : "[Main quest done] ");
+        const char* tag = questAct4Complete_ ? "[Endgame] "
+            : (questAct3Complete_ ? "[After Act 3] "
+            : (questAct2Complete_ ? "[After Act 2] " : "[Main quest done] "));
         ss << tag << "You press into a " << adjectives[static_cast<size_t>(getRandomInt(0, static_cast<int>(adjectives.size()) - 1))]
            << " " << rooms[static_cast<size_t>(getRandomInt(0, static_cast<int>(rooms.size()) - 1))] << ". ";
         roomDescription_ = ss.str();
@@ -1367,7 +1445,7 @@ bool Game::trySpawnAuthoredEncounter() {
     if (isFocusedEndgameRun()) return false;
     if (roomCount_ < 3) return false;
 
-    const bool postStory = questComplete_ || questAct2Complete_ || questAct3Complete_
+    const bool postStory = questComplete_ || questAct2Complete_ || questAct3Complete_ || questAct4Complete_
         || questBeat_ == static_cast<int>(SoloQuestBeat::POST_QUEST);
     const bool easy = difficulty_ <= static_cast<int>(Difficulty::EASY);
 
@@ -1727,6 +1805,7 @@ bool Game::beginBossRaidFromCurrent() {
     questComplete_ = true;
     questAct2Complete_ = true;
     questAct3Complete_ = true;
+    questAct4Complete_ = true;
 
     enemies_.clear();
     shopInventory_.clear();
@@ -1774,6 +1853,7 @@ void Game::finishBossRaidKeepParty() {
     questComplete_ = true;
     questAct2Complete_ = true;
     questAct3Complete_ = true;
+    questAct4Complete_ = true;
     questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
 
     generateRoomDescription();
@@ -1818,6 +1898,7 @@ bool Game::beginChallengeDungeonFromCurrent(int legendaryChancePercent) {
     questComplete_ = true;
     questAct2Complete_ = true;
     questAct3Complete_ = true;
+    questAct4Complete_ = true;
 
     enemies_.clear();
     shopInventory_.clear();
@@ -1883,6 +1964,7 @@ void Game::finishChallengeDungeonKeepParty() {
     questComplete_ = true;
     questAct2Complete_ = true;
     questAct3Complete_ = true;
+    questAct4Complete_ = true;
     questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
 
     generateRoomDescription();
@@ -1989,6 +2071,7 @@ bool Game::beginArenaFromCurrent() {
     questComplete_ = true;
     questAct2Complete_ = true;
     questAct3Complete_ = true;
+    questAct4Complete_ = true;
 
     roomCount_ = std::max(roomCount_, 18);
     spawnArenaWave(1);
@@ -2022,6 +2105,7 @@ void Game::finishArenaKeepParty() {
     questComplete_ = true;
     questAct2Complete_ = true;
     questAct3Complete_ = true;
+    questAct4Complete_ = true;
     questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
 
     generateRoomDescription();
@@ -2147,6 +2231,7 @@ bool Game::beginEndlessDeepFromCurrent() {
     questComplete_ = true;
     questAct2Complete_ = true;
     questAct3Complete_ = true;
+    questAct4Complete_ = true;
 
     roomCount_ = std::max(roomCount_, 16);
     spawnEndlessDepth(1);
@@ -2180,6 +2265,7 @@ void Game::finishEndlessDeepKeepParty() {
     questComplete_ = true;
     questAct2Complete_ = true;
     questAct3Complete_ = true;
+    questAct4Complete_ = true;
     questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
 
     generateRoomDescription();
@@ -3078,7 +3164,7 @@ void Game::playerAdvanceFromCleared() {
         return;
     }
 
-    // Solo story: Act 1 → Act 2 → Act 3 → procedural endgame.
+    // Solo story: Act 1 → Act 2 → Act 3 → Act 4 → procedural endgame.
     if (isSoloQuestScripted()) {
         if (static_cast<SoloQuestBeat>(questBeat_) == SoloQuestBeat::CRYPT_DOORS && !questCryptKeyFound_) {
             dmSay("The doors yield grudgingly — you force them without the rune-key. Dust and bone-scent spill out.");
@@ -3091,6 +3177,10 @@ void Game::playerAdvanceFromCleared() {
         if (static_cast<SoloQuestBeat>(questBeat_) == SoloQuestBeat::ACT3_RELIC && !questAct3SealFound_) {
             dmSay("You leave without the Ember Seal — the breach will not close cleanly.");
             addJournalEntry("Left Ember Seal Niche without the seal.");
+        }
+        if (static_cast<SoloQuestBeat>(questBeat_) == SoloQuestBeat::ACT4_EMBER && !questAct4EmberFound_) {
+            dmSay("You leave without the Vigil Ember — the Spire will not kindle cleanly.");
+            addJournalEntry("Left Vigil Niche without the Vigil Ember.");
         }
 
         if (questBeat_ >= static_cast<int>(SoloQuestBeat::MILLHOLLOW)
@@ -3154,8 +3244,35 @@ void Game::playerAdvanceFromCleared() {
             addJournalEntry("The party advanced to " + std::string(soloQuestBeatName(questBeat_)) + ".");
             return;
         }
-        // ACT3_SEALED → post-story endgame procedural
+        if (questBeat_ == static_cast<int>(SoloQuestBeat::ACT3_SEALED)) {
+            questAct3Complete_ = true;
+            questAct2Complete_ = true;
+            questComplete_ = true;
+            questBeat_ = static_cast<int>(SoloQuestBeat::ACT4_WATCH);
+            roomCount_++;
+            roomSearchUsed_ = false;
+            applySoloQuestRoom();
+            if (!enemies_.empty()) rollInitiative();
+            lastEvent_ = "Onward — Act 4: Ashwake Vigil begins.";
+            addChatMessage("Quest", lastEvent_);
+            addJournalEntry("Act 4 begins — Ashwake Vigil on Millhollow's green.");
+            return;
+        }
+        if (questBeat_ >= static_cast<int>(SoloQuestBeat::ACT4_WATCH)
+            && questBeat_ < static_cast<int>(SoloQuestBeat::ACT4_KINDLED)) {
+            questBeat_++;
+            roomCount_++;
+            roomSearchUsed_ = false;
+            applySoloQuestRoom();
+            if (!enemies_.empty()) rollInitiative();
+            lastEvent_ = std::string("Onward — ") + soloQuestBeatName(questBeat_) + ".";
+            addChatMessage("Quest", lastEvent_);
+            addJournalEntry("The party advanced to " + std::string(soloQuestBeatName(questBeat_)) + ".");
+            return;
+        }
+        // ACT4_KINDLED → post-story endgame procedural
         questBeat_ = static_cast<int>(SoloQuestBeat::POST_QUEST);
+        questAct4Complete_ = true;
         questAct3Complete_ = true;
         questAct2Complete_ = true;
         questComplete_ = true;
@@ -3177,10 +3294,10 @@ void Game::playerAdvanceFromCleared() {
             addChatMessage("Quest", lastEvent_);
         } else {
             lastEvent_ = "Story complete — endgame rooms await. Room " + std::to_string(roomCount_) + ".";
-            addChatMessage("Quest", "Acts 1–3 complete — endgame unlocked.");
-            dmSay("Millhollow sleeps. Endgame crawl bosses, Legendary gear, and Boss Raids await the brave.");
+            addChatMessage("Quest", "Acts 1–4 complete — endgame unlocked.");
+            dmSay("Millhollow's twin lights hold. Endgame crawl bosses, Legendary gear, and Boss Raids await the brave.");
         }
-        addJournalEntry("Post-story endgame exploration begins (Acts 1–3 done).");
+        addJournalEntry("Post-story endgame exploration begins (Acts 1–4 done).");
         return;
     }
 
@@ -3196,6 +3313,21 @@ void Game::playerAdvanceFromCleared() {
         lastEvent_ = "Onward — Act 3: Emberdeep Breach begins (story continues).";
         addChatMessage("Quest", lastEvent_);
         addJournalEntry("Act 3 begins from post–Act 2 save.");
+        return;
+    }
+
+    // Legacy / mid-save: finished Act 3 into procedural before Act 4 shipped → start Act 4.
+    if (!isFocusedEndgameRun() && !isSoloCrawl()
+        && questAct3Complete_ && !questAct4Complete_
+        && !isSoloQuestScripted()) {
+        questBeat_ = static_cast<int>(SoloQuestBeat::ACT4_WATCH);
+        roomCount_++;
+        roomSearchUsed_ = false;
+        applySoloQuestRoom();
+        if (!enemies_.empty()) rollInitiative();
+        lastEvent_ = "Onward — Act 4: Ashwake Vigil begins (story continues).";
+        addChatMessage("Quest", lastEvent_);
+        addJournalEntry("Act 4 begins from post–Act 3 save.");
         return;
     }
 
@@ -3473,7 +3605,9 @@ std::string Game::getPartyStatus() const {
     else if (isEndlessDeep()) ss << "Mode: Ashen Deep (Endless) — Depth " << endlessDepth_
                                  << " · Best " << endlessBestDepthThisRun_ << "\n";
     else if (isSoloCrawl()) ss << "Mode: Dungeon Crawl\n";
-    else if (questAct3Complete_) ss << "Story complete: Acts 1–3 (endgame unlocked)\n";
+    else if (questAct4Complete_) ss << "Story complete: Acts 1–4 (endgame unlocked)\n";
+    else if (isAct4Beat(questBeat_)) ss << "Quest: Ashwake Vigil — " << soloQuestBeatName(questBeat_) << "\n";
+    else if (questAct3Complete_ && !isSoloQuestScripted()) ss << "Acts 1–3 done — Act 4 pending or onward\n";
     else if (isAct3Beat(questBeat_)) ss << "Quest: Emberdeep Breach — " << soloQuestBeatName(questBeat_) << "\n";
     else if (questAct2Complete_ && !isSoloQuestScripted()) ss << "Acts 1–2 done — Act 3 pending or onward\n";
     else if (isAct2Beat(questBeat_)) ss << "Quest: Millhollow's Debt — " << soloQuestBeatName(questBeat_) << "\n";
@@ -3540,7 +3674,8 @@ std::string Game::serialize() {
        << "," << (questAct3Complete_ ? 1 : 0) << "," << (questAct3SealFound_ ? 1 : 0)
        << "," << (bossSeenHollow_ ? 1 : 0) << "," << (bossSeenHydra_ ? 1 : 0) << "," << (bossSeenNightfang_ ? 1 : 0)
        << "," << arenaWave_ << "," << arenaScore_ << "," << arenaWavesCleared_
-       << "," << endlessDepth_ << "," << endlessBestDepthThisRun_ << "|";
+       << "," << endlessDepth_ << "," << endlessBestDepthThisRun_
+       << "," << (questAct4Complete_ ? 1 : 0) << "," << (questAct4EmberFound_ ? 1 : 0) << "|";
     // Section 1: Descriptions
     ss << roomDescription_ << "~" << lastEvent_ << "|";
     // Section 2: Players
@@ -3598,6 +3733,8 @@ void Game::deserialize(const std::string& data) {
     pendingRaidKeyDrop_ = false;
     questAct3Complete_ = false;
     questAct3SealFound_ = false;
+    questAct4Complete_ = false;
+    questAct4EmberFound_ = false;
     shopInventory_.clear();
 
     std::stringstream ss(data);
@@ -3665,6 +3802,11 @@ void Game::deserialize(const std::string& data) {
             else endlessDepth_ = 0;
             if (std::getline(ss_sub, val, ',')) endlessBestDepthThisRun_ = std::stoi(val);
             else endlessBestDepthThisRun_ = endlessDepth_;
+            // Act 4 / story-complete (backward compatible)
+            if (std::getline(ss_sub, val, ',')) questAct4Complete_ = (val == "1");
+            else questAct4Complete_ = false;
+            if (std::getline(ss_sub, val, ',')) questAct4EmberFound_ = (val == "1");
+            else questAct4EmberFound_ = false;
         }
     }
 

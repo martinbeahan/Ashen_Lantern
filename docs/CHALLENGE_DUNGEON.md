@@ -3,7 +3,7 @@
 Story-complete endgame mode — **Cinder Crucible** vault. Uses the **same Continue save** as Boss Raid (no class select / no wipe of solo save). Host/Join never write into `save_state`.
 
 ## Gate
-- Acts 1–3 complete (`story_fully_complete` / `questAct3Complete_`) **and** a livable Continue save.
+- Acts 1–4 complete (`story_fully_complete` / `questAct4Complete_`; Act 3-complete saves grandfathered) **and** a livable Continue save.
 - Main menu **Challenge Dungeon** + Settings entry (same gate as Boss Raid).
 - **No Raid Key cost** (keys still drop from the apex foe like other endgame clears).
 

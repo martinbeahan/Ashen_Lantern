@@ -125,7 +125,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSettingsClaimDaily: Button
     /** Last native daily-quest counter snap (rooms,fights,searches,damage,bosses). */
     private var lastDqSnap = intArrayOf(0, 0, 0, 0, 0)
-    /** One-shot CTA after Acts 1–3 so player can open Boss Raid / menu without relaunch. */
+    /** One-shot CTA after Acts 1–4 so player can open Boss Raid / menu without relaunch. */
     private var storyCompleteRoutesShown = false
     // Audio prefs + GameAudio (BGM / SFX / optional on-device TTS).
     private var musicEnabled = true
@@ -1305,7 +1305,7 @@ class MainActivity : AppCompatActivity() {
             btnMenuChallenge.text = if (unlocked) "Challenge Dungeon ($chance% Leg)" else "Challenge Dungeon (locked)"
             if (::mainMenuChallengeHint.isInitialized) {
                 mainMenuChallengeHint.text = when {
-                    !storyDone -> "Finish the story first (Acts 1–3)"
+                    !storyDone -> "Finish the story first (Acts 1–4)"
                     !hasSave -> "Need a Continue save (same hero as Boss Raid)"
                     else -> ChallengeDungeon.summaryLine(prefs())
                 }
@@ -1323,7 +1323,7 @@ class MainActivity : AppCompatActivity() {
             } else "Arena (locked)"
             if (::mainMenuArenaHint.isInitialized) {
                 mainMenuArenaHint.text = when {
-                    !storyDone -> "Finish the story first (Acts 1–3)"
+                    !storyDone -> "Finish the story first (Acts 1–4)"
                     !hasSave -> "Need a Continue save (same hero as Boss Raid)"
                     else -> Arena.summaryLine(prefs())
                 }
@@ -1341,7 +1341,7 @@ class MainActivity : AppCompatActivity() {
             } else "Endless Deep (locked)"
             if (::mainMenuEndlessHint.isInitialized) {
                 mainMenuEndlessHint.text = when {
-                    !storyDone -> "Finish the story first (Acts 1–3)"
+                    !storyDone -> "Finish the story first (Acts 1–4)"
                     !hasSave -> "Need a Continue save (same hero as Boss Raid)"
                     else -> EndlessDeep.summaryLine(prefs())
                 }
@@ -1783,7 +1783,7 @@ class MainActivity : AppCompatActivity() {
         btnSettingsChallenge.alpha = if (unlocked) 1f else 0.45f
         btnSettingsChallenge.text = if (unlocked) "Challenge Dungeon ($chance% Leg)" else "Challenge Dungeon (locked)"
         settingsChallengeHint.text = when {
-            !storyDone -> "Finish the story first (Acts 1–3)"
+            !storyDone -> "Finish the story first (Acts 1–4)"
             !hasSave -> "Need a Continue save"
             else -> ChallengeDungeon.summaryLine(prefs())
         }
@@ -1805,7 +1805,7 @@ class MainActivity : AppCompatActivity() {
             if (best > 0) "Arena (Ember Ring) · best $best" else "Arena (Ember Ring)"
         } else "Arena (locked)"
         settingsArenaHint.text = when {
-            !storyDone -> "Finish the story first (Acts 1–3)"
+            !storyDone -> "Finish the story first (Acts 1–4)"
             !hasSave -> "Need a Continue save"
             else -> Arena.summaryLine(prefs())
         }
@@ -1831,7 +1831,7 @@ class MainActivity : AppCompatActivity() {
             if (best > 0) "Endless Deep · best $best" else "Endless Deep (Ashen Deep)"
         } else "Endless Deep (locked)"
         settingsEndlessHint.text = when {
-            !storyDone -> "Finish the story first (Acts 1–3)"
+            !storyDone -> "Finish the story first (Acts 1–4)"
             !hasSave -> "Need a Continue save"
             inEndless -> {
                 val d = try { getEndlessDepth() } catch (_: Exception) { 0 }
@@ -1853,7 +1853,7 @@ class MainActivity : AppCompatActivity() {
         if (!isMetaStoryComplete()) {
             AlertDialog.Builder(this)
                 .setTitle("Boss Raid locked")
-                .setMessage("Finish the story first (Acts 1–3). Boss Raid unlocks after Breach Sealed.")
+                .setMessage("Finish the story first (Acts 1–4). Boss Raid unlocks after Vigil Kindled.")
                 .setPositiveButton("OK", null)
                 .show()
             return
@@ -1862,7 +1862,7 @@ class MainActivity : AppCompatActivity() {
         if (save == null) {
             AlertDialog.Builder(this)
                 .setTitle("Boss Raid")
-                .setMessage("No saved hero found. Finish the story (Acts 1–3) and keep a Continue save, then enter Boss Raid with that same character.")
+                .setMessage("No saved hero found. Finish the story (Acts 1–4) and keep a Continue save, then enter Boss Raid with that same character.")
                 .setPositiveButton("OK", null)
                 .show()
             return
@@ -2003,7 +2003,7 @@ class MainActivity : AppCompatActivity() {
         if (!isMetaStoryComplete()) {
             AlertDialog.Builder(this)
                 .setTitle("Challenge Dungeon locked")
-                .setMessage("Finish the story first (Acts 1–3). Challenge Dungeon unlocks after Breach Sealed.")
+                .setMessage("Finish the story first (Acts 1–4). Challenge Dungeon unlocks after Vigil Kindled.")
                 .setPositiveButton("OK", null)
                 .show()
             return
@@ -2012,7 +2012,7 @@ class MainActivity : AppCompatActivity() {
         if (save == null) {
             AlertDialog.Builder(this)
                 .setTitle("Challenge Dungeon")
-                .setMessage("No saved hero found. Finish the story (Acts 1–3) and keep a Continue save, then enter with that same character.")
+                .setMessage("No saved hero found. Finish the story (Acts 1–4) and keep a Continue save, then enter with that same character.")
                 .setPositiveButton("OK", null)
                 .show()
             return
@@ -2132,7 +2132,7 @@ class MainActivity : AppCompatActivity() {
         if (!isMetaStoryComplete()) {
             AlertDialog.Builder(this)
                 .setTitle("Arena locked")
-                .setMessage("Finish the story first (Acts 1–3). The Ember Ring unlocks after Breach Sealed.")
+                .setMessage("Finish the story first (Acts 1–4). The Ember Ring unlocks after Vigil Kindled.")
                 .setPositiveButton("OK", null)
                 .show()
             return
@@ -2141,7 +2141,7 @@ class MainActivity : AppCompatActivity() {
         if (save == null) {
             AlertDialog.Builder(this)
                 .setTitle("Arena — Ember Ring")
-                .setMessage("No saved hero found. Finish the story (Acts 1–3) and keep a Continue save, then enter with that same character.")
+                .setMessage("No saved hero found. Finish the story (Acts 1–4) and keep a Continue save, then enter with that same character.")
                 .setPositiveButton("OK", null)
                 .show()
             return
@@ -2251,7 +2251,7 @@ class MainActivity : AppCompatActivity() {
         if (!isMetaStoryComplete()) {
             AlertDialog.Builder(this)
                 .setTitle("Endless Deep locked")
-                .setMessage("Finish the story first (Acts 1–3). The Ashen Deep unlocks after Breach Sealed.")
+                .setMessage("Finish the story first (Acts 1–4). The Ashen Deep unlocks after Vigil Kindled.")
                 .setPositiveButton("OK", null)
                 .show()
             return
@@ -2260,7 +2260,7 @@ class MainActivity : AppCompatActivity() {
         if (save == null) {
             AlertDialog.Builder(this)
                 .setTitle("Endless Deep — Ashen Deep")
-                .setMessage("No saved hero found. Finish the story (Acts 1–3) and keep a Continue save, then descend with that same character.")
+                .setMessage("No saved hero found. Finish the story (Acts 1–4) and keep a Continue save, then descend with that same character.")
                 .setPositiveButton("OK", null)
                 .show()
             return
@@ -2420,7 +2420,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Story complete!")
             .setMessage(
-                "Acts 1–3 are finished. Endgame crawl, Legendary gear, Boss Raids, Challenge Dungeon, Arena (Ember Ring), and Endless Deep (Ashen Deep) are unlocked.\n\n" +
+                "Acts 1–4 are finished. Endgame crawl, Legendary gear, Boss Raids, Challenge Dungeon, Arena (Ember Ring), and Endless Deep (Ashen Deep) are unlocked.\n\n" +
                 "Raid Keys: $keys/3 · ${raidKeyCountdownLabel(keys)}\n\n" +
                 "Open Boss Raid now, return to the main menu (progress saved), or keep exploring."
             )
@@ -3251,7 +3251,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun raidKeyHintText(storyDone: Boolean, keys: Int, forMainMenu: Boolean): String {
-        if (!storyDone) return "Finish the story first (Acts 1–3)"
+        if (!storyDone) return "Finish the story first (Acts 1–4)"
         val countdown = raidKeyCountdownLabel(keys)
         return if (forMainMenu) {
             when {
@@ -3887,9 +3887,15 @@ class MainActivity : AppCompatActivity() {
                 "Story complete · Menu / Boss Raid / Onward"
             status.contains("Story complete", ignoreCase = true) &&
                 status.contains("endgame", ignoreCase = true) -> "Story complete — Menu or Boss Raid"
-            status.contains("Story complete", ignoreCase = true) -> "Story complete — Acts 1–3"
+            status.contains("Story complete", ignoreCase = true) -> "Story complete — Acts 1–4"
             status.contains("Mode: Boss Raid", ignoreCase = true) -> "Boss Raid"
             status.contains("Mode: Challenge Dungeon", ignoreCase = true) -> "Challenge Dungeon"
+            status.contains("Quest: Ashwake", ignoreCase = true) &&
+                try { isRoomCleared() } catch (_: Exception) { false } ->
+                "Act 4 · clear — Search, Rest, or Onward"
+            status.contains("Quest: Ashwake", ignoreCase = true) ->
+                status.lineSequence().firstOrNull { it.startsWith("Quest:") }?.removePrefix("Quest:")?.trim()
+                    ?.let { "Quest · $it" } ?: "Act 4 — Ashwake Vigil"
             status.contains("Quest: Emberdeep", ignoreCase = true) &&
                 try { isRoomCleared() } catch (_: Exception) { false } ->
                 "Act 3 · clear — Search, Rest, or Onward"
@@ -3902,7 +3908,8 @@ class MainActivity : AppCompatActivity() {
             status.contains("Quest complete", ignoreCase = true) -> "Main quest done — Ashen Lantern"
             (status.contains("Quest: Ashen Lantern", ignoreCase = true) ||
                 status.contains("Quest: Millhollow", ignoreCase = true) ||
-                status.contains("Quest: Emberdeep", ignoreCase = true)) &&
+                status.contains("Quest: Emberdeep", ignoreCase = true) ||
+                status.contains("Quest: Ashwake", ignoreCase = true)) &&
                 try { isRoomCleared() } catch (_: Exception) { false } ->
                 status.lineSequence().firstOrNull { it.startsWith("Quest:") }?.removePrefix("Quest:")?.trim()
                     ?.let { "Quest · $it · clear" } ?: "Room clear — Search, Rest, or Onward"
@@ -4154,7 +4161,7 @@ class MainActivity : AppCompatActivity() {
                 blob.contains("ember hydra") || blob.contains("nightfang") ||
                 blob.contains("breach warden") || blob.contains("boss") ->
                 R.drawable.bg_battle_stage_boss
-            // Act 3 — Emberdeep Breach
+            // Act 3 — Emberdeep Breach / Act 4 — Ashwake Vigil
             blob.contains("wellside") || blob.contains("old well") || blob.contains("ember seal") ||
                 blob.contains("root labyrinth") || blob.contains("breach") ->
                 R.drawable.bg_battle_stage_cave
