@@ -15,11 +15,28 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Boss Raids** — story-complete endgame mode; spends a Raid Key; focused boss fight with strong rewards (Legendary chance)
 - **Daily Quests** — local-midnight errands for story-complete Continue heroes (gold / tonic / optional Raid Key)
 - **Challenge Dungeon** — story-complete *Cinder Crucible* vault (no Raid Key cost; dynamic Legendary chance)
-- **Arena (Ember Ring)** — story-complete 5-wave scored fights (Legendary on Wave 5 apex at 7%)
-- **Endless Deep (Ashen Deep)** — story-complete endless depth-scaling rooms; soft end via death / retreat / milestone; Legendary on apex depths 10/20/… at 7%
+- **Arena (Ember Ring)** — see Endgame modes below
+- **Endless Deep (Ashen Deep)** — see Endgame modes below
 - **Online multiplayer** — **Host online (DM)** / **Join session** via Firebase Realtime Database (host acts as DM)
 - **Settings** — music on/off, sound effects on/off, reduce flashing (photosensitive-friendly), tutorial, return to main menu, About
 - **Audio beds** — biome / combat / boss loops (CC0); optional DM voice via Android Text-to-Speech
+
+## Endgame modes (story-complete)
+
+Unlocked after Acts 1–3 with a livable **Continue** save. Same hero, gear, and gold — Host/Join never overwrite the solo save. **No D&D / WotC module text**; SRD-safe monsters only.
+
+| Mode | Venue | Shape | Key cost | Legendary |
+|------|-------|-------|----------|-----------|
+| **Boss Raid** | Apex hunt | One focused boss fight | Yes (Raid Key) | Flat **7%** on clear |
+| **Challenge Dungeon** | *Cinder Crucible* | One vault apex + adds | No | **Dynamic** 18%± (floor 5%, cap 28%) |
+| **Arena** | *Ember Ring* | **5 scored waves**; Onward between waves | No | Waves 1–4 Rare/Epic only; **Wave 5** apex flat **7%** |
+| **Endless Deep** | *Ashen Deep* | **Endless** depth-scaling rooms | No | Apex every **10** depths, flat **7%** |
+
+### Arena — Ember Ring
+Wave-based scored fights on your Continue hero. Clear a wave → **Onward** for the next; Wave 5 is an endgame apex. Soft end on wipe (Easy–Hard Continue restores the hero; Nightmare restores the pre-Arena snapshot). Meta prefs track **best score**, **best waves**, and **runs**. Details: [`docs/ARENA.md`](docs/ARENA.md).
+
+### Endless Deep — Ashen Deep
+Distinct from normal Dungeon Crawl: depth rises forever; foe density/HP scale with depth. Soft end via **death**, Settings **Retreat**, or **milestone** (every 5 depths) — spoils stay on the Continue hero. Rewards (gold/XP/loot luck) scale with depth. Meta prefs track **best depth**. Details: [`docs/ENDLESS_DEEP.md`](docs/ENDLESS_DEEP.md).
 
 ## Build & run
 
