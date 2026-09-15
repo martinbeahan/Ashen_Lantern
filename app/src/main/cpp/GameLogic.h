@@ -680,13 +680,16 @@ public:
      * luckBonus: 0 normal; bosses add mild luck (see noteBossDefeat).
      * Drop chance and rarity use separate rolls (#46 hotfix): trash stays nerfed;
      * bosses better than trash but not BiS-guaranteed.
-     * allowLegendary: true ONLY for endgame boss / Boss Raid defeat loot.
+     * allowLegendary: true ONLY for endgame boss / Boss Raid / Challenge Dungeon defeat loot.
      *   Never from trash, Search, shop, early GK/SK/Ashen Drake, or pity.
+     * legendaryChancePercent: used when allowLegendary (normal endgame/raid = 7;
+     *   Challenge Dungeon uses a dynamic chance from prefs — see docs/CHALLENGE_DUNGEON.md).
      * preferClass / preferClass2: party class tags (-1 = unused).
      */
     static std::shared_ptr<Item> generateLoot(int roomDepth, int luckBonus = 0,
                                               int preferClass = -1, int preferClass2 = -1,
-                                              bool allowLegendary = false) {
+                                              bool allowLegendary = false,
+                                              int legendaryChancePercent = 7) {
         // Drop gate (shared luck) — ~42% item on luck=0
         int dropRoll = (rand() % 100) + luckBonus;
         if (dropRoll < 58) return nullptr;
@@ -694,8 +697,11 @@ public:
         // Rarity: luck only adds luckBonus/3 so bosses stay better than trash, not BiS flood.
         int rarityRoll = (rand() % 100) + (luckBonus / 3);
         ItemRarity rarity = ItemRarity::COMMON;
-        // Legendary: explicit allow + flat 7% of successful drops (single-digit; not luck-flooded).
-        if (allowLegendary && (rand() % 100) < 7) {
+        // Legendary: explicit allow + chance% of successful drops (default 7; Challenge Dungeon higher/dynamic).
+        int legChance = legendaryChancePercent;
+        if (legChance < 0) legChance = 0;
+        if (legChance > 100) legChance = 100;
+        if (allowLegendary && (rand() % 100) < legChance) {
             rarity = ItemRarity::LEGENDARY;
         } else if (rarityRoll >= 98) {
             rarity = ItemRarity::EPIC;       // #46: was shared-roll >=95

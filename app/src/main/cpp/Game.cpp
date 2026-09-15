@@ -32,6 +32,7 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
     pendingBossLootLuck_ = 0;
     pendingBossAllowLegendary_ = false;
     pendingBossGoldBonus_ = 0;
+    pendingChallengeLegendaryFound_ = false;
     clearSetPiecePending();
     bossSeenGk_ = false;
     bossSeenSk_ = false;
@@ -60,6 +61,8 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
         soloPlayMode_ = static_cast<int>(SoloPlayMode::CRAWL);
     else if (soloPlayMode == static_cast<int>(SoloPlayMode::RAID))
         soloPlayMode_ = static_cast<int>(SoloPlayMode::RAID);
+    else if (soloPlayMode == static_cast<int>(SoloPlayMode::CHALLENGE))
+        soloPlayMode_ = static_cast<int>(SoloPlayMode::CHALLENGE);
     else
         soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
     difficulty_ = difficulty;
@@ -685,8 +688,8 @@ void Game::maybeFinishAct3OnSealedEnter() {
 }
 
 bool Game::endgameContentAllowed() const {
-    // Raid runs always treat endgame as open; otherwise require Act 3 complete.
-    if (isBossRaid()) return true;
+    // Focused endgame runs always treat endgame as open; otherwise require Act 3 complete.
+    if (isFocusedEndgameRun()) return true;
     return questAct3Complete_;
 }
 
@@ -1352,7 +1355,7 @@ void Game::clearSetPiecePending() {
 bool Game::trySpawnAuthoredEncounter() {
     // Only procedural crawl / post-quest / DM rooms — never rewrite Easy early story beats.
     if (isSoloQuestScripted()) return false;
-    if (isBossRaid()) return false;
+    if (isFocusedEndgameRun()) return false;
     if (roomCount_ < 3) return false;
 
     const bool postStory = questComplete_ || questAct2Complete_ || questAct3Complete_
@@ -1546,7 +1549,7 @@ void Game::noteBossDefeat(const std::string& foeName) {
     int xp = 40 * tier + roomCount_ * 2;
     int luck = 10 + tier * 8;
     int gold = 20 * tier + getRandomInt(5, 15);
-    const bool endgameBossLoot = LootSystem::isEndgameBossName(foeName) || isBossRaid();
+    const bool endgameBossLoot = LootSystem::isEndgameBossName(foeName) || isFocusedEndgameRun();
     if (endgameBossLoot) {
         xp += 80;
         luck += 18; // XP/gold/luck bump only; Legendary gated by allowLegendary flag
@@ -1563,8 +1566,8 @@ void Game::noteBossDefeat(const std::string& foeName) {
 void Game::maybeGrantRaidKeyFromBoss(const std::string& foeName) {
     if (!endgameContentAllowed()) return;
     int tier = LootSystem::bossTier(foeName);
-    if (tier < 3 && !LootSystem::isEndgameBossName(foeName) && !isBossRaid()) return;
-    int chance = isBossRaid() ? 55 : (LootSystem::isEndgameBossName(foeName) ? 40 : 22);
+    if (tier < 3 && !LootSystem::isEndgameBossName(foeName) && !isFocusedEndgameRun()) return;
+    int chance = isFocusedEndgameRun() ? 55 : (LootSystem::isEndgameBossName(foeName) ? 40 : 22);
     if (getRandomInt(1, 100) <= chance) {
         pendingRaidKeyDrop_ = true;
         dmSay("A Raid Key glints among the spoils — check the menu (max 3 held per calendar day).");
@@ -1681,7 +1684,8 @@ bool Game::beginBossRaidFromCurrent() {
     if (players_.empty()) return false;
 
     // Preserve party (stats, gear, inventory, gold, companion, level, Legendary upgrades).
-    if (soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)) {
+    if (soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)) {
         preRaidSoloPlayMode_ = soloPlayMode_;
         preRaidRoomCount_ = roomCount_;
     }
@@ -1696,6 +1700,7 @@ bool Game::beginBossRaidFromCurrent() {
     pendingBossLootLuck_ = 0;
     pendingBossAllowLegendary_ = false;
     pendingBossGoldBonus_ = 0;
+    pendingChallengeLegendaryFound_ = false;
     clearSetPiecePending();
 
     // Endgame gates active for this encounter (story must already be complete at menu).
@@ -1759,6 +1764,108 @@ void Game::finishBossRaidKeepParty() {
     addJournalEntry("Boss Raid concluded; party preserved.");
 }
 
+
+bool Game::beginChallengeDungeonFromCurrent(int legendaryChancePercent) {
+    if (players_.empty()) return false;
+
+    if (soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)) {
+        preRaidSoloPlayMode_ = soloPlayMode_;
+        preRaidRoomCount_ = roomCount_;
+    }
+
+    soloPlayMode_ = static_cast<int>(SoloPlayMode::CHALLENGE);
+    setChallengeLegendaryChance(legendaryChancePercent);
+    gameOver_ = false;
+    dmOnlyTable_ = false;
+    isHost_ = true;
+    dmName_.clear();
+    pendingRaidKeyDrop_ = false;
+    pendingBossXpBonus_ = 0;
+    pendingBossLootLuck_ = 0;
+    pendingBossAllowLegendary_ = false;
+    pendingBossGoldBonus_ = 0;
+    pendingChallengeLegendaryFound_ = false;
+    clearSetPiecePending();
+
+    questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
+    questComplete_ = true;
+    questAct2Complete_ = true;
+    questAct3Complete_ = true;
+
+    enemies_.clear();
+    shopInventory_.clear();
+    isMerchantRoom_ = false;
+    roomSearchUsed_ = false;
+    roomCount_ = std::max(roomCount_, 22);
+
+    // Original vault: endgame apex + SRD-safe adds (no WotC module text).
+    int pick = getRandomInt(0, 2);
+    if (pick == 0) spawnNamedBoss("Hollow Crown", 4);
+    else if (pick == 1) spawnNamedBoss("Ember Hydra", 5);
+    else spawnNamedBoss("Nightfang Matriarch", 4);
+
+    {
+        auto add = std::make_unique<Character>("Ogre", CharacterClass::FIGHTER,
+            "cd-ogre-" + std::to_string(getRandomInt(0, 1000000)));
+        add->maxHp = std::max(18, add->maxHp + 10 + roomCount_ / 2);
+        add->currentHp = add->maxHp;
+        add->armorClass += 1;
+        enemies_.push_back(std::move(add));
+    }
+    if (difficulty_ >= static_cast<int>(Difficulty::MEDIUM)) {
+        auto wolf = std::make_unique<Character>("Wolf", CharacterClass::ROGUE,
+            "cd-wolf-" + std::to_string(getRandomInt(0, 1000000)));
+        wolf->maxHp = std::max(8, wolf->maxHp + 4);
+        wolf->currentHp = wolf->maxHp;
+        enemies_.push_back(std::move(wolf));
+    }
+
+    roomDescription_ = "Cinder Crucible — a sealed Ashen trial vault. Higher Legendary odds await, but each Legendary found dims the forge.";
+    lastEvent_ = "CHALLENGE DUNGEON! Stand ready!";
+    dmSay("Challenge Dungeon begins with your saved hero. Legendary chance is "
+          + std::to_string(challengeLegendaryChance_)
+          + "% this run (uncapped Legendaries; chance falls after each find, rises every 50 attempts toward a cap).");
+    if (!enemies_.empty()) rollInitiative();
+    else { turnOrder_.clear(); currentTurnIndex_ = 0; }
+    addChatMessage("System", "Challenge Dungeon begins (difficulty: "
+                   + std::string(difficultyName(difficulty_)) + ") — same hero preserved.");
+    addJournalEntry("Entered the Cinder Crucible (Challenge Dungeon).");
+    return true;
+}
+
+void Game::finishChallengeDungeonKeepParty() {
+    if (!isChallengeDungeon() && preRaidSoloPlayMode_ < 0) return;
+
+    enemies_.clear();
+    shopInventory_.clear();
+    isMerchantRoom_ = false;
+    roomSearchUsed_ = false;
+    turnOrder_.clear();
+    currentTurnIndex_ = 0;
+    gameOver_ = false;
+
+    if (preRaidSoloPlayMode_ >= 0) {
+        soloPlayMode_ = preRaidSoloPlayMode_;
+        if (preRaidRoomCount_ > 0) roomCount_ = preRaidRoomCount_;
+    } else {
+        soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
+    }
+    preRaidSoloPlayMode_ = -1;
+    preRaidRoomCount_ = 0;
+
+    questComplete_ = true;
+    questAct2Complete_ = true;
+    questAct3Complete_ = true;
+    questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
+
+    generateRoomDescription();
+    lastEvent_ = "Challenge Dungeon ended — your hero and gear are intact. Return to the menu or press Onward to keep exploring.";
+    dmSay(lastEvent_);
+    addChatMessage("System", "Challenge Dungeon finished — story character preserved.");
+    addJournalEntry("Challenge Dungeon concluded; party preserved.");
+}
+
 bool Game::recoverFromPartyWipe() {
     if (!gameOver_) return false;
     if (static_cast<Difficulty>(difficulty_) == Difficulty::NIGHTMARE) {
@@ -1775,6 +1882,15 @@ bool Game::recoverFromPartyWipe() {
         dmSay(lastEvent_);
         addChatMessage("System", lastEvent_);
         addJournalEntry(std::string("Raid wipe Continue on ") + dname + " — character preserved.");
+        return true;
+    }
+    if (isChallengeDungeon()) {
+        finishChallengeDungeonKeepParty();
+        const char* dname = difficultyName(difficulty_);
+        lastEvent_ = std::string("Continue (") + dname + ") — Challenge Dungeon aborted; your story hero stands again.";
+        dmSay(lastEvent_);
+        addChatMessage("System", lastEvent_);
+        addJournalEntry(std::string("Challenge Dungeon wipe Continue on ") + dname + " — character preserved.");
         return true;
     }
     rollbackOneRoomOrBeat();
@@ -1864,12 +1980,17 @@ void Game::enterClearedRoom(Character* actor) {
     } else if (actor && !actor->isDead) {
         int preferA = -1, preferB = -1;
         partyPreferClasses(preferA, preferB);
-        // Legendary only from endgame boss / Boss Raid defeat (never questAct3 alone).
-        auto loot = LootSystem::generateLoot(roomCount_, luck, preferA, preferB, pendingAllowLegendary);
+        // Legendary only from endgame boss / Boss Raid / Challenge Dungeon defeat (never questAct3 alone).
+        const int legPct = isChallengeDungeon() ? challengeLegendaryChance_ : 7;
+        auto loot = LootSystem::generateLoot(roomCount_, luck, preferA, preferB, pendingAllowLegendary, legPct);
         if (loot) {
             actor->addToInventory(loot);
             dmSay(actor->name + " finds " + loot->getDescription() + " [" + loot->rarityLabel() + "] — check Inventory.");
             addJournalEntry(actor->name + " found loot: " + loot->getDescription() + " (" + loot->rarityLabel() + ")");
+            if (loot->rarity == ItemRarity::LEGENDARY && isChallengeDungeon()) {
+                pendingChallengeLegendaryFound_ = true;
+                dmSay("Challenge Dungeon: Legendary found — drop chance will fall (uncapped Legendaries; chance recovers every 50 attempts).");
+            }
             if (loot->rarity == ItemRarity::RARE || loot->rarity == ItemRarity::EPIC
                 || loot->rarity == ItemRarity::LEGENDARY) {
                 rareLootNote = actor->name + " finds " + loot->getDescription()
@@ -2528,12 +2649,19 @@ void Game::playerAdvanceFromCleared() {
         return;
     }
 
-    // Boss Raid clear: keep spoils on the same hero, restore prior adventure mode.
+    // Boss Raid / Challenge Dungeon clear: keep spoils on the same hero, restore prior adventure mode.
     if (isBossRaid()) {
         finishBossRaidKeepParty();
         lastEvent_ = "Raid victorious! Spoils kept on your story hero. Onward resumes your adventure, or use Menu.";
         dmSay(lastEvent_);
         addChatMessage("Quest", "Boss Raid cleared — character preserved.");
+        return;
+    }
+    if (isChallengeDungeon()) {
+        finishChallengeDungeonKeepParty();
+        lastEvent_ = "Challenge Dungeon cleared! Spoils kept on your story hero. Onward resumes your adventure, or use Menu.";
+        dmSay(lastEvent_);
+        addChatMessage("Quest", "Challenge Dungeon cleared — character preserved.");
         return;
     }
 
@@ -2644,7 +2772,7 @@ void Game::playerAdvanceFromCleared() {
     }
 
     // Legacy / mid-save: finished Act 2 into procedural before Act 3 shipped → start Act 3.
-    if (!isBossRaid() && !isSoloCrawl()
+    if (!isFocusedEndgameRun() && !isSoloCrawl()
         && questAct2Complete_ && !questAct3Complete_
         && !isSoloQuestScripted()) {
         questBeat_ = static_cast<int>(SoloQuestBeat::ACT3_RUMOR);
@@ -2926,6 +3054,7 @@ std::string Game::getPartyStatus() const {
     const bool exploreBeat = isMerchantRoom_ || (enemies_.empty() && roomCount_ >= 1 && !dmOnlyTable_);
     ss << "Room " << roomCount_ << " | Turn: " << (current ? current->name : (exploreBeat ? "Safe" : "None")) << "\n";
     if (isBossRaid()) ss << "Mode: Boss Raid\n";
+    else if (isChallengeDungeon()) ss << "Mode: Challenge Dungeon (Legendary chance " << challengeLegendaryChance_ << "%)\n";
     else if (isSoloCrawl()) ss << "Mode: Dungeon Crawl\n";
     else if (questAct3Complete_) ss << "Story complete: Acts 1–3 (endgame unlocked)\n";
     else if (isAct3Beat(questBeat_)) ss << "Quest: Emberdeep Breach — " << soloQuestBeatName(questBeat_) << "\n";
@@ -3039,6 +3168,7 @@ void Game::deserialize(const std::string& data) {
     pendingBossLootLuck_ = 0;
     pendingBossAllowLegendary_ = false;
     pendingBossGoldBonus_ = 0;
+    pendingChallengeLegendaryFound_ = false;
     clearSetPiecePending();
     bossSeenGk_ = false;
     bossSeenSk_ = false;

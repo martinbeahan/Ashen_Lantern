@@ -85,6 +85,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnMenuCrawl: Button
     private lateinit var btnMenuRaid: Button
     private lateinit var mainMenuRaidHint: TextView
+    private lateinit var btnMenuChallenge: Button
+    private lateinit var mainMenuChallengeHint: TextView
     private lateinit var btnMenuDifficulty: Button
     private lateinit var btnMenuHost: Button
     private lateinit var btnMenuJoin: Button
@@ -103,6 +105,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSettingsReturnMenu: Button
     private lateinit var btnSettingsBossRaid: Button
     private lateinit var settingsRaidHint: TextView
+    private lateinit var btnSettingsChallenge: Button
+    private lateinit var settingsChallengeHint: TextView
     private lateinit var btnSettingsClose: Button
     private lateinit var settingsAboutText: TextView
     private lateinit var settingsDifficultyText: TextView
@@ -254,6 +258,11 @@ class MainActivity : AppCompatActivity() {
     external fun consumePendingRaidKeyDrop(): Boolean
     external fun beginBossRaidFromCurrent(): Boolean
     external fun finishBossRaidKeepParty()
+    external fun beginChallengeDungeonFromCurrent(legendaryChancePercent: Int): Boolean
+    external fun finishChallengeDungeonKeepParty()
+    external fun consumePendingChallengeLegendaryFound(): Boolean
+    external fun getChallengeLegendaryChance(): Int
+    external fun setChallengeLegendaryChance(percent: Int)
     external fun getDailyQuestCounters(): String
     external fun grantDailyQuestSpoils(gold: Int, giveLoot: Boolean): Boolean
     external fun recoverFromPartyWipe(): Boolean
@@ -973,6 +982,27 @@ class MainActivity : AppCompatActivity() {
                 val mode = try { getSoloPlayMode() } catch (_: Exception) { 2 }
                 if (mode != 2) clearRaidSessionFlags()
             }
+            // Challenge Dungeon clear/wipe leaves soloPlayMode != CHALLENGE (3).
+            if (prefs().getBoolean("challenge_active", false)) {
+                val mode = try { getSoloPlayMode() } catch (_: Exception) { 3 }
+                if (mode != 3) clearChallengeSessionFlags()
+            }
+            // Challenge Dungeon: apply per-Legendary decay into meta prefs (Host/Join never).
+            if (!isOnlineHost && !isOnlineClient) {
+                try {
+                    if (consumePendingChallengeLegendaryFound()) {
+                        val next = ChallengeDungeon.onLegendaryFound(prefs())
+                        try { setChallengeLegendaryChance(next) } catch (_: Exception) {}
+                        Toast.makeText(
+                            this,
+                            "Legendary found — Challenge chance now $next% (floor ${ChallengeDungeon.FLOOR}%, cap ${ChallengeDungeon.CAP}%).",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "challenge legendary decay failed", e)
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "syncAndSave failed", e)
         }
@@ -1132,7 +1162,10 @@ class MainActivity : AppCompatActivity() {
         val inCombat = try { isInCombat() } catch (_: Exception) { false }
         if (!inCombat) bossFightActive = false
         val merchant = try { isMerchantRoom() } catch (_: Exception) { false }
-        val raid = try { getSoloPlayMode() == 2 } catch (_: Exception) { false }
+        val raid = try {
+            val m = getSoloPlayMode()
+            m == 2 || m == 3
+        } catch (_: Exception) { false }
         val resolved = when {
             onMenu -> GameAudio.Track.TOWN
             merchant -> GameAudio.Track.TOWN
@@ -1210,6 +1243,23 @@ class MainActivity : AppCompatActivity() {
                 mainMenuRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = true)
             }
         }
+        if (::btnMenuChallenge.isInitialized) {
+            val storyDone = isMetaStoryComplete()
+            val hasSave = livableSavedState() != null
+            val unlocked = storyDone && hasSave
+            ChallengeDungeon.ensureInitialized(prefs())
+            val chance = ChallengeDungeon.legendaryChance(prefs())
+            btnMenuChallenge.isEnabled = unlocked
+            btnMenuChallenge.alpha = if (unlocked) 1f else 0.45f
+            btnMenuChallenge.text = if (unlocked) "Challenge Dungeon ($chance% Leg)" else "Challenge Dungeon (locked)"
+            if (::mainMenuChallengeHint.isInitialized) {
+                mainMenuChallengeHint.text = when {
+                    !storyDone -> "Finish the story first (Acts 1–3)"
+                    !hasSave -> "Need a Continue save (same hero as Boss Raid)"
+                    else -> ChallengeDungeon.summaryLine(prefs())
+                }
+            }
+        }
         refreshDailyQuestsUi()
     }
 
@@ -1252,6 +1302,8 @@ class MainActivity : AppCompatActivity() {
         btnMenuCrawl = findViewById(R.id.btnMenuCrawl)
         btnMenuRaid = findViewById(R.id.btnMenuRaid)
         mainMenuRaidHint = findViewById(R.id.mainMenuRaidHint)
+        btnMenuChallenge = findViewById(R.id.btnMenuChallenge)
+        mainMenuChallengeHint = findViewById(R.id.mainMenuChallengeHint)
         btnMenuDifficulty = findViewById(R.id.btnMenuDifficulty)
         btnMenuHost = findViewById(R.id.btnMenuHost)
         btnMenuJoin = findViewById(R.id.btnMenuJoin)
@@ -1272,6 +1324,8 @@ class MainActivity : AppCompatActivity() {
         btnSettingsReturnMenu = findViewById(R.id.btnSettingsReturnMenu)
         btnSettingsBossRaid = findViewById(R.id.btnSettingsBossRaid)
         settingsRaidHint = findViewById(R.id.settingsRaidHint)
+        btnSettingsChallenge = findViewById(R.id.btnSettingsChallenge)
+        settingsChallengeHint = findViewById(R.id.settingsChallengeHint)
         btnSettingsAbandon = findViewById(R.id.btnSettingsAbandon)
         btnSettingsClose = findViewById(R.id.btnSettingsClose)
         settingsAboutText = findViewById(R.id.settingsAboutText)
@@ -1298,6 +1352,9 @@ class MainActivity : AppCompatActivity() {
         }
         btnMenuRaid.setOnClickListener {
             promptBossRaidEntry(fromInAdventure = false)
+        }
+        btnMenuChallenge.setOnClickListener {
+            promptChallengeDungeonEntry(fromInAdventure = false)
         }
         btnMenuDifficulty.setOnClickListener {
             showDifficultyPicker(lockForRun = false)
@@ -1373,6 +1430,10 @@ class MainActivity : AppCompatActivity() {
         btnSettingsBossRaid.setOnClickListener {
             hideSettingsOverlay()
             promptBossRaidEntry(fromInAdventure = sessionActive)
+        }
+        btnSettingsChallenge.setOnClickListener {
+            hideSettingsOverlay()
+            promptChallengeDungeonEntry(fromInAdventure = sessionActive)
         }
         btnSettingsAbandon.setOnClickListener { confirmAbandonAdventure() }
         btnSettingsClose.setOnClickListener { hideSettingsOverlay() }
@@ -1578,12 +1639,35 @@ class MainActivity : AppCompatActivity() {
         val show = sessionActive || storyDone
         btnSettingsBossRaid.visibility = if (show) View.VISIBLE else View.GONE
         settingsRaidHint.visibility = if (show) View.VISIBLE else View.GONE
+        if (show) {
+            btnSettingsBossRaid.isEnabled = storyDone
+            btnSettingsBossRaid.alpha = if (storyDone) 1f else 0.45f
+            btnSettingsBossRaid.text = if (storyDone) "Boss Raid ($keys/3 keys)" else "Boss Raid (locked)"
+            settingsRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = false)
+            startMenuRaidKeyCountdown()
+        }
+        refreshSettingsChallengeEntry()
+    }
+
+    private fun refreshSettingsChallengeEntry() {
+        if (!::btnSettingsChallenge.isInitialized) return
+        val storyDone = isMetaStoryComplete()
+        val hasSave = livableSavedState() != null
+        val show = sessionActive || storyDone
+        btnSettingsChallenge.visibility = if (show) View.VISIBLE else View.GONE
+        settingsChallengeHint.visibility = if (show) View.VISIBLE else View.GONE
         if (!show) return
-        btnSettingsBossRaid.isEnabled = storyDone
-        btnSettingsBossRaid.alpha = if (storyDone) 1f else 0.45f
-        btnSettingsBossRaid.text = if (storyDone) "Boss Raid ($keys/3 keys)" else "Boss Raid (locked)"
-        settingsRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = false)
-        startMenuRaidKeyCountdown()
+        ChallengeDungeon.ensureInitialized(prefs())
+        val unlocked = storyDone && hasSave
+        val chance = ChallengeDungeon.legendaryChance(prefs())
+        btnSettingsChallenge.isEnabled = unlocked
+        btnSettingsChallenge.alpha = if (unlocked) 1f else 0.45f
+        btnSettingsChallenge.text = if (unlocked) "Challenge Dungeon ($chance% Leg)" else "Challenge Dungeon (locked)"
+        settingsChallengeHint.text = when {
+            !storyDone -> "Finish the story first (Acts 1–3)"
+            !hasSave -> "Need a Continue save"
+            else -> ChallengeDungeon.summaryLine(prefs())
+        }
     }
 
     /** Shared Boss Raid entry — loads the saved story hero, then spawns the raid boss. */
@@ -1717,6 +1801,143 @@ class MainActivity : AppCompatActivity() {
             .apply()
     }
 
+    private fun clearChallengeSessionFlags() {
+        prefs().edit()
+            .remove("pre_challenge_save_state")
+            .putBoolean("challenge_active", false)
+            .apply()
+    }
+
+    /** Shared Challenge Dungeon entry — loads Continue hero (no Raid Key). */
+    private fun promptChallengeDungeonEntry(fromInAdventure: Boolean) {
+        if (fromInAdventure && sessionActive) {
+            returnToMainMenuSaving(confirm = false)
+            handler.post { promptChallengeDungeonEntry(fromInAdventure = false) }
+            return
+        }
+        if (!isMetaStoryComplete()) {
+            AlertDialog.Builder(this)
+                .setTitle("Challenge Dungeon locked")
+                .setMessage("Finish the story first (Acts 1–3). Challenge Dungeon unlocks after Breach Sealed.")
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
+        val save = livableSavedState()
+        if (save == null) {
+            AlertDialog.Builder(this)
+                .setTitle("Challenge Dungeon")
+                .setMessage("No saved hero found. Finish the story (Acts 1–3) and keep a Continue save, then enter with that same character.")
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
+        ChallengeDungeon.ensureInitialized(prefs())
+        val hero = heroNameFromSave(save)
+        val chance = ChallengeDungeon.legendaryChance(prefs())
+        val attempts = ChallengeDungeon.attempts(prefs())
+        AlertDialog.Builder(this)
+            .setTitle("Challenge Dungeon")
+            .setMessage(
+                "Enter the Cinder Crucible with $hero?\n\n" +
+                "Your saved stats, gear, inventory, gold, companion, level, and Legendary upgrades carry over.\n" +
+                "Solo save is preserved (Host/Join never overwrite it).\n\n" +
+                "Legendary chance: $chance% (base ${ChallengeDungeon.BASE_CHANCE}%; " +
+                "−${ChallengeDungeon.DECAY_PER_LEGENDARY}% per Legendary found, floor ${ChallengeDungeon.FLOOR}%; " +
+                "+${ChallengeDungeon.BOOST}% every ${ChallengeDungeon.ATTEMPTS_PER_BOOST} attempts, cap ${ChallengeDungeon.CAP}%).\n" +
+                "Attempts so far: $attempts · Legendaries uncapped.\n" +
+                "No Raid Key required."
+            )
+            .setPositiveButton("Enter crucible") { _, _ ->
+                if (!startChallengeDungeonFromSave()) {
+                    Toast.makeText(this, "Could not start Challenge Dungeon with your saved hero.", Toast.LENGTH_LONG).show()
+                    refreshMainMenuButtons()
+                    showStartDialog()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun startChallengeDungeonFromSave(): Boolean {
+        if (!nativeReady) {
+            Toast.makeText(this, "Native library not ready — can't start Challenge Dungeon.", Toast.LENGTH_LONG).show()
+            return false
+        }
+        val data = livableSavedState() ?: return false
+        if (saveIsGameOver(data)) {
+            Toast.makeText(this, "Your save is mid–Game Over. Continue the wipe first, then enter Challenge Dungeon.", Toast.LENGTH_LONG).show()
+            return false
+        }
+        detachOnlineSession()
+        // Snapshot before attempt counter / chance boost so a failed native start does not burn an attempt.
+        prefs().edit()
+            .putString("pre_challenge_save_state", data)
+            .putBoolean("challenge_active", true)
+            .apply()
+        localPlayerName = heroNameFromSave(data)
+        localClassId = prefs().getInt("hero_class", 0)
+        try {
+            loadGameState(data)
+        } catch (e: Exception) {
+            Log.e(TAG, "Challenge Dungeon load save failed", e)
+            clearChallengeSessionFlags()
+            return false
+        }
+        // Pass current chance first; only count the attempt after native start succeeds.
+        val chancePreview = ChallengeDungeon.legendaryChance(prefs())
+        val ok = try {
+            beginChallengeDungeonFromCurrent(chancePreview)
+        } catch (e: Exception) {
+            Log.e(TAG, "beginChallengeDungeonFromCurrent failed", e)
+            false
+        }
+        if (!ok) {
+            clearChallengeSessionFlags()
+            return false
+        }
+        val chanceForRun = ChallengeDungeon.onAttemptStarted(prefs())
+        try { setChallengeLegendaryChance(chanceForRun) } catch (_: Exception) {}
+        lastBattleRoster = ""
+        lastRoomDesc = ""
+        lastChatHistory = ""
+        lastProcessedEvent = ""
+        lastCoachTip = ""
+        lastCoachTurnKey = ""
+        wipeDialogShowing = false
+        storyCompleteRoutesShown = true
+        runDifficulty = try { getDifficulty() } catch (_: Exception) { preferredDifficulty.coerceIn(0, 3) }
+        setHost(true)
+        hideMainMenu()
+        activateSession()
+        btnReset.visibility = View.GONE
+        syncAndSave()
+        updateUi()
+        Toast.makeText(
+            this,
+            "Challenge Dungeon — $localPlayerName enters the Cinder Crucible ($chanceForRun% Leg)!",
+            Toast.LENGTH_SHORT
+        ).show()
+        return true
+    }
+
+    /** Restore pre-challenge adventure save without blanking the hero. */
+    private fun restorePreChallengeSaveOrKeepCurrent(reason: String) {
+        val pre = prefs().getString("pre_challenge_save_state", null)
+        if (!pre.isNullOrBlank()) {
+            prefs().edit()
+                .putString("save_state", pre)
+                .putBoolean("challenge_active", false)
+                .remove("pre_challenge_save_state")
+                .apply()
+            Log.i(TAG, "Restored pre-challenge save ($reason)")
+        } else {
+            clearChallengeSessionFlags()
+            Log.w(TAG, "No pre-challenge snapshot ($reason) — keeping current save_state")
+        }
+    }
+
+
     /** Restore the pre-raid adventure save (same hero) without starting a blank character. */
     private fun restorePreRaidSaveOrKeepCurrent(reason: String) {
         val pre = prefs().getString("pre_raid_save_state", null)
@@ -1742,7 +1963,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Story complete!")
             .setMessage(
-                "Acts 1–3 are finished. Endgame crawl, Legendary gear, and Boss Raids are unlocked.\n\n" +
+                "Acts 1–3 are finished. Endgame crawl, Legendary gear, Boss Raids, and Challenge Dungeon are unlocked.\n\n" +
                 "Raid Keys: $keys/3 · ${raidKeyCountdownLabel(keys)}\n\n" +
                 "Open Boss Raid now, return to the main menu (progress saved), or keep exploring."
             )
@@ -1914,7 +2135,7 @@ class MainActivity : AppCompatActivity() {
         runDifficulty = preferredDifficulty.coerceIn(0, 3)
         resetGame(heroClass, localPlayerName, playMode, runDifficulty, companionClass, companionAutoAi)
         setHost(true)
-        storyCompleteRoutesShown = (playMode == 2) // raid already past story gate; no CTA needed
+        storyCompleteRoutesShown = (playMode == 2 || playMode == 3) // raid/challenge already past story gate
         maybeOfferTutorialThenCoach()
         activateSession()
         btnReset.visibility = View.GONE
@@ -3211,6 +3432,7 @@ class MainActivity : AppCompatActivity() {
                 status.contains("endgame", ignoreCase = true) -> "Story complete — Menu or Boss Raid"
             status.contains("Story complete", ignoreCase = true) -> "Story complete — Acts 1–3"
             status.contains("Mode: Boss Raid", ignoreCase = true) -> "Boss Raid"
+            status.contains("Mode: Challenge Dungeon", ignoreCase = true) -> "Challenge Dungeon"
             status.contains("Quest: Emberdeep", ignoreCase = true) &&
                 try { isRoomCleared() } catch (_: Exception) { false } ->
                 "Act 3 · clear — Search, Rest, or Onward"
@@ -3352,7 +3574,8 @@ class MainActivity : AppCompatActivity() {
             lastProcessedEvent = lastEv
             appendCombatFeed(lastEv)
             if (lastEv.startsWith("BOSS!") || lastEv.contains("Boss encounter", ignoreCase = true)
-                || lastEv.contains("BOSS RAID", ignoreCase = true)) {
+                || lastEv.contains("BOSS RAID", ignoreCase = true)
+                || lastEv.contains("CHALLENGE DUNGEON", ignoreCase = true)) {
                 bossFightActive = true
                 syncAudioBedFromState()
             }
@@ -4202,6 +4425,8 @@ class MainActivity : AppCompatActivity() {
         val d = currentDifficultyForWipe()
         val inRaid = prefs().getBoolean("raid_active", false) ||
             try { getSoloPlayMode() == 2 } catch (_: Exception) { false }
+        val inChallenge = prefs().getBoolean("challenge_active", false) ||
+            try { getSoloPlayMode() == 3 } catch (_: Exception) { false }
         if (d == 3) {
             wipeDialogShowing = true
             if (inRaid) {
@@ -4220,6 +4445,24 @@ class MainActivity : AppCompatActivity() {
                         sessionActive = false
                         detachOnlineSession()
                         clearRaidSessionFlags()
+                        showStartDialog()
+                    }
+                    .show()
+            } else if (inChallenge) {
+                restorePreChallengeSaveOrKeepCurrent("nightmare challenge wipe")
+                AlertDialog.Builder(this)
+                    .setTitle("Game Over — Nightmare Challenge")
+                    .setMessage(
+                        "The party fell in the Challenge Dungeon. Nightmare ends the attempt, " +
+                        "but your story hero save is restored (no blank character)."
+                    )
+                    .setCancelable(false)
+                    .setPositiveButton("Main menu") { _, _ ->
+                        wipeDialogShowing = false
+                        runDifficulty = -1
+                        sessionActive = false
+                        detachOnlineSession()
+                        clearChallengeSessionFlags()
                         showStartDialog()
                     }
                     .show()
@@ -4242,12 +4485,12 @@ class MainActivity : AppCompatActivity() {
         wipeDialogShowing = true
         val title = "Game Over — ${difficultyLabel(d)}"
         val msg = when {
-            inRaid && d == 0 ->
-                "Easy raid wipe: Continue revives your story hero (full HP) and ends the raid without a new character."
-            inRaid && d == 1 ->
-                "Medium raid wipe: Continue revives your story hero (half HP) and ends the raid without a new character."
-            inRaid ->
-                "Hard raid wipe: Continue revives your story hero (gear/gold stripped to starters) and ends the raid."
+            (inRaid || inChallenge) && d == 0 ->
+                "Easy wipe: Continue revives your story hero (full HP) and ends the focused run without a new character."
+            (inRaid || inChallenge) && d == 1 ->
+                "Medium wipe: Continue revives your story hero (half HP) and ends the focused run without a new character."
+            inRaid || inChallenge ->
+                "Hard wipe: Continue revives your story hero (gear/gold stripped to starters) and ends the focused run."
             d == 0 -> "Easy: no loss of stats, gear, or gold. Continue revives the party with full HP one chamber back."
             d == 1 -> "Medium: no loss of stats, gear, or gold. Continue revives with half HP one chamber back."
             else -> "Hard: stats kept, but gold and gear are stripped to starters. Continue revives one chamber back."
@@ -4265,20 +4508,27 @@ class MainActivity : AppCompatActivity() {
                 if (ok) {
                     btnReset.visibility = View.GONE
                     clearRaidSessionFlags()
+                    clearChallengeSessionFlags()
                     syncAndSave()
                     updateUi()
                     Toast.makeText(this, "The party rises…", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(this, "Could not Continue — return to menu.", Toast.LENGTH_LONG).show()
-                    if (inRaid) restorePreRaidSaveOrKeepCurrent("recover failed raid")
-                    else clearSave("recover failed")
+                    when {
+                        inRaid -> restorePreRaidSaveOrKeepCurrent("recover failed raid")
+                        inChallenge -> restorePreChallengeSaveOrKeepCurrent("recover failed challenge")
+                        else -> clearSave("recover failed")
+                    }
                     resetToStartMenu()
                 }
             }
             .setNegativeButton("Main menu") { _, _ ->
                 wipeDialogShowing = false
-                if (inRaid) restorePreRaidSaveOrKeepCurrent("wipe quit to menu raid")
-                else clearSave("wipe quit to menu")
+                when {
+                    inRaid -> restorePreRaidSaveOrKeepCurrent("wipe quit to menu raid")
+                    inChallenge -> restorePreChallengeSaveOrKeepCurrent("wipe quit to menu challenge")
+                    else -> clearSave("wipe quit to menu")
+                }
                 runDifficulty = -1
                 resetToStartMenu()
             }

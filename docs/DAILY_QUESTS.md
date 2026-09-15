@@ -34,4 +34,4 @@ If claimed from the menu with no live solo party, gold/loot stash in `pending_da
 - Countdown to local midnight shown beside the board.
 
 ## Non-goals (this PR)
-Challenge Dungeon, Arena, Endless Deep, Act 4.
+Arena, Endless Deep, Act 4. (Challenge Dungeon: see CHALLENGE_DUNGEON.md / v2.12)

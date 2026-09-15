@@ -413,6 +413,37 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_finishBossRaidKeepParty(JNIEnv 
 }
 
 JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_beginChallengeDungeonFromCurrent(JNIEnv *env, jobject thiz, jint legendaryChancePercent) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return g_Game.beginChallengeDungeonFromCurrent(static_cast<int>(legendaryChancePercent)) ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_finishChallengeDungeonKeepParty(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    g_Game.finishChallengeDungeonKeepParty();
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_consumePendingChallengeLegendaryFound(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return g_Game.consumePendingChallengeLegendaryFound() ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getChallengeLegendaryChance(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return static_cast<jint>(g_Game.getChallengeLegendaryChance());
+}
+
+JNIEXPORT void JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_setChallengeLegendaryChance(JNIEnv *env, jobject thiz, jint percent) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    g_Game.setChallengeLegendaryChance(static_cast<int>(percent));
+}
+
+
+JNIEXPORT jboolean JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_recoverFromPartyWipe(JNIEnv *env, jobject thiz) {
     std::lock_guard<std::mutex> lock(g_RendererMutex);
     return g_Game.recoverFromPartyWipe() ? JNI_TRUE : JNI_FALSE;

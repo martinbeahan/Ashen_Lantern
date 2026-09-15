@@ -16,8 +16,8 @@ android {
         applicationId = "com.fintrack.dndbeginnerremote"
         minSdk = 30
         targetSdk = 35
-        versionCode = 49
-        versionName = "2.10.2"
+        versionCode = 51
+        versionName = "2.12"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
