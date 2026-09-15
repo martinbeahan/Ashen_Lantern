@@ -460,6 +460,8 @@ class MainActivity : AppCompatActivity() {
         // Flush save before process death so progress survives relaunch.
         // Skip until a session is active so the start dialog can't overwrite a good save with an empty game.
         if (!nativeReady || !sessionActive) return
+        // Host/Join must never overwrite the solo/story save_state with ephemeral multiplayer state.
+        if (isOnlineHost || isOnlineClient) return
         try {
             val data = saveGameState()
             if (data.isNotBlank() && data.contains("|") && !saveIsGameOver(data)) {
@@ -468,9 +470,9 @@ class MainActivity : AppCompatActivity() {
                     .putString("hero_name", localPlayerName)
                     .putInt("hero_class", localClassId)
                     .putBoolean("crash_guard", false) // good save written — not an unclean exit
-                    .putBoolean("was_online_host", isOnlineHost)
-                    .putBoolean("was_online_client", isOnlineClient)
-                    .putString("online_session_id", onlineSessionId)
+                    .putBoolean("was_online_host", false)
+                    .putBoolean("was_online_client", false)
+                    .remove("online_session_id")
                     .commit()
             }
         } catch (e: Exception) {
@@ -495,6 +497,15 @@ class MainActivity : AppCompatActivity() {
         joinTimeoutRunnable = null
     }
 
+    /** Clear Host/Join resume markers without touching solo save_state. */
+    private fun clearOnlineResumePrefs() {
+        prefs().edit()
+            .remove("was_online_host")
+            .remove("was_online_client")
+            .remove("online_session_id")
+            .apply()
+    }
+
     private var joinTimeoutRunnable: Runnable? = null
 
     private fun resetToStartMenu() {
@@ -504,15 +515,24 @@ class MainActivity : AppCompatActivity() {
         lastLevelUpNotifyKey = ""
         sheetPulseAnimator?.cancel()
         prefs().edit().putBoolean("crash_guard", false).apply()
+        clearOnlineResumePrefs()
         showStartDialog()
     }
 
-    private fun activateSession() {
+    /**
+     * @param armCrashGuard When true (solo/crawl/raid), unclean exit clears save_state.
+     * Online Host/Join must pass false so a crash cannot wipe the preserved solo save.
+     */
+    private fun activateSession(armCrashGuard: Boolean = true) {
         sessionActive = true
         hideMainMenu()
         hideSettingsOverlay()
-        // Arm crash guard only while a real session is running.
-        prefs().edit().putBoolean("crash_guard", true).apply()
+        if (armCrashGuard) {
+            // Arm crash guard only while a real solo session is running.
+            prefs().edit().putBoolean("crash_guard", true).apply()
+        } else {
+            prefs().edit().putBoolean("crash_guard", false).apply()
+        }
         // Seed pending snapshot so Continue with unspent points highlights Sheet
         // without re-firing the level-up dialog.
         seedPendingSnapshot(notifyHighlightOnly = true)
@@ -785,12 +805,8 @@ class MainActivity : AppCompatActivity() {
                     if (isOnlineClient) {
                         joinTimeoutRunnable?.let { handler.removeCallbacks(it) }
                         joinTimeoutRunnable = null
-                        prefs().edit()
-                            .putBoolean("was_online_client", true)
-                            .putBoolean("was_online_host", false)
-                            .putString("online_session_id", onlineSessionId)
-                            .putBoolean("crash_guard", false)
-                            .apply()
+                        // Do not stamp was_online_* — Continue owns the solo save_state slot only.
+                        prefs().edit().putBoolean("crash_guard", false).apply()
                     }
                     refreshBattleArena()
                     updateUi()
@@ -899,7 +915,12 @@ class MainActivity : AppCompatActivity() {
         if (!nativeReady) return
         try {
             val data = saveGameState()
-            if (saveIsGameOver(data)) {
+            val online = isOnlineHost || isOnlineClient
+            if (online) {
+                // Online Host/Join uses in-memory + Firebase state only.
+                // Never overwrite prefs save_state (solo/story Continue slot).
+                Log.d(TAG, "Online session — skipping local save_state write")
+            } else if (saveIsGameOver(data)) {
                 val d = try { getDifficulty() } catch (_: Exception) { preferredDifficulty }
                 if (d == 3) {
                     clearSave("nightmare defeat during sync")
@@ -910,6 +931,9 @@ class MainActivity : AppCompatActivity() {
                         .putString("hero_name", localPlayerName)
                         .putInt("hero_class", localClassId)
                         .putBoolean("crash_guard", false)
+                        .putBoolean("was_online_host", false)
+                        .putBoolean("was_online_client", false)
+                        .remove("online_session_id")
                         .apply()
                 }
             } else {
@@ -918,9 +942,9 @@ class MainActivity : AppCompatActivity() {
                     .putString("hero_name", localPlayerName)
                     .putInt("hero_class", localClassId)
                     .putBoolean("crash_guard", false)
-                    .putBoolean("was_online_host", isOnlineHost)
-                    .putBoolean("was_online_client", isOnlineClient)
-                    .putString("online_session_id", onlineSessionId)
+                    .putBoolean("was_online_host", false)
+                    .putBoolean("was_online_client", false)
+                    .remove("online_session_id")
                     .apply()
             }
             // Only the DM/host publishes authoritative state
@@ -1114,6 +1138,7 @@ class MainActivity : AppCompatActivity() {
         // Mode switch / Reset: drop any live Firebase listeners first.
         sessionActive = false
         detachOnlineSession()
+        clearOnlineResumePrefs()
         hideSettingsOverlay()
         refreshMainMenuButtons()
         mainMenuRoot.visibility = View.VISIBLE
@@ -1429,29 +1454,45 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun confirmAbandonAdventure() {
+        val online = isOnlineHost || isOnlineClient
         AlertDialog.Builder(this)
-            .setTitle("Leave adventure?")
-            .setMessage("This clears your current session flags and save, then returns to the main menu.")
-            .setPositiveButton("Abandon") { _, _ -> abandonAdventure() }
+            .setTitle(if (online) "Leave online session?" else "Leave adventure?")
+            .setMessage(
+                if (online) {
+                    "Leaves the Host/Join table and returns to the main menu. Your local story Continue save is kept."
+                } else {
+                    "This clears your current session flags and save, then returns to the main menu."
+                }
+            )
+            .setPositiveButton(if (online) "Leave" else "Abandon") { _, _ -> abandonAdventure() }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
     private fun abandonAdventure() {
         hideSettingsOverlay()
+        val leavingOnline = isOnlineHost || isOnlineClient
         sessionActive = false
         detachOnlineSession()
-        prefs().edit()
-            .remove("save_state")
+        val ed = prefs().edit()
             .putBoolean("crash_guard", false)
             .remove("was_online_host")
             .remove("was_online_client")
             .remove("online_session_id")
-            .apply()
+        // Abandoning an online table must not wipe the solo/story Continue save.
+        if (!leavingOnline) {
+            ed.remove("save_state")
+        }
+        ed.apply()
         runDifficulty = -1
         wipeDialogShowing = false
         storyCompleteRoutesShown = false
-        Toast.makeText(this, "Adventure abandoned.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            this,
+            if (leavingOnline) "Left online session. Local story save kept."
+            else "Adventure abandoned.",
+            Toast.LENGTH_SHORT
+        ).show()
         showStartDialog()
     }
 
@@ -1462,7 +1503,8 @@ class MainActivity : AppCompatActivity() {
     private fun returnToMainMenuSaving(confirm: Boolean) {
         val leave = {
             hideSettingsOverlay()
-            if (sessionActive && nativeReady) {
+            val wasOnline = isOnlineHost || isOnlineClient
+            if (sessionActive && nativeReady && !wasOnline) {
                 markMetaStoryCompleteIfNeeded()
                 try { syncAndSave() } catch (e: Exception) {
                     Log.e(TAG, "save before main menu failed", e)
@@ -1470,6 +1512,7 @@ class MainActivity : AppCompatActivity() {
             }
             sessionActive = false
             detachOnlineSession()
+            clearOnlineResumePrefs()
             lastPendingByName.clear()
             lastLevelUpNotifyKey = ""
             sheetPulseAnimator?.cancel()
@@ -1477,15 +1520,25 @@ class MainActivity : AppCompatActivity() {
             runDifficulty = -1
             wipeDialogShowing = false
             clearRaidSessionFlags()
-            Toast.makeText(this, "Progress saved.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                if (wasOnline) "Left online session. Local story progress kept."
+                else "Progress saved.",
+                Toast.LENGTH_SHORT
+            ).show()
             showStartDialog()
         }
         if (confirm && sessionActive) {
+            val online = isOnlineHost || isOnlineClient
             AlertDialog.Builder(this)
                 .setTitle("Return to main menu?")
                 .setMessage(
-                    "Progress is saved (Continue, gear, quest flags, and Raid Keys stay).\n\n" +
-                    "You can open Boss Raid from the main menu when the story is complete."
+                    if (online) {
+                        "Leave the online session? Your local story Continue save stays untouched."
+                    } else {
+                        "Progress is saved (Continue, gear, quest flags, and Raid Keys stay).\n\n" +
+                        "You can open Boss Raid from the main menu when the story is complete."
+                    }
                 )
                 .setPositiveButton("Main menu") { _, _ -> leave() }
                 .setNegativeButton("Stay", null)
@@ -1716,7 +1769,8 @@ class MainActivity : AppCompatActivity() {
             showStartDialog()
             return
         }
-        activateSession()
+        // Do not arm crash_guard / write save_state — solo Continue must survive Host.
+        activateSession(armCrashGuard = false)
         btnReset.visibility = View.GONE
         val sidNow = try { getSessionId() } catch (_: Exception) { "" }
         setupMultiplayer(sidNow, asHost = true)
@@ -1753,7 +1807,8 @@ class MainActivity : AppCompatActivity() {
                     try { prepareClientJoin() } catch (e: Exception) {
                         Log.e(TAG, "prepareClientJoin failed", e)
                     }
-                    activateSession()
+                    // Do not arm crash_guard / write save_state — solo Continue must survive Join.
+                    activateSession(armCrashGuard = false)
                     btnReset.visibility = View.GONE
                     lastBattleRoster = ""
                     setupMultiplayer(sid, asHost = false)
