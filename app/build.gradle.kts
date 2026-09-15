@@ -16,8 +16,8 @@ android {
         applicationId = "com.fintrack.dndbeginnerremote"
         minSdk = 30
         targetSdk = 35
-        versionCode = 54
-        versionName = "2.15"
+        versionCode = 55
+        versionName = "2.16"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -34,17 +34,41 @@ android {
                 )
             }
         }
+
+        // Do NOT set ndk.abiFilters here — that would strip ABIs from the APK and
+        // cause INSTALL_FAILED_NO_MATCHING_ABIS on some phones/emulators.
+        // Default AGP packaging ships armeabi-v7a, arm64-v8a, x86, x86_64 (universal).
     }
 
     buildTypes {
         release {
+            // Minify stays OFF until keep rules are validated on a real device.
+            // ProGuard/R8 rules in proguard-rules.pro are ready; see BUILD_HELP.md.
             isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+        // Prefer sharing release/signed APKs with testers — do not weaken debug
+        // (android:testOnly). Studio Run/Debug APKs are test-only by design.
+        debug {
+            isMinifyEnabled = false
+        }
     }
+
+    // No ABI / density splits — testers get one sideloadable universal APK.
+    // (Play App Bundles still optimize delivery when you upload an AAB.)
+    splits {
+        abi {
+            isEnable = false
+        }
+        density {
+            isEnable = false
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
