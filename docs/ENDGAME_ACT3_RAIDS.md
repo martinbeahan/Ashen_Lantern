@@ -60,3 +60,9 @@ Act 3 flags + endgame boss-seen in serialize; inventory Legendary token fields; 
 3. Raid keys: spend/grant caps; UI explains.
 4. Inventory shows Legendary color + bonus/sub-effect text; upgrade to 20+ unlocks sub-effect.
 5. Continue mid–Act 3; Acts 1–2 regression; crawl early GK/SK still OK.
+
+## Related endgame modes
+
+- **Challenge Dungeon (Cinder Crucible):** `docs/CHALLENGE_DUNGEON.md`
+- **Arena (Ember Ring):** wave-scored fights — `docs/ARENA.md` (v2.13+)
+

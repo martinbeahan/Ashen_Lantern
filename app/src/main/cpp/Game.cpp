@@ -33,6 +33,9 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
     pendingBossAllowLegendary_ = false;
     pendingBossGoldBonus_ = 0;
     pendingChallengeLegendaryFound_ = false;
+    arenaWave_ = 0;
+    arenaScore_ = 0;
+    arenaWavesCleared_ = 0;
     clearSetPiecePending();
     bossSeenGk_ = false;
     bossSeenSk_ = false;
@@ -63,6 +66,8 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
         soloPlayMode_ = static_cast<int>(SoloPlayMode::RAID);
     else if (soloPlayMode == static_cast<int>(SoloPlayMode::CHALLENGE))
         soloPlayMode_ = static_cast<int>(SoloPlayMode::CHALLENGE);
+    else if (soloPlayMode == static_cast<int>(SoloPlayMode::ARENA))
+        soloPlayMode_ = static_cast<int>(SoloPlayMode::ARENA);
     else
         soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
     difficulty_ = difficulty;
@@ -1685,7 +1690,8 @@ bool Game::beginBossRaidFromCurrent() {
 
     // Preserve party (stats, gear, inventory, gold, companion, level, Legendary upgrades).
     if (soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)) {
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)) {
         preRaidSoloPlayMode_ = soloPlayMode_;
         preRaidRoomCount_ = roomCount_;
     }
@@ -1701,6 +1707,9 @@ bool Game::beginBossRaidFromCurrent() {
     pendingBossAllowLegendary_ = false;
     pendingBossGoldBonus_ = 0;
     pendingChallengeLegendaryFound_ = false;
+    arenaWave_ = 0;
+    arenaScore_ = 0;
+    arenaWavesCleared_ = 0;
     clearSetPiecePending();
 
     // Endgame gates active for this encounter (story must already be complete at menu).
@@ -1769,7 +1778,8 @@ bool Game::beginChallengeDungeonFromCurrent(int legendaryChancePercent) {
     if (players_.empty()) return false;
 
     if (soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)) {
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)) {
         preRaidSoloPlayMode_ = soloPlayMode_;
         preRaidRoomCount_ = roomCount_;
     }
@@ -1786,6 +1796,9 @@ bool Game::beginChallengeDungeonFromCurrent(int legendaryChancePercent) {
     pendingBossAllowLegendary_ = false;
     pendingBossGoldBonus_ = 0;
     pendingChallengeLegendaryFound_ = false;
+    arenaWave_ = 0;
+    arenaScore_ = 0;
+    arenaWavesCleared_ = 0;
     clearSetPiecePending();
 
     questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
@@ -1866,6 +1879,145 @@ void Game::finishChallengeDungeonKeepParty() {
     addJournalEntry("Challenge Dungeon concluded; party preserved.");
 }
 
+void Game::spawnArenaWave(int wave) {
+    enemies_.clear();
+    shopInventory_.clear();
+    isMerchantRoom_ = false;
+    roomSearchUsed_ = false;
+    clearSetPiecePending();
+    pendingBossXpBonus_ = 0;
+    pendingBossLootLuck_ = 0;
+    pendingBossAllowLegendary_ = false;
+    pendingBossGoldBonus_ = 0;
+
+    auto pushFoe = [&](const std::string& name, CharacterClass cl, int hpFlat, int acFlat, int atkDelta) {
+        auto foe = std::make_unique<Character>(name, cl, name + "-ar-" + std::to_string(getRandomInt(0, 1000000)));
+        foe->maxHp = std::max(6, foe->maxHp + hpFlat);
+        foe->currentHp = foe->maxHp;
+        foe->armorClass += acFlat;
+        if (atkDelta != 0) {
+            foe->attributes.strength = std::max(1, foe->attributes.strength + atkDelta);
+            foe->attributes.dexterity = std::max(1, foe->attributes.dexterity + atkDelta);
+        }
+        enemies_.push_back(std::move(foe));
+    };
+
+    const int w = std::max(1, std::min(wave, ARENA_MAX_WAVES));
+    arenaWave_ = w;
+    switch (w) {
+        case 1:
+            pushFoe("Goblin", CharacterClass::ROGUE, 2, 0, -2);
+            pushFoe("Goblin", CharacterClass::ROGUE, 0, 0, -2);
+            roomDescription_ = "Ember Ring — Wave 1. Ashen sand, roaring crowd. Prove yourself against the opener pack.";
+            break;
+        case 2:
+            pushFoe("Wolf", CharacterClass::ROGUE, 4, 0, -2);
+            pushFoe("Skeleton", CharacterClass::FIGHTER, 2, 0, -2);
+            roomDescription_ = "Ember Ring — Wave 2. Bone and fang circle the ring.";
+            break;
+        case 3:
+            pushFoe("Ogre", CharacterClass::FIGHTER, 14 + roomCount_ / 2, 1, 0);
+            roomDescription_ = "Ember Ring — Wave 3. An ogre stomps into the ash.";
+            break;
+        case 4:
+            pushFoe("Ogre", CharacterClass::FIGHTER, 16 + roomCount_ / 2, 2, 0);
+            pushFoe("Wolf", CharacterClass::ROGUE, 4, 0, -2);
+            if (difficulty_ >= static_cast<int>(Difficulty::MEDIUM)) {
+                pushFoe("Skeleton", CharacterClass::FIGHTER, 4, 0, -1);
+            }
+            roomDescription_ = "Ember Ring — Wave 4. The crowd chants for blood — a heavy pack.";
+            break;
+        default: {
+            int pick = getRandomInt(0, 2);
+            if (pick == 0) spawnNamedBoss("Hollow Crown", 4);
+            else if (pick == 1) spawnNamedBoss("Ember Hydra", 5);
+            else spawnNamedBoss("Nightfang Matriarch", 4);
+            roomDescription_ = "Ember Ring — Wave 5 (Finale). An endgame apex enters. Legendary possible (7%).";
+            break;
+        }
+    }
+    lastEvent_ = "ARENA WAVE " + std::to_string(w) + "/" + std::to_string(ARENA_MAX_WAVES) + "! Stand ready!";
+    dmSay("Ember Ring Wave " + std::to_string(w) + " of " + std::to_string(ARENA_MAX_WAVES)
+          + ". Score " + std::to_string(arenaScore_) + ".");
+    if (!enemies_.empty()) rollInitiative();
+    else { turnOrder_.clear(); currentTurnIndex_ = 0; }
+}
+
+bool Game::beginArenaFromCurrent() {
+    if (players_.empty()) return false;
+
+    if (soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)
+        && soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)) {
+        preRaidSoloPlayMode_ = soloPlayMode_;
+        preRaidRoomCount_ = roomCount_;
+    }
+
+    soloPlayMode_ = static_cast<int>(SoloPlayMode::ARENA);
+    arenaWave_ = 1;
+    arenaScore_ = 0;
+    arenaWavesCleared_ = 0;
+    gameOver_ = false;
+    dmOnlyTable_ = false;
+    isHost_ = true;
+    dmName_.clear();
+    pendingRaidKeyDrop_ = false;
+    pendingBossXpBonus_ = 0;
+    pendingBossLootLuck_ = 0;
+    pendingBossAllowLegendary_ = false;
+    pendingBossGoldBonus_ = 0;
+    pendingChallengeLegendaryFound_ = false;
+    clearSetPiecePending();
+
+    questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
+    questComplete_ = true;
+    questAct2Complete_ = true;
+    questAct3Complete_ = true;
+
+    roomCount_ = std::max(roomCount_, 18);
+    spawnArenaWave(1);
+    addChatMessage("System", "Ember Ring Arena begins (difficulty: "
+                   + std::string(difficultyName(difficulty_)) + ") — same hero preserved.");
+    addJournalEntry("Entered the Ember Ring Arena.");
+    return true;
+}
+
+void Game::finishArenaKeepParty() {
+    if (!isArena() && preRaidSoloPlayMode_ < 0) return;
+
+    enemies_.clear();
+    shopInventory_.clear();
+    isMerchantRoom_ = false;
+    roomSearchUsed_ = false;
+    turnOrder_.clear();
+    currentTurnIndex_ = 0;
+    gameOver_ = false;
+
+    if (preRaidSoloPlayMode_ >= 0) {
+        soloPlayMode_ = preRaidSoloPlayMode_;
+        if (preRaidRoomCount_ > 0) roomCount_ = preRaidRoomCount_;
+    } else {
+        soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
+    }
+    preRaidSoloPlayMode_ = -1;
+    preRaidRoomCount_ = 0;
+    // Keep arenaScore_ / arenaWavesCleared_ for Kotlin meta until next begin.
+
+    questComplete_ = true;
+    questAct2Complete_ = true;
+    questAct3Complete_ = true;
+    questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
+
+    generateRoomDescription();
+    lastEvent_ = "Ember Ring ended — score " + std::to_string(arenaScore_)
+        + ". Your hero and gear are intact. Return to the menu or press Onward to keep exploring.";
+    dmSay(lastEvent_);
+    addChatMessage("System", "Arena finished — story character preserved. Score "
+                   + std::to_string(arenaScore_) + ".");
+    addJournalEntry("Ember Ring Arena concluded; score " + std::to_string(arenaScore_) + ".");
+}
+
+
 bool Game::recoverFromPartyWipe() {
     if (!gameOver_) return false;
     if (static_cast<Difficulty>(difficulty_) == Difficulty::NIGHTMARE) {
@@ -1891,6 +2043,15 @@ bool Game::recoverFromPartyWipe() {
         dmSay(lastEvent_);
         addChatMessage("System", lastEvent_);
         addJournalEntry(std::string("Challenge Dungeon wipe Continue on ") + dname + " — character preserved.");
+        return true;
+    }
+    if (isArena()) {
+        finishArenaKeepParty();
+        const char* dname = difficultyName(difficulty_);
+        lastEvent_ = std::string("Continue (") + dname + ") — Ember Ring aborted; your story hero stands again.";
+        dmSay(lastEvent_);
+        addChatMessage("System", lastEvent_);
+        addJournalEntry(std::string("Arena wipe Continue on ") + dname + " — character preserved.");
         return true;
     }
     rollbackOneRoomOrBeat();
@@ -1969,6 +2130,22 @@ void Game::enterClearedRoom(Character* actor) {
             addChatMessage("Combat", purse->name + " claims +" + std::to_string(setPieceGold) + " set-piece gold.");
         }
     }
+    // Ember Ring: score the cleared wave; luck bump on 1–4 (Rare/Epic); Wave 5 uses boss Legendary gate.
+    if (isArena() && arenaWave_ >= 1) {
+        arenaScore_ += 100 * arenaWave_;
+        arenaWavesCleared_ = std::max(arenaWavesCleared_, arenaWave_);
+        if (arenaWave_ >= ARENA_MAX_WAVES) {
+            arenaScore_ += 200; // finale bonus
+        } else {
+            pendingBossLootLuck_ += 10 + arenaWave_ * 4;
+        }
+        dmSay("Wave " + std::to_string(arenaWave_) + " cleared! Arena score "
+              + std::to_string(arenaScore_) + ".");
+        addChatMessage("Arena", "Wave " + std::to_string(arenaWave_) + "/"
+                       + std::to_string(ARENA_MAX_WAVES) + " clear — score "
+                       + std::to_string(arenaScore_) + ".");
+    }
+
     int luck = pendingBossLootLuck_;
     pendingBossLootLuck_ = 0;
     // Capture before lantern / early-return paths discard the pending flag.
@@ -2664,6 +2841,24 @@ void Game::playerAdvanceFromCleared() {
         addChatMessage("Quest", "Challenge Dungeon cleared — character preserved.");
         return;
     }
+    if (isArena()) {
+        if (arenaWave_ < ARENA_MAX_WAVES) {
+            const int next = arenaWave_ + 1;
+            spawnArenaWave(next);
+            lastEvent_ = "Onward — Ember Ring Wave " + std::to_string(next)
+                + "/" + std::to_string(ARENA_MAX_WAVES) + " (score " + std::to_string(arenaScore_) + ").";
+            addChatMessage("Arena", lastEvent_);
+            addJournalEntry("Advanced to Arena Wave " + std::to_string(next) + ".");
+            return;
+        }
+        finishArenaKeepParty();
+        lastEvent_ = "Ember Ring cleared! Final score " + std::to_string(arenaScore_)
+            + ". Spoils kept on your story hero. Onward resumes your adventure, or use Menu.";
+        dmSay(lastEvent_);
+        addChatMessage("Quest", "Arena cleared — character preserved. Score "
+                       + std::to_string(arenaScore_) + ".");
+        return;
+    }
 
     // Solo story: Act 1 → Act 2 → Act 3 → procedural endgame.
     if (isSoloQuestScripted()) {
@@ -3055,6 +3250,8 @@ std::string Game::getPartyStatus() const {
     ss << "Room " << roomCount_ << " | Turn: " << (current ? current->name : (exploreBeat ? "Safe" : "None")) << "\n";
     if (isBossRaid()) ss << "Mode: Boss Raid\n";
     else if (isChallengeDungeon()) ss << "Mode: Challenge Dungeon (Legendary chance " << challengeLegendaryChance_ << "%)\n";
+    else if (isArena()) ss << "Mode: Ember Ring Arena — Wave " << arenaWave_ << "/"
+                           << ARENA_MAX_WAVES << " · Score " << arenaScore_ << "\n";
     else if (isSoloCrawl()) ss << "Mode: Dungeon Crawl\n";
     else if (questAct3Complete_) ss << "Story complete: Acts 1–3 (endgame unlocked)\n";
     else if (isAct3Beat(questBeat_)) ss << "Quest: Emberdeep Breach — " << soloQuestBeatName(questBeat_) << "\n";
@@ -3121,7 +3318,8 @@ std::string Game::serialize() {
        << "," << soloPlayMode_ << "," << difficulty_
        << "," << (bossSeenGk_ ? 1 : 0) << "," << (bossSeenSk_ ? 1 : 0) << "," << (bossSeenDrake_ ? 1 : 0)
        << "," << (questAct3Complete_ ? 1 : 0) << "," << (questAct3SealFound_ ? 1 : 0)
-       << "," << (bossSeenHollow_ ? 1 : 0) << "," << (bossSeenHydra_ ? 1 : 0) << "," << (bossSeenNightfang_ ? 1 : 0) << "|";
+       << "," << (bossSeenHollow_ ? 1 : 0) << "," << (bossSeenHydra_ ? 1 : 0) << "," << (bossSeenNightfang_ ? 1 : 0)
+       << "," << arenaWave_ << "," << arenaScore_ << "," << arenaWavesCleared_ << "|";
     // Section 1: Descriptions
     ss << roomDescription_ << "~" << lastEvent_ << "|";
     // Section 2: Players
@@ -3234,6 +3432,13 @@ void Game::deserialize(const std::string& data) {
             else bossSeenHydra_ = false;
             if (std::getline(ss_sub, val, ',')) bossSeenNightfang_ = (val == "1");
             else bossSeenNightfang_ = false;
+            // Arena wave/score (backward compatible)
+            if (std::getline(ss_sub, val, ',')) arenaWave_ = std::stoi(val);
+            else arenaWave_ = 0;
+            if (std::getline(ss_sub, val, ',')) arenaScore_ = std::stoi(val);
+            else arenaScore_ = 0;
+            if (std::getline(ss_sub, val, ',')) arenaWavesCleared_ = std::stoi(val);
+            else arenaWavesCleared_ = 0;
         }
     }
 
