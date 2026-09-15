@@ -4,7 +4,14 @@
 
 Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons product.
 
-## What's new (v2.15 / 54)
+## What's new (v2.16 / 55)
+
+- **Sideload / install docs** — do **not** share Android Studio **debug** APKs (`android:testOnly=true` → `INSTALL_FAILED_TEST_ONLY`); build a **signed release** APK instead
+- ProGuard/R8 keep rules ready for Game Activity, JNI, Firebase, Kotlin (minify still **off**)
+- Release packaging: universal APK (ABI/density splits off); no `abiFilters` stripping native libs
+- Reminder: **minSdk 30** (Android 11+); uninstall old signature before reinstall; capture `adb install` error text
+
+## Previous (v2.15 / 54)
 
 - **Act 4 — Ashwake Vigil** — original story after Emberdeep: Greyfen Marsh, Vigil Ember, Ashwake Herald climax; story-complete / endgame gate moves to Vigil Kindled
 - Continue saves preserved (no wipe); Host/Join still isolated from solo `save_state`
@@ -50,7 +57,7 @@ Distinct from normal Dungeon Crawl: depth rises forever; foe density/HP scale wi
 
 - [Android Studio](https://developer.android.com/studio) (recent stable)
 - **JDK 17** (bundled with Android Studio is fine)
-- **SDK Platform 35**, **minSdk 30**
+- **SDK Platform 35**, **minSdk 30** (Android **11+** only — older phones get `INSTALL_FAILED_OLDER_SDK`)
 - **NDK** `28.2.13676358` and **CMake** (SDK Manager → SDK Tools → Show Package Details)
 - Device or emulator **API 30+**
 
@@ -63,6 +70,34 @@ Distinct from normal Dungeon Crawl: depth rises forever; foe density/HP scale wi
 5. Run on an emulator or physical device.
 
 More detail: [`BUILD_HELP.md`](BUILD_HELP.md).
+
+### Share a sideloadable APK (testers)
+
+**Primary install-fail cause:** Android Studio **Run/Debug** packages a **debug** APK with `android:testOnly="true"`. Sharing that file (often from `app/build/outputs/apk/debug/`) makes normal sideload / “Open APK” install fail with **`INSTALL_FAILED_TEST_ONLY`**. That is **not** a ProGuard issue — release `isMinifyEnabled` is currently **false**.
+
+**Do this instead — build a release APK:**
+
+1. **Android Studio:** **Build → Generate Signed Bundle / APK…** → choose **APK** (not App Bundle) → create or pick a keystore → **release** → finish.
+2. **Or CLI** (from the project root, after a successful sync):
+   ```bash
+   ./gradlew assembleRelease
+   ```
+   Output: `app/build/outputs/apk/release/`. Sign it if your local release build is unsigned (Studio’s **Generate Signed APK** wizard is the easiest path for testers).
+3. Send the **release** `.apk` (one **universal** APK — ABI/density splits are off so phones get all native ABIs).
+
+**Before the tester installs:**
+
+- Phone must be **Android 11+** (`minSdk 30`).
+- If an older Ashen Lantern build was installed with a **different signing key** (e.g. Studio debug vs your release keystore), uninstall the old app first — otherwise you get `INSTALL_FAILED_UPDATE_INCOMPATIBLE`.
+- Prefer the release APK above; do **not** hand out Studio debug APKs.
+
+**If install still fails — collect the error string:**
+
+```bash
+adb install -r path/to/ashen-lantern-release.apk
+```
+
+Copy the full failure line (e.g. `INSTALL_FAILED_TEST_ONLY`, `INSTALL_FAILED_OLDER_SDK`, `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, `INSTALL_FAILED_NO_MATCHING_ABIS`) and send it back. That string is the fastest way to diagnose.
 
 ### Firebase / `google-services.json` (local secret)
 

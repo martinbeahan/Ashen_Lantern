@@ -52,3 +52,40 @@ The native build cache is sticky. Do a hard clean:
 4. In Android Studio: **File → Sync Project with Gradle Files**
 5. **Build → Rebuild Project**
 6. Analyze the new `app-debug.apk` again — `libdndbeginnerremote.so` should no longer say 4 KB.
+
+
+## Sideload install failures (testers)
+
+### `INSTALL_FAILED_TEST_ONLY` (most common when sharing from Studio)
+
+Android Studio **Run** / **Debug** marks the debug APK with `android:testOnly="true"`. Sideloading that APK (Files app, Drive, chat) fails for normal users.
+
+- **Fix:** Build a **signed release APK** — **Build → Generate Signed Bundle / APK… → APK → release**, or `./gradlew assembleRelease` and sign it.
+- Do **not** set `testOnly=false` on debug to paper over this; keep debug for developers, give testers release builds.
+- Advanced: `adb install -t file.apk` can force a test-only APK, but testers without `adb` still cannot install it.
+
+### Other common errors
+
+| Error | Likely cause | What to do |
+|-------|----------------|------------|
+| `INSTALL_FAILED_OLDER_SDK` | Phone below Android 11 | Need API 30+ (`minSdk 30`) |
+| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | Different signing key than installed app | Uninstall old Ashen Lantern, then reinstall |
+| `INSTALL_FAILED_NO_MATCHING_ABIS` | APK missing the device ABI | Use universal release APK (this project does **not** set `abiFilters` / ABI splits) |
+| `INSTALL_PARSE_FAILED_NO_CERTIFICATES` | Unsigned APK | Use **Generate Signed APK** |
+
+Always paste the **exact** `adb install` / installer error string when reporting.
+
+### Packaging notes
+
+- Release **minify is off** (`isMinifyEnabled = false`) — ProGuard/R8 is **not** the cause of current install failures.
+- ABI/density **splits are disabled** so `assembleRelease` / signed APK is a **universal** APK for testers.
+- Do not add `ndk.abiFilters` unless you intentionally ship per-ABI artifacts.
+
+## Enabling minify safely (optional, later)
+
+When you want a smaller release APK:
+
+1. Confirm `app/proguard-rules.pro` keep rules cover MainActivity JNI, Game Activity, Firebase, and Kotlin (already present).
+2. In `app/build.gradle.kts` release: set `isMinifyEnabled = true` (optionally `isShrinkResources = true` after a smoke test).
+3. Install the minified release on a physical device; exercise solo play, Continue save, Host/Join (with `google-services.json`), and Settings.
+4. If something crashes with `ClassNotFoundException` / `NoSuchMethodError` / JNI `UnsatisfiedLinkError`, add a keep rule and retry — do **not** ship minify to testers until that pass is green.
