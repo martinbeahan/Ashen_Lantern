@@ -57,7 +57,7 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
     turnCounter_ = 0;
     roomCount_ = 1;
     dmOnlyTable_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     isMerchantRoom_ = false;
     dmName_.clear();
     // Local / solo table is always the turn authority (clients opt out via prepareClientJoin).
@@ -111,7 +111,7 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
         // Force an endgame boss immediately
         enemies_.clear();
         isMerchantRoom_ = false;
-        roomSearchUsed_ = false;
+        roomSearchUsed_ = false; roomRestUsed_ = false;
         {
             int pick = getRandomInt(0, 2);
             if (pick == 0) spawnNamedBoss("Hollow Crown", 4);
@@ -194,7 +194,7 @@ void Game::startDmSession(const std::string& dmName) {
     turnCounter_ = 0;
     roomCount_ = 0;
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     dmOnlyTable_ = true;
     resetSoloQuestState();
     dmName_ = dmName.empty() ? "Dungeon Master" : dmName;
@@ -215,7 +215,7 @@ void Game::dmBeginDungeon() {
     }
     roomCount_ = 1;
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     gameOver_ = false;
     resetSoloQuestState(); // Host-as-DM uses procedural rooms, not solo script
     generateRoomDescription();
@@ -236,7 +236,7 @@ void Game::dmAdvanceRoom() {
         return;
     }
     roomCount_++;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     spawnRoomContent();
     const bool bossRoom = hasLivingBossEnemy();
     const std::string bossToast = lastEvent_;
@@ -279,7 +279,7 @@ void Game::prepareClientJoin() {
     turnCounter_ = 0;
     roomCount_ = 0;
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     dmOnlyTable_ = false;
     resetSoloQuestState();
     dmName_.clear();
@@ -461,7 +461,7 @@ void Game::applySoloQuestRoom() {
     enemies_.clear();
     shopInventory_.clear();
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
 
     const QuestBeatScript* beat = findQuestBeat(questBeat_);
     if (!beat) {
@@ -896,7 +896,7 @@ void Game::spawnRoomContent() {
     enemies_.clear();
     shopInventory_.clear();
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     clearSetPiecePending();
 
     if (isSoloQuestScripted()) {
@@ -1109,7 +1109,9 @@ std::string Game::getInventoryManifest(const std::string& playerName) const {
         if (!it) return;
         // idx:name|bonus|type|rarity|class|slot|upgradeLevel|upgradeCost|sellPrice
         // idx:name|bonus|type|rarity|class|slot|upgradeLevel|upgradeCost|sellPrice|legText
-        std::string leg = it->legendaryBonusText();
+        std::string leg = (it->type == ItemType::POTION)
+            ? it->potionEffectText()
+            : it->legendaryBonusText();
         for (char& ch : leg) { if (ch == ';' || ch == '|' || ch == ':') ch = ','; }
         ss << index << ":" << it->name << "|" << it->bonus << "|"
            << (it->type == ItemType::WEAPON ? "Weapon" : (it->type == ItemType::ARMOR ? "Armor" : "Potion"))
@@ -1741,7 +1743,7 @@ void Game::rollbackOneRoomOrBeat() {
     enemies_.clear();
     shopInventory_.clear();
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
 
     if (isSoloQuestScripted()) {
         int prev = previousScriptedBeat(questBeat_);
@@ -1810,7 +1812,7 @@ bool Game::beginBossRaidFromCurrent() {
     enemies_.clear();
     shopInventory_.clear();
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     // Deep-room bias for raid loot/tuning without permanently rewriting adventure room.
     roomCount_ = std::max(roomCount_, 20);
 
@@ -1834,7 +1836,7 @@ void Game::finishBossRaidKeepParty() {
     enemies_.clear();
     shopInventory_.clear();
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     turnOrder_.clear();
     currentTurnIndex_ = 0;
     gameOver_ = false;
@@ -1903,7 +1905,7 @@ bool Game::beginChallengeDungeonFromCurrent(int legendaryChancePercent) {
     enemies_.clear();
     shopInventory_.clear();
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     roomCount_ = std::max(roomCount_, 22);
 
     // Original vault: endgame apex + SRD-safe adds (no WotC module text).
@@ -1947,7 +1949,7 @@ void Game::finishChallengeDungeonKeepParty() {
     enemies_.clear();
     shopInventory_.clear();
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     turnOrder_.clear();
     currentTurnIndex_ = 0;
     gameOver_ = false;
@@ -1978,7 +1980,7 @@ void Game::spawnArenaWave(int wave) {
     enemies_.clear();
     shopInventory_.clear();
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     clearSetPiecePending();
     pendingBossXpBonus_ = 0;
     pendingBossLootLuck_ = 0;
@@ -2087,7 +2089,7 @@ void Game::finishArenaKeepParty() {
     enemies_.clear();
     shopInventory_.clear();
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     turnOrder_.clear();
     currentTurnIndex_ = 0;
     gameOver_ = false;
@@ -2121,7 +2123,7 @@ void Game::spawnEndlessDepth(int depth) {
     enemies_.clear();
     shopInventory_.clear();
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     clearSetPiecePending();
     pendingBossXpBonus_ = 0;
     pendingBossLootLuck_ = 0;
@@ -2247,7 +2249,7 @@ void Game::finishEndlessDeepKeepParty() {
     enemies_.clear();
     shopInventory_.clear();
     isMerchantRoom_ = false;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     turnOrder_.clear();
     currentTurnIndex_ = 0;
     gameOver_ = false;
@@ -2520,7 +2522,7 @@ void Game::enterClearedRoom(Character* actor) {
     // Stay in this chamber so Short Rest / one Search / Onward are available.
     turnOrder_.clear();
     currentTurnIndex_ = 0;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     roomDescription_ += " The foes lie still. You may Search, take a Short Rest, or press Onward.";
     if (!rareLootNote.empty()) {
         // Prefer Rare+ loot beat so UI can toast a restrained accent.
@@ -3032,6 +3034,11 @@ void Game::playerRest(bool force) {
         }
         return;
     }
+    if (!force && roomRestUsed_) {
+        lastEvent_ = "Already rested here — press Onward for the next rest opportunity.";
+        dmSay("You've already taken your rest in this chamber. Move on before resting again.");
+        return;
+    }
     // Short Rest (5e-inspired): spend hit dice vibe — recover half missing HP + some features
     for (auto& p : players_) {
         if (p->isDead) continue; // dead heroes stay down
@@ -3047,8 +3054,9 @@ void Game::playerRest(bool force) {
         p->deathSaveSuccesses = 0;
         p->deathSaveFailures = 0;
     }
+    if (!force) roomRestUsed_ = true;
     lastEvent_ = "Short Rest complete. Wounds bind; some power returns.";
-    dmSay("You catch your breath in a quiet alcove. This is a Short Rest — a Long Rest will have to wait for safer ground.");
+    dmSay("You catch your breath in a quiet alcove. Short Rest taken — one rest per clear (Short or Long).");
     addJournalEntry("The party took a short rest.");
     addChatMessage("Combat", lastEvent_);
     if (enemies_.empty()) {
@@ -3059,6 +3067,93 @@ void Game::playerRest(bool force) {
     }
     rollInitiative();
 }
+
+
+void Game::playerLongRest(bool force) {
+    if (gameOver_) { lastEvent_ = "Game Over — start a new adventure."; return; }
+    if (!turnOrder_.empty() && currentTurnIndex_ >= 0
+        && static_cast<size_t>(currentTurnIndex_) < turnOrder_.size()
+        && turnOrder_[static_cast<size_t>(currentTurnIndex_)]
+        && turnOrder_[static_cast<size_t>(currentTurnIndex_)]->isDowned) {
+        lastEvent_ = "You're dying — make death saves, you can't rest now.";
+        return;
+    }
+    if (!force && !isMerchantRoom_ && !enemies_.empty()) {
+        lastEvent_ = "Can't Long Rest in the middle of a fight!";
+        dmSay("Steel yourselves — rest when the chamber is clear.");
+        return;
+    }
+    if (isMerchantRoom_) {
+        lastEvent_ = "Leave the merchant stall before settling in for a Long Rest.";
+        return;
+    }
+    if (!force && roomRestUsed_) {
+        lastEvent_ = "Already rested here — press Onward for the next rest opportunity.";
+        dmSay("You've already taken your rest in this chamber. Move on before resting again.");
+        return;
+    }
+    // Long Rest (5e-inspired): full HP, full resources/specials/supplies; clear downed state.
+    for (auto& p : players_) {
+        if (p->isDead) continue;
+        p->currentHp = p->maxHp;
+        p->resources = p->maxResources;
+        p->isDowned = false;
+        p->isStable = false;
+        p->deathSaveSuccesses = 0;
+        p->deathSaveFailures = 0;
+    }
+    if (!force) roomRestUsed_ = true;
+    lastEvent_ = "Long Rest complete. Full strength and supplies restored.";
+    dmSay("Safe enough to settle in. A Long Rest restores your hit points and special uses in full.");
+    addJournalEntry("The party took a long rest.");
+    addChatMessage("Combat", lastEvent_);
+    if (enemies_.empty()) {
+        turnOrder_.clear();
+        currentTurnIndex_ = 0;
+        return;
+    }
+    rollInitiative();
+}
+
+bool Game::useInventoryPotion(const std::string& playerName, int invIndex) {
+    if (gameOver_) return false;
+    Character* hero = findCharacter(playerName);
+    if (!hero || hero->isDead) {
+        lastEvent_ = "Cannot use a potion right now.";
+        return false;
+    }
+    if (hero->isDowned) {
+        lastEvent_ = "You're down — an ally must help before you can drink.";
+        return false;
+    }
+    if (invIndex < 0 || static_cast<size_t>(invIndex) >= hero->inventory.size()) {
+        lastEvent_ = "No such item.";
+        return false;
+    }
+    auto item = hero->inventory[static_cast<size_t>(invIndex)];
+    if (!item || item->type != ItemType::POTION) {
+        lastEvent_ = "That is not a potion.";
+        return false;
+    }
+    const std::string potionName = item->name;
+    const int healAmt = std::max(1, item->bonus);
+    const bool wayfarer = (potionName == "Wayfarer's Tonic");
+    hero->inventory.erase(hero->inventory.begin() + invIndex);
+    hero->heal(healAmt);
+    if (wayfarer) {
+        hero->resources = std::min(hero->maxResources, hero->resources + 1);
+        lastEvent_ = hero->name + " drinks Wayfarer's Tonic — +" + std::to_string(healAmt)
+            + " HP and +1 special/supply.";
+        dmSay("The tonic warms " + hero->name + "'s veins; wounds ease and a spark of power returns.");
+    } else {
+        lastEvent_ = hero->name + " drinks " + potionName + " for " + std::to_string(healAmt) + " HP.";
+        dmSay(hero->name + " downs the potion and feels steadier.");
+    }
+    addJournalEntry(lastEvent_);
+    addChatMessage("Combat", lastEvent_);
+    return true;
+}
+
 
 void Game::playerInteract(const std::string& playerName) {
     if (gameOver_) { lastEvent_ = "Game Over — start a new adventure."; return; }
@@ -3187,7 +3282,7 @@ void Game::playerAdvanceFromCleared() {
             && questBeat_ < static_cast<int>(SoloQuestBeat::RESOLUTION)) {
             questBeat_++;
             roomCount_++;
-            roomSearchUsed_ = false;
+            roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
             lastEvent_ = std::string("Onward — ") + soloQuestBeatName(questBeat_) + ".";
@@ -3199,7 +3294,7 @@ void Game::playerAdvanceFromCleared() {
             questComplete_ = true;
             questBeat_ = static_cast<int>(SoloQuestBeat::ACT2_GREEN);
             roomCount_++;
-            roomSearchUsed_ = false;
+            roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
             lastEvent_ = "Onward — Act 2: Millhollow's Debt begins.";
@@ -3211,7 +3306,7 @@ void Game::playerAdvanceFromCleared() {
             && questBeat_ < static_cast<int>(SoloQuestBeat::ACT2_SETTLED)) {
             questBeat_++;
             roomCount_++;
-            roomSearchUsed_ = false;
+            roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
             lastEvent_ = std::string("Onward — ") + soloQuestBeatName(questBeat_) + ".";
@@ -3224,7 +3319,7 @@ void Game::playerAdvanceFromCleared() {
             questComplete_ = true;
             questBeat_ = static_cast<int>(SoloQuestBeat::ACT3_RUMOR);
             roomCount_++;
-            roomSearchUsed_ = false;
+            roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
             lastEvent_ = "Onward — Act 3: Emberdeep Breach begins.";
@@ -3236,7 +3331,7 @@ void Game::playerAdvanceFromCleared() {
             && questBeat_ < static_cast<int>(SoloQuestBeat::ACT3_SEALED)) {
             questBeat_++;
             roomCount_++;
-            roomSearchUsed_ = false;
+            roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
             lastEvent_ = std::string("Onward — ") + soloQuestBeatName(questBeat_) + ".";
@@ -3250,7 +3345,7 @@ void Game::playerAdvanceFromCleared() {
             questComplete_ = true;
             questBeat_ = static_cast<int>(SoloQuestBeat::ACT4_WATCH);
             roomCount_++;
-            roomSearchUsed_ = false;
+            roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
             lastEvent_ = "Onward — Act 4: Ashwake Vigil begins.";
@@ -3262,7 +3357,7 @@ void Game::playerAdvanceFromCleared() {
             && questBeat_ < static_cast<int>(SoloQuestBeat::ACT4_KINDLED)) {
             questBeat_++;
             roomCount_++;
-            roomSearchUsed_ = false;
+            roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
             lastEvent_ = std::string("Onward — ") + soloQuestBeatName(questBeat_) + ".";
@@ -3277,7 +3372,7 @@ void Game::playerAdvanceFromCleared() {
         questAct2Complete_ = true;
         questComplete_ = true;
         roomCount_++;
-        roomSearchUsed_ = false;
+        roomSearchUsed_ = false; roomRestUsed_ = false;
         spawnRoomContent();
         const bool bossRoom = hasLivingBossEnemy();
         const std::string bossToast = lastEvent_;
@@ -3307,7 +3402,7 @@ void Game::playerAdvanceFromCleared() {
         && !isSoloQuestScripted()) {
         questBeat_ = static_cast<int>(SoloQuestBeat::ACT3_RUMOR);
         roomCount_++;
-        roomSearchUsed_ = false;
+        roomSearchUsed_ = false; roomRestUsed_ = false;
         applySoloQuestRoom();
         if (!enemies_.empty()) rollInitiative();
         lastEvent_ = "Onward — Act 3: Emberdeep Breach begins (story continues).";
@@ -3322,7 +3417,7 @@ void Game::playerAdvanceFromCleared() {
         && !isSoloQuestScripted()) {
         questBeat_ = static_cast<int>(SoloQuestBeat::ACT4_WATCH);
         roomCount_++;
-        roomSearchUsed_ = false;
+        roomSearchUsed_ = false; roomRestUsed_ = false;
         applySoloQuestRoom();
         if (!enemies_.empty()) rollInitiative();
         lastEvent_ = "Onward — Act 4: Ashwake Vigil begins (story continues).";
@@ -3332,7 +3427,7 @@ void Game::playerAdvanceFromCleared() {
     }
 
     roomCount_++;
-    roomSearchUsed_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
     spawnRoomContent();
     const bool bossRoom = hasLivingBossEnemy();
     const std::string bossToast = lastEvent_;
@@ -3675,7 +3770,8 @@ std::string Game::serialize() {
        << "," << (bossSeenHollow_ ? 1 : 0) << "," << (bossSeenHydra_ ? 1 : 0) << "," << (bossSeenNightfang_ ? 1 : 0)
        << "," << arenaWave_ << "," << arenaScore_ << "," << arenaWavesCleared_
        << "," << endlessDepth_ << "," << endlessBestDepthThisRun_
-       << "," << (questAct4Complete_ ? 1 : 0) << "," << (questAct4EmberFound_ ? 1 : 0) << "|";
+       << "," << (questAct4Complete_ ? 1 : 0) << "," << (questAct4EmberFound_ ? 1 : 0)
+       << "," << (roomRestUsed_ ? 1 : 0) << "|";
     // Section 1: Descriptions
     ss << roomDescription_ << "~" << lastEvent_ << "|";
     // Section 2: Players
@@ -3754,7 +3850,7 @@ void Game::deserialize(const std::string& data) {
             if (std::getline(ss_sub, val, ',')) dmName_ = val;
             else if (!dmOnlyTable_) dmName_.clear();
             if (std::getline(ss_sub, val, ',')) roomSearchUsed_ = (val == "1");
-            else roomSearchUsed_ = false;
+            else roomSearchUsed_ = false; roomRestUsed_ = false;
             // Optional quest fields (Ashen Lantern) — backward compatible with older saves.
             if (std::getline(ss_sub, val, ',')) questBeat_ = std::stoi(val);
             else questBeat_ = 0;
@@ -3807,6 +3903,8 @@ void Game::deserialize(const std::string& data) {
             else questAct4Complete_ = false;
             if (std::getline(ss_sub, val, ',')) questAct4EmberFound_ = (val == "1");
             else questAct4EmberFound_ = false;
+            if (std::getline(ss_sub, val, ',')) roomRestUsed_ = (val == "1");
+            else roomRestUsed_ = false;
         }
     }
 

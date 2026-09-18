@@ -186,6 +186,12 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_hasSearchedRoom(JNIEnv *env, jo
     return g_Game.hasSearchedRoom() ? JNI_TRUE : JNI_FALSE;
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_hasUsedRoomRest(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return g_Game.hasUsedRoomRest() ? JNI_TRUE : JNI_FALSE;
+}
+
 JNIEXPORT void JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_doAdvanceRoom(JNIEnv *env, jobject thiz) {
     std::lock_guard<std::mutex> lock(g_RendererMutex);
@@ -222,6 +228,21 @@ JNIEXPORT void JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_doRest(JNIEnv *env, jobject thiz) {
     std::lock_guard<std::mutex> lock(g_RendererMutex);
     g_Game.playerRest();
+}
+
+JNIEXPORT void JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_doLongRest(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    g_Game.playerLongRest();
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_doUseInventoryPotion(JNIEnv *env, jobject thiz, jstring playerName, jint invIndex) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    const char *nativeName = env->GetStringUTFChars(playerName, nullptr);
+    bool ok = g_Game.useInventoryPotion(nativeName ? nativeName : "", static_cast<int>(invIndex));
+    env->ReleaseStringUTFChars(playerName, nativeName);
+    return ok ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL

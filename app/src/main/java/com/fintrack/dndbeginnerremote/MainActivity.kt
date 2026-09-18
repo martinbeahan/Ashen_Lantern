@@ -229,6 +229,8 @@ class MainActivity : AppCompatActivity() {
     external fun doSpecial(targetIndex: Int)
     external fun doInteract(playerName: String)
     external fun doRest()
+    external fun doLongRest()
+    external fun doUseInventoryPotion(playerName: String, invIndex: Int): Boolean
     external fun doIncreaseStat(playerName: String, statIndex: Int)
     external fun doBuyItem(playerName: String, itemIndex: Int): Boolean
     external fun getInventoryManifest(playerName: String): String
@@ -243,6 +245,7 @@ class MainActivity : AppCompatActivity() {
     external fun isInCombat(): Boolean
     external fun isRoomCleared(): Boolean
     external fun hasSearchedRoom(): Boolean
+    external fun hasUsedRoomRest(): Boolean
     external fun doAdvanceRoom()
     external fun setHost(isHost: Boolean)
     external fun addRemoteAlly(characterClass: Int, playerName: String)
@@ -401,12 +404,21 @@ class MainActivity : AppCompatActivity() {
         }
         btnRest.setOnClickListener {
             Log.d(TAG, "Rest clicked")
-            val inCombat = try { isInCombat() } catch (_: Exception) { false }
-            if (inCombat && !isMerchantRoom()) {
-                Toast.makeText(this, "Can't Short Rest in the middle of a fight!", Toast.LENGTH_SHORT).show()
+            if (try { isMerchantRoom() } catch (_: Exception) { false }) {
+                performOrQueue("rest", 0) { doRest() }
                 return@setOnClickListener
             }
-            performOrQueue("rest", 0) { doRest() }
+            val inCombat = try { isInCombat() } catch (_: Exception) { false }
+            if (inCombat) {
+                Toast.makeText(this, "Can't rest in the middle of a fight!", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val alreadyRested = try { hasUsedRoomRest() } catch (_: Exception) { false }
+            if (alreadyRested) {
+                Toast.makeText(this, "Already rested here — press Onward for another chance.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            showRestChooser()
         }
 
         btnSendChat.setOnClickListener {
@@ -929,7 +941,28 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Can't Short Rest in combat.", Toast.LENGTH_SHORT).show()
                     return
                 }
+                if (try { hasUsedRoomRest() } catch (_: Exception) { false }) {
+                    Toast.makeText(this, "Already rested here — press Onward for another chance.", Toast.LENGTH_SHORT).show()
+                    return
+                }
                 doRest()
+            }
+            "longRest" -> {
+                if (!validateActorOrReject(player)) return
+                val inCombat = try { isInCombat() } catch (_: Exception) { false }
+                if (inCombat) {
+                    Toast.makeText(this, "Can't Long Rest in combat.", Toast.LENGTH_SHORT).show()
+                    return
+                }
+                if (try { isMerchantRoom() } catch (_: Exception) { false }) {
+                    Toast.makeText(this, "Leave the merchant before a Long Rest.", Toast.LENGTH_SHORT).show()
+                    return
+                }
+                if (try { hasUsedRoomRest() } catch (_: Exception) { false }) {
+                    Toast.makeText(this, "Already rested here — press Onward for another chance.", Toast.LENGTH_SHORT).show()
+                    return
+                }
+                doLongRest()
             }
             "interact" -> {
                 if (!validateActorOrReject(player)) return
@@ -3521,6 +3554,34 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+    private fun showRestChooser() {
+        val shortLabel = "Short Rest — recover some HP and special uses (once per clear)"
+        val longLabel = "Long Rest — full HP and special/supply restore (once per clear)"
+        AlertDialog.Builder(this)
+            .setTitle("Rest")
+            .setItems(arrayOf(shortLabel, longLabel)) { _, which ->
+                when (which) {
+                    0 -> performOrQueue("rest", 0) {
+                        doRest()
+                        val ev = try { getLastEvent() } catch (_: Exception) { "" }
+                        if (ev.contains("Already rested", ignoreCase = true)) {
+                            Toast.makeText(this, ev, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    1 -> performOrQueue("longRest", 0) {
+                        doLongRest()
+                        val ev = try { getLastEvent() } catch (_: Exception) { "" }
+                        if (ev.contains("Already rested", ignoreCase = true)) {
+                            Toast.makeText(this, ev, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun showInventoryDialog(forName: String = localPlayerName) {
         if (!nativeReady) {
             Toast.makeText(this, "Native library not loaded — cannot open inventory.", Toast.LENGTH_SHORT).show()
@@ -3667,7 +3728,28 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 } else {
-                    if (classLocked) {
+                    if (type == "Potion") {
+                        val effect = legText.ifBlank { "Drink to apply the potion's effect. Consumed on use." }
+                        metaTv.text = buildString {
+                            append("$rarity · Potion · Bag · sell ${sellPrice}g")
+                            append("\n$effect")
+                        }
+                        equipBtn.text = "Use"
+                        equipBtn.isEnabled = true
+                        equipBtn.alpha = 1f
+                        equipBtn.setOnClickListener {
+                            val ok = try { doUseInventoryPotion(forName, index) } catch (_: Exception) { false }
+                            val ev = try { getLastEvent() } catch (_: Exception) { "" }
+                            if (ok) {
+                                syncAndSave(); appendCombatFeed(ev); refresh(); updateUi()
+                                Toast.makeText(this, ev.ifBlank { "Potion used." }, Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(this, ev.ifBlank { "Cannot use potion." }, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        upgBtn.isEnabled = false
+                        upgBtn.alpha = 0.45f
+                    } else if (classLocked) {
                         equipBtn.text = lockMsg.ifBlank { "Class locked" }
                         equipBtn.isEnabled = false
                         equipBtn.alpha = 0.45f
@@ -4005,8 +4087,13 @@ class MainActivity : AppCompatActivity() {
                 cleared -> true
                 else -> canAct && (inCombat || isMyTurn)
             }
-            // Short Rest out of combat; party Rest may revive a downed local hero after a clear.
-            btnRest.isEnabled = !isGameOver && (isShop || (!inCombat && (canAct || cleared)))
+            // Short/Long Rest out of combat; one rest opportunity per cleared chamber.
+            val alreadyRested = try { hasUsedRoomRest() } catch (_: Exception) { false }
+            btnRest.isEnabled = !isGameOver && (isShop || (!inCombat && (canAct || cleared) && !alreadyRested))
+            btnRest.alpha = if (!isShop && alreadyRested) 0.45f else 1f
+            if (!isShop) {
+                btnRest.text = if (alreadyRested) "🌙\nRested" else "🌙\nRest"
+            }
             // Search only when room clear, once per room (never while downed/dead).
             btnInteract.isEnabled = canAct && !isShop && cleared && !searched
         }

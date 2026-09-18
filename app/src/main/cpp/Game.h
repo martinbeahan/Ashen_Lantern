@@ -78,6 +78,10 @@ public:
     void playerSpecialAction(int targetEnemyIndex);
     void playerInteract(const std::string& playerName);
     void playerRest(bool force = false);
+    /** Full recover (HP, resources/specials). Same rest-opportunity gate as Short Rest. */
+    void playerLongRest(bool force = false);
+    /** Drink a bag potion: apply effect and consume. */
+    bool useInventoryPotion(const std::string& playerName, int invIndex);
     void playerIncreaseStat(const std::string& playerName, int statIndex);
     /** Cleared-room advance (Onward) — not merchant Leave. */
     void playerAdvanceFromCleared();
@@ -140,6 +144,8 @@ public:
         return !gameOver_ && !isMerchantRoom_ && !dmOnlyTable_ && roomCount_ >= 1 && enemies_.empty();
     }
     bool hasSearchedRoom() const { return roomSearchUsed_; }
+    /** True after Short or Long Rest this chamber (one rest opportunity between encounters). */
+    bool hasUsedRoomRest() const { return roomRestUsed_; }
     int getRoomCount() const { return roomCount_; }
     int getQuestBeat() const { return questBeat_; }
     bool isQuestLanternRecovered() const { return questLanternRecovered_; }
@@ -290,6 +296,7 @@ private:
     bool isMerchantRoom_ = false;
     bool dmOnlyTable_ = false;
     bool roomSearchUsed_ = false; // one Search attempt per chamber (anti-exploit)
+    bool roomRestUsed_ = false; // one Short/Long Rest per rest opportunity (anti-spam)
     // Solo story / crawl (original; SRD-compatible monsters only). Online DM path leaves beat at NONE.
     int questBeat_ = 0;
     bool questLanternRecovered_ = false;

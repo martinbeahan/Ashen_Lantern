@@ -4,7 +4,14 @@
 
 Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons product.
 
-## What's new (v2.16 / 55)
+## What's new (v2.17 / 56)
+
+- **Short Rest gate** — after a clear, Short Rest works **once per rest opportunity** (between encounters). Button disables / shows "Rested" with a toast if you try again
+- **Long Rest** — new option beside Short Rest (Rest chooser): full HP restore and full special/supply resources; same once-per-clear gate
+- **Wayfarer's Tonic** (daily-quest potion) — inventory shows a plain-English effect and a **Use** button that heals and refreshes one special/supply, then consumes the tonic
+- Host/Join still isolated from solo Continue saves
+
+## Previous (v2.16 / 55)
 
 - **Sideload / install docs** — do **not** share Android Studio **debug** APKs (`android:testOnly=true` → `INSTALL_FAILED_TEST_ONLY`); build a **signed release** APK instead
 - ProGuard/R8 keep rules ready for Game Activity, JNI, Firebase, Kotlin (minify still **off**)

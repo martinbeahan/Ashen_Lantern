@@ -37,7 +37,8 @@ object BeginnerGuide {
         Page(
             "Potion, Rest, Search",
             "• Potion — drink a Potion of Healing (2d4+2 HP). Costs one supply/resource.\n\n" +
-                "• Short Rest — catch your breath: recover some HP and some special uses. " +
+                "• Short Rest — catch your breath: recover some HP and some special uses (once per clear). " +
+                "• Long Rest — full HP and special/supply restore (also once per clear). " +
                 "Not a full night's sleep.\n\n" +
                 "• Search (Srch) — look for treasure or danger (skill check). Can find gold… or a trap."
         ),
@@ -67,13 +68,15 @@ object BeginnerGuide {
         |Attack — Weapon strike vs Armor Class (d20 + bonuses).
         |Special — Your class feature (uses a resource).
         |Potion — Heal 2d4+2 HP (uses a resource).
-        |Short Rest — Recover some HP and resources.
+        |Short Rest — Recover some HP and resources (once per clear).
+        |Long Rest — Full HP and resources (once per clear).
         |Search — Investigate the room (risk/reward).
         |Sheet — Your stats, HP, AC, XP, gear.
         |Log — Adventure journal.
         |
         |Tip: AC is how hard you are to hit. Higher is better.
-        |Tip: Resources power Specials and Potions — rest to regain some.
+        |Tip: Resources power Specials and combat Potions — rest to regain some.
+        |Wayfarer's Tonic (daily quest) — open Inventory and tap Use.
         |Tip: XP fills as you clear rooms; level-ups grant attribute points.
     """.trimMargin()
 
@@ -182,7 +185,7 @@ object BeginnerGuide {
             append("Attack = weapon swing vs their AC. ")
             append("Special ($specialName) = ${specialBlurb(classId)} ")
             if (hurt) append("You're bloodied — consider Potion or Healing Word if you have it. ")
-            append("Short Rest when the room is clear and you're drained.")
+            append("Rest when the room is clear — Short or Long, once per clear.")
         }
     }
 }

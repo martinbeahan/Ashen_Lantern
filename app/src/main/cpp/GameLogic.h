@@ -167,6 +167,14 @@ struct Item {
     }
 
     std::string rarityLabel() const { return rarityName(rarity); }
+    /** Plain-English potion effect for UI (empty for non-potions). */
+    std::string potionEffectText() const {
+        if (type != ItemType::POTION) return "";
+        if (name == "Wayfarer's Tonic") {
+            return "Drink to restore " + std::to_string(bonus) + " HP and refresh 1 special/supply use. Consumed on use.";
+        }
+        return "Drink to restore " + std::to_string(std::max(1, bonus)) + " HP. Consumed on use.";
+    }
     std::string classLabel() const { return classTagName(classTag); }
 
     bool canEquip(CharacterClass c) const {
