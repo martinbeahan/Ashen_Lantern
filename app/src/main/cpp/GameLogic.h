@@ -332,6 +332,8 @@ struct Character {
     int deathSaveFailures = 0;
     /** Solo NPC companion: true = existing ally AI; false = human chooses actions on their turn. */
     bool aiControlled = false;
+    /** Fighter Action Surge (and similar): at most once per combat; cleared on initiative. */
+    bool specialUsedThisCombat = false;
 
     std::shared_ptr<Item> equippedWeapon;
     std::shared_ptr<Item> equippedArmor;
@@ -385,7 +387,7 @@ struct Character {
     void applyStatsForLevel() {
         switch (characterClass) {
             case CharacterClass::FIGHTER:
-                maxResources = 2 + (level / 2); // Action Surge uses
+                maxResources = 1 + (level >= 17 ? 1 : 0); // Action Surge once (twice at 17+), shared with potions
                 break;
             case CharacterClass::WIZARD:
                 maxResources = 2 + level; // spell slots (simplified)

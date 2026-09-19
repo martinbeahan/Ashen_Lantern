@@ -934,7 +934,11 @@ void Game::spawnRoomContent() {
 }
 
 void Game::rollInitiative() {
-    for (auto& p : players_) { if (p) p->fightShieldUsed = false; }
+    for (auto& p : players_) {
+        if (!p) continue;
+        p->fightShieldUsed = false;
+        p->specialUsedThisCombat = false;
+    }
 
     turnOrder_.clear();
     if (isMerchantRoom_) return;
@@ -2923,7 +2927,14 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
 
     if (enemies_.empty() || targetEnemyIndex < 0 || static_cast<size_t>(targetEnemyIndex) >= enemies_.size()) return;
     if (actor->resources <= 0) { lastEvent_ = "No uses remaining for that feature."; return; }
+    // Fighter Action Surge: once per combat (still spends a resource/supply).
+    if (actor->characterClass == CharacterClass::FIGHTER && actor->specialUsedThisCombat) {
+        lastEvent_ = "Action Surge already used this fight — rest or finish the battle for another chance.";
+        dmSay(actor->name + " is still catching their breath from the last surge.");
+        return;
+    }
     actor->resources--;
+    if (actor->characterClass == CharacterClass::FIGHTER) actor->specialUsedThisCombat = true;
 
     Character& enemy = *enemies_[static_cast<size_t>(targetEnemyIndex)];
 
@@ -3092,6 +3103,13 @@ void Game::playerLongRest(bool force) {
         dmSay("You've already taken your rest in this chamber. Move on before resting again.");
         return;
     }
+    if (!force && roomCount_ < longRestNextAvailableRoom_) {
+        const int left = longRestNextAvailableRoom_ - roomCount_;
+        lastEvent_ = "Long Rest on cooldown — clear " + std::to_string(left) +
+                     " more room" + (left == 1 ? "" : "s") + " first (every 5 rooms).";
+        dmSay("A full Long Rest takes time — push through a few more chambers, or take a Short Rest now.");
+        return;
+    }
     // Long Rest (5e-inspired): full HP, full resources/specials/supplies; clear downed state.
     for (auto& p : players_) {
         if (p->isDead) continue;
@@ -3102,7 +3120,10 @@ void Game::playerLongRest(bool force) {
         p->deathSaveSuccesses = 0;
         p->deathSaveFailures = 0;
     }
-    if (!force) roomRestUsed_ = true;
+    if (!force) {
+        roomRestUsed_ = true;
+        longRestNextAvailableRoom_ = roomCount_ + 5; // Long Rest every 5 rooms
+    }
     lastEvent_ = "Long Rest complete. Full strength and supplies restored.";
     dmSay("Safe enough to settle in. A Long Rest restores your hit points and special uses in full.");
     addJournalEntry("The party took a long rest.");
@@ -3771,7 +3792,7 @@ std::string Game::serialize() {
        << "," << arenaWave_ << "," << arenaScore_ << "," << arenaWavesCleared_
        << "," << endlessDepth_ << "," << endlessBestDepthThisRun_
        << "," << (questAct4Complete_ ? 1 : 0) << "," << (questAct4EmberFound_ ? 1 : 0)
-       << "," << (roomRestUsed_ ? 1 : 0) << "|";
+       << "," << (roomRestUsed_ ? 1 : 0) << "," << longRestNextAvailableRoom_ << "|";
     // Section 1: Descriptions
     ss << roomDescription_ << "~" << lastEvent_ << "|";
     // Section 2: Players
@@ -3905,6 +3926,8 @@ void Game::deserialize(const std::string& data) {
             else questAct4EmberFound_ = false;
             if (std::getline(ss_sub, val, ',')) roomRestUsed_ = (val == "1");
             else roomRestUsed_ = false;
+            if (std::getline(ss_sub, val, ',')) longRestNextAvailableRoom_ = std::stoi(val);
+            else longRestNextAvailableRoom_ = 0;
         }
     }
 
