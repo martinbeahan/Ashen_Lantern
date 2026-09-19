@@ -246,6 +246,9 @@ class MainActivity : AppCompatActivity() {
     external fun isRoomCleared(): Boolean
     external fun hasSearchedRoom(): Boolean
     external fun hasUsedRoomRest(): Boolean
+    external fun getLongRestCooldownRooms(): Int
+    external fun getCurrentActorResources(): Int
+    external fun getCurrentActorMaxResources(): Int
     external fun doAdvanceRoom()
     external fun setHost(isHost: Boolean)
     external fun addRemoteAlly(characterClass: Int, playerName: String)
@@ -372,13 +375,32 @@ class MainActivity : AppCompatActivity() {
             }
             // Cleric Healing Word picks ally internally; still allow foe targeting for other classes.
             val special = try { getSpecialName() } catch (_: Exception) { "" }
+            val resLeft = try { getCurrentActorResources() } catch (_: Exception) { 0 }
+            if (resLeft <= 0) {
+                Toast.makeText(this, "No special uses left — Short Rest or Long Rest to recover.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             if (special.contains("Healing", ignoreCase = true)) {
                 performOrQueue("special", 0) {
-                    doSpecial(0); scheduleDiceFromLastEvent()
+                    doSpecial(0)
+                    val ev = try { getLastEvent() } catch (_: Exception) { "" }
+                    if (ev.contains("No ", ignoreCase = true) && (ev.contains("left", ignoreCase = true) || ev.contains("remaining", ignoreCase = true) || ev.contains("already used", ignoreCase = true))) {
+                        Toast.makeText(this, ev, Toast.LENGTH_SHORT).show()
+                    }
+                    scheduleDiceFromLastEvent()
                 }
             } else {
                 resolveTargetedAction(needEnemy = true, actionType = "special") { i ->
-                    doSpecial(i); animateAttack(true, targetEnemyIndex = i); scheduleDiceFromLastEvent()
+                    doSpecial(i)
+                    val ev = try { getLastEvent() } catch (_: Exception) { "" }
+                    if (ev.contains("already used", ignoreCase = true) ||
+                        (ev.contains("No ", ignoreCase = true) && (ev.contains("remaining", ignoreCase = true) || ev.contains("left", ignoreCase = true)))
+                    ) {
+                        Toast.makeText(this, ev, Toast.LENGTH_SHORT).show()
+                    } else {
+                        animateAttack(true, targetEnemyIndex = i)
+                    }
+                    scheduleDiceFromLastEvent()
                 }
             }
         }
@@ -952,6 +974,11 @@ class MainActivity : AppCompatActivity() {
                 val inCombat = try { isInCombat() } catch (_: Exception) { false }
                 if (inCombat) {
                     Toast.makeText(this, "Can't Long Rest in combat.", Toast.LENGTH_SHORT).show()
+                    return
+                }
+                val lrCd = try { getLongRestCooldownRooms() } catch (_: Exception) { 0 }
+                if (lrCd > 0) {
+                    Toast.makeText(this, "Long Rest on cooldown — $lrCd room(s) left.", Toast.LENGTH_SHORT).show()
                     return
                 }
                 if (try { isMerchantRoom() } catch (_: Exception) { false }) {
@@ -3557,7 +3584,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun showRestChooser() {
         val shortLabel = "Short Rest — recover some HP and special uses (once per clear)"
-        val longLabel = "Long Rest — full HP and special/supply restore (once per clear)"
+        val cd = try { getLongRestCooldownRooms() } catch (_: Exception) { 0 }
+        val longLabel = if (cd > 0) {
+            "Long Rest — on cooldown ($cd room${if (cd == 1) "" else "s"} left; every 5 rooms)"
+        } else {
+            "Long Rest — full HP and special/supply restore (every 5 rooms; once per clear)"
+        }
         AlertDialog.Builder(this)
             .setTitle("Rest")
             .setItems(arrayOf(shortLabel, longLabel)) { _, which ->
@@ -3569,11 +3601,24 @@ class MainActivity : AppCompatActivity() {
                             Toast.makeText(this, ev, Toast.LENGTH_SHORT).show()
                         }
                     }
-                    1 -> performOrQueue("longRest", 0) {
-                        doLongRest()
-                        val ev = try { getLastEvent() } catch (_: Exception) { "" }
-                        if (ev.contains("Already rested", ignoreCase = true)) {
-                            Toast.makeText(this, ev, Toast.LENGTH_SHORT).show()
+                    1 -> {
+                        val left = try { getLongRestCooldownRooms() } catch (_: Exception) { 0 }
+                        if (left > 0) {
+                            Toast.makeText(
+                                this,
+                                "Long Rest on cooldown — clear $left more room${if (left == 1) "" else "s"} first.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@setItems
+                        }
+                        performOrQueue("longRest", 0) {
+                            doLongRest()
+                            val ev = try { getLastEvent() } catch (_: Exception) { "" }
+                            if (ev.contains("Already rested", ignoreCase = true) ||
+                                ev.contains("cooldown", ignoreCase = true)
+                            ) {
+                                Toast.makeText(this, ev, Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 }
@@ -4078,8 +4123,10 @@ class MainActivity : AppCompatActivity() {
             // Cleared chamber uses Turn: Safe — treat like shop exploration for button unlocks.
             val canAct = isMyTurn || (!isGameOver && !localDown && (isShop || cleared ||
                 status.contains("Turn: Safe", ignoreCase = true)))
-            btnSpecial.isEnabled = canAct && !cleared && !isShop
-            btnHeal.isEnabled = canAct && !cleared && !isShop
+            val actorRes = try { getCurrentActorResources() } catch (_: Exception) { 1 }
+            btnSpecial.isEnabled = canAct && !cleared && !isShop && actorRes > 0
+            btnSpecial.alpha = if (!isShop && !cleared && actorRes <= 0) 0.45f else 1f
+            btnHeal.isEnabled = canAct && !cleared && !isShop && actorRes > 0
             // Onward / shop after clear even if local hero is downed (party continues).
             btnAttack.isEnabled = when {
                 isGameOver -> false
@@ -4355,6 +4402,8 @@ class MainActivity : AppCompatActivity() {
                 // Party on left faces right (native); foes on right face left toward the party.
                 scaleX = if (isEnemyColumn) -1f else 1f
                 alpha = if (unit.hp <= 0) 0.35f else 1f
+            }.also { img ->
+                if (unit.hp > 0) startIdleBob(img)
             }
             val name = TextView(this).apply {
                 text = unit.name
@@ -4491,6 +4540,26 @@ class MainActivity : AppCompatActivity() {
         return column.getChildAt(0).findViewWithTag("sprite") as? ImageView
     }
 
+    
+    /** Gentle idle bob using LuizMelo idle frames — skipped when reduce-flash is on. */
+    private fun startIdleBob(img: ImageView) {
+        if (reduceFlashEnabled) return
+        img.animate().cancel()
+        img.translationY = 0f
+        img.animate()
+            .translationY(-5f)
+            .setDuration(700L)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .withEndAction {
+                img.animate()
+                    .translationY(0f)
+                    .setDuration(700L)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .withEndAction { startIdleBob(img) }
+                    .start()
+            }.start()
+    }
+
     private fun animateAttack(
         attackerIsPlayer: Boolean,
         targetEnemyIndex: Int? = null,
@@ -4519,52 +4588,68 @@ class MainActivity : AppCompatActivity() {
         }
         val facing = if (a.scaleX < 0f) -1f else 1f
         val dx = (if (attackerIsPlayer) 128f else -128f)
-        // Swap to attack frame briefly (idle restored after lunge).
+        // First-pass real animation using existing LuizMelo idle/attack frames:
+        // wind-up (idle) → attack frame + lunge → recover to idle. Reduce-flash shortens motion.
         val idleRes = (a.getTag(R.id.sheetPortrait) as? Int) ?: 0
-        if (idleRes != 0) {
-            a.setImageResource(attackSpriteFor(idleRes))
-        }
+        val windMs = if (reduceFlashEnabled) 50L else 70L
+        val lungeMs = if (reduceFlashEnabled) 100L else 130L
+        val recoverMs = if (reduceFlashEnabled) 140L else 180L
         a.animate().cancel()
         a.translationX = 0f
+        fun playImpact() {
+            defendView?.let { d ->
+                flashHit(d, critical)
+                val baseSx = d.scaleX.let { if (it == 0f) facing else it.coerceIn(-2f, 2f) }
+                val sign = if (baseSx < 0f) -1f else 1f
+                val impact = if (critical) 1.48f else 1.26f
+                d.animate().cancel()
+                d.animate()
+                    .scaleX(sign * impact).scaleY(impact)
+                    .setDuration(if (critical) 120 else 90)
+                    .withEndAction {
+                        d.animate()
+                            .scaleX(sign).scaleY(1f)
+                            .setDuration(160)
+                            .start()
+                    }.start()
+                if (damageAmount != null && damageAmount > 0) {
+                    spawnFloatingDamage(d, damageAmount, critical)
+                    flashScreen(critical)
+                    shakeBattleArena(critical)
+                } else if (critical) {
+                    flashScreen(true)
+                    shakeBattleArena(true)
+                }
+            } ?: run {
+                if (critical) {
+                    flashScreen(true)
+                    shakeBattleArena(true)
+                }
+            }
+        }
+        // Wind-up pull-back on idle, then attack frame + lunge, then recover.
         a.animate()
-            .translationX(dx)
-            .setDuration(110)
+            .translationX(-dx * 0.18f)
+            .setDuration(windMs)
             .setInterpolator(AccelerateDecelerateInterpolator())
             .withEndAction {
-                a.animate().translationX(0f).setDuration(160).withEndAction {
-                    if (idleRes != 0) a.setImageResource(idleRes)
-                }.start()
-                defendView?.let { d ->
-                    flashHit(d, critical)
-                    val baseSx = d.scaleX.let { if (it == 0f) facing else it.coerceIn(-2f, 2f) }
-                    val sign = if (baseSx < 0f) -1f else 1f
-                    val impact = if (critical) 1.48f else 1.26f
-                    d.animate().cancel()
-                    d.animate()
-                        .scaleX(sign * impact).scaleY(impact)
-                        .setDuration(if (critical) 120 else 90)
-                        .withEndAction {
-                            d.animate()
-                                .scaleX(sign).scaleY(1f)
-                                .setDuration(160)
-                                .start()
-                        }.start()
-                    if (damageAmount != null && damageAmount > 0) {
-                        spawnFloatingDamage(d, damageAmount, critical)
-                        flashScreen(critical)
-                        shakeBattleArena(critical)
-                    } else if (critical) {
-                        flashScreen(true)
-                        shakeBattleArena(true)
-                    }
-                } ?: run {
-                    if (critical) {
-                        flashScreen(true)
-                        shakeBattleArena(true)
-                    }
-                }
+                if (idleRes != 0) a.setImageResource(attackSpriteFor(idleRes))
+                a.animate()
+                    .translationX(dx)
+                    .setDuration(lungeMs)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .withEndAction {
+                        playImpact()
+                        a.animate()
+                            .translationX(0f)
+                            .setDuration(recoverMs)
+                            .withEndAction {
+                                if (idleRes != 0) a.setImageResource(idleRes)
+                            }.start()
+                    }.start()
             }.start()
     }
+
 
     private fun flashHit(target: ImageView, critical: Boolean) {
         if (reduceFlashEnabled) {

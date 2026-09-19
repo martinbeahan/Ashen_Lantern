@@ -146,6 +146,12 @@ public:
     bool hasSearchedRoom() const { return roomSearchUsed_; }
     /** True after Short or Long Rest this chamber (one rest opportunity between encounters). */
     bool hasUsedRoomRest() const { return roomRestUsed_; }
+    /** Rooms until Long Rest is available again (0 = ready). Cooldown = 5 rooms after a Long Rest. */
+    int getLongRestCooldownRooms() const {
+        if (roomCount_ >= longRestNextAvailableRoom_) return 0;
+        return longRestNextAvailableRoom_ - roomCount_;
+    }
+    bool canLongRestByCooldown() const { return getLongRestCooldownRooms() == 0; }
     int getRoomCount() const { return roomCount_; }
     int getQuestBeat() const { return questBeat_; }
     bool isQuestLanternRecovered() const { return questLanternRecovered_; }
@@ -297,6 +303,8 @@ private:
     bool dmOnlyTable_ = false;
     bool roomSearchUsed_ = false; // one Search attempt per chamber (anti-exploit)
     bool roomRestUsed_ = false; // one Short/Long Rest per rest opportunity (anti-spam)
+    /** Earliest roomCount_ at which Long Rest is allowed again (5-room cooldown). */
+    int longRestNextAvailableRoom_ = 0;
     // Solo story / crawl (original; SRD-compatible monsters only). Online DM path leaves beat at NONE.
     int questBeat_ = 0;
     bool questLanternRecovered_ = false;

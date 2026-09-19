@@ -4,7 +4,14 @@
 
 Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons product.
 
-## What's new (v2.17 / 56)
+## What's new (v2.18 / 57)
+
+- **Action Surge fix** — Fighter Action Surge is once per fight (still spends a resource) and can no longer be spammed when out of uses; Special button greys out at 0 resources for all classes (Cutting Quip, Sneak Attack, Magic Missile, Healing Word)
+- **Long Rest cooldown** — Long Rest only every **5 rooms** (Short Rest still once per clear); chooser greys the option with remaining rooms + toast when on cooldown
+- **Combat anim pass** — LuizMelo idle/attack frames: wind-up → attack lunge → recover, plus gentle idle bob; respects Reduce flashing
+- Host/Join still isolated from solo Continue saves
+
+## Previous (v2.17 / 56)
 
 - **Short Rest gate** — after a clear, Short Rest works **once per rest opportunity** (between encounters). Button disables / shows "Rested" with a toast if you try again
 - **Long Rest** — new option beside Short Rest (Rest chooser): full HP restore and full special/supply resources; same once-per-clear gate

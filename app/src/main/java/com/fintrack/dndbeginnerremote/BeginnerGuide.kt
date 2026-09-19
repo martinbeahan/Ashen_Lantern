@@ -38,7 +38,7 @@ object BeginnerGuide {
             "Potion, Rest, Search",
             "• Potion — drink a Potion of Healing (2d4+2 HP). Costs one supply/resource.\n\n" +
                 "• Short Rest — catch your breath: recover some HP and some special uses (once per clear). " +
-                "• Long Rest — full HP and special/supply restore (also once per clear). " +
+                "• Long Rest — full HP and special/supply restore (every 5 rooms; also once per clear). " +
                 "Not a full night's sleep.\n\n" +
                 "• Search (Srch) — look for treasure or danger (skill check). Can find gold… or a trap."
         ),
@@ -69,7 +69,7 @@ object BeginnerGuide {
         |Special — Your class feature (uses a resource).
         |Potion — Heal 2d4+2 HP (uses a resource).
         |Short Rest — Recover some HP and resources (once per clear).
-        |Long Rest — Full HP and resources (once per clear).
+        |Long Rest — Full HP and resources (every 5 rooms; once per clear).
         |Search — Investigate the room (risk/reward).
         |Sheet — Your stats, HP, AC, XP, gear.
         |Log — Adventure journal.

@@ -192,6 +192,26 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_hasUsedRoomRest(JNIEnv *env, jo
     return g_Game.hasUsedRoomRest() ? JNI_TRUE : JNI_FALSE;
 }
 
+JNIEXPORT jint JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getLongRestCooldownRooms(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return static_cast<jint>(g_Game.getLongRestCooldownRooms());
+}
+
+JNIEXPORT jint JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getCurrentActorResources(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    dnd::Character* actor = g_Game.getCurrentActor();
+    return actor ? static_cast<jint>(actor->resources) : 0;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getCurrentActorMaxResources(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    dnd::Character* actor = g_Game.getCurrentActor();
+    return actor ? static_cast<jint>(actor->maxResources) : 0;
+}
+
 JNIEXPORT void JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_doAdvanceRoom(JNIEnv *env, jobject thiz) {
     std::lock_guard<std::mutex> lock(g_RendererMutex);
