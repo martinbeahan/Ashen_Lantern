@@ -4,6 +4,8 @@
 
 Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons product.
 
+> **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
+
 ## What's new (v2.18 / 57)
 
 - **Action Surge fix** — Fighter Action Surge is once per fight (still spends a resource) and can no longer be spammed when out of uses; Special button greys out at 0 resources for all classes (Cutting Quip, Sneak Attack, Magic Missile, Healing Word)
@@ -130,6 +132,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`ATTRIBUTION.md`](ATTRIBUTION.md) | Trademarks notice, SRD credit, art & audio licenses |
 | [`LICENSE`](LICENSE) | MIT (source code & original adventure text) |
 | [`docs/STORE_LISTING_LEGAL.md`](docs/STORE_LISTING_LEGAL.md) | Paste-ready Play Store legal blurb |
+| [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md) | **3D v2 plan** (Unreal Engine) — desktop slice; 2D app remains production/tester track |
 | [`docs/ASHEN_LANTERN.md`](docs/ASHEN_LANTERN.md) | Act 1 playtest notes |
 | [`docs/ACT2_CRAWL_DIFFICULTY.md`](docs/ACT2_CRAWL_DIFFICULTY.md) | Act 2, crawl, difficulty |
 | [`docs/ENDGAME_ACT3_RAIDS.md`](docs/ENDGAME_ACT3_RAIDS.md) | Act 3, Boss Raids, Legendary rules |
