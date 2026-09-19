@@ -1,6 +1,6 @@
 # Ashen Lantern — Unreal Engine 3D v2 plan
 
-**Status:** planning only (approved direction via Chief of Staff / Martin)  
+**Status:** planning only  
 **Date:** 2026-09-18  
 **This repo (`Ashen_Lantern`):** stays the **2D Android production / tester track**  
 **Proposed new repo:** **`Ashen_Lantern_UE`** (Unreal Engine 5.x desktop prototype → Android later)
@@ -29,11 +29,11 @@ This document is a **plan**, not an implementation. Do **not** start a full Unre
 
 ### Who creates it
 
-**Martin creates the empty GitHub repo** (or approves an agent to create it under his account). Until that exists, all UE work stays at the “instructions only” stage below.
+**Martin creates the empty GitHub repo**. Until that exists, all UE work stays at the “instructions only” stage below.
 
 Suggested remote settings:
 
-- Public or private — Martin’s call (Marketplace license files may favor private until attribution is settled)
+- Public or private —  (Marketplace license files may favor private until attribution is settled)
 - Default branch: `main`
 - README stub linking back to this plan: `Ashen_Lantern` → `docs/UNREAL_V3D_PLAN.md`
 - MIT for **original code / adventure text** (match this repo); third-party Marketplace assets keep their own licenses in `ATTRIBUTION.md`
