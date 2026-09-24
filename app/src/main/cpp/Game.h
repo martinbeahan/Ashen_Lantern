@@ -146,10 +146,12 @@ public:
     bool hasSearchedRoom() const { return roomSearchUsed_; }
     /** True after Short or Long Rest this chamber (one rest opportunity between encounters). */
     bool hasUsedRoomRest() const { return roomRestUsed_; }
-    /** Rooms until Long Rest is available again (0 = ready). Cooldown = 5 rooms after a Long Rest. */
+    /** Rooms until Long Rest is available again (0 = ready). Cooldown = 5 rooms after a Long Rest.
+     *  Uses longRestProgress_ (not roomCount_) so Arena / Endless / Raid / Challenge / Story
+     *  all tick the same 5-room gate even when roomCount_ is biased for loot scaling. */
     int getLongRestCooldownRooms() const {
-        if (roomCount_ >= longRestNextAvailableRoom_) return 0;
-        return longRestNextAvailableRoom_ - roomCount_;
+        if (longRestProgress_ >= longRestNextAvailableRoom_) return 0;
+        return longRestNextAvailableRoom_ - longRestProgress_;
     }
     bool canLongRestByCooldown() const { return getLongRestCooldownRooms() == 0; }
     int getRoomCount() const { return roomCount_; }
@@ -303,8 +305,12 @@ private:
     bool dmOnlyTable_ = false;
     bool roomSearchUsed_ = false; // one Search attempt per chamber (anti-exploit)
     bool roomRestUsed_ = false; // one Short/Long Rest per rest opportunity (anti-spam)
-    /** Earliest roomCount_ at which Long Rest is allowed again (5-room cooldown). */
+    /** Earliest longRestProgress_ at which Long Rest is allowed again (5-room cooldown). */
     int longRestNextAvailableRoom_ = 0;
+    /** Monotonic rooms/waves/depths cleared for Long Rest cooldown (mode-safe; unlike roomCount_). */
+    int longRestProgress_ = 0;
+    /** Tick Long Rest cooldown progress (call on every Onward / room advance across all modes). */
+    void advanceLongRestProgress();
     // Solo story / crawl (original; SRD-compatible monsters only). Online DM path leaves beat at NONE.
     int questBeat_ = 0;
     bool questLanternRecovered_ = false;

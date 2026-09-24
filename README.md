@@ -6,7 +6,15 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.18 / 57)
+## What's new (v2.19 / 58)
+
+- **Duplicate foe targeting** — identical enemies are selectable by slot (not name-only); labels show `#2` when names match
+- **Gear stat flavor** — inventory, shop, and hero sheet explain Weapon/Armor bonuses (attack & damage vs Armor Class) for beginners; long-press item for the full tip
+- **Long Rest in all modes** — 5-room Long Rest cooldown now ticks correctly in Story, Arena, Endless Deep, Boss Raid, and Challenge (not just Crawl); Short Rest still once per clear
+- **Readable combat log** — taller scrollable log, slightly smaller type, more lines kept so action text isn't clipped on phones
+- **Dice / action pop-ups** — results stay on screen longer (~3s, crits longer); tap the overlay to dismiss early
+
+## Previous (v2.18 / 57)
 
 - **Action Surge fix** — Fighter Action Surge is once per fight (still spends a resource) and can no longer be spammed when out of uses; Special button greys out at 0 resources for all classes (Cutting Quip, Sneak Attack, Magic Missile, Healing Word)
 - **Long Rest cooldown** — Long Rest only every **5 rooms** (Short Rest still once per clear); chooser greys the option with remaining rooms + toast when on cooldown

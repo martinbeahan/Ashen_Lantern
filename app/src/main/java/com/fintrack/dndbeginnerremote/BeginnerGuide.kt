@@ -38,7 +38,7 @@ object BeginnerGuide {
             "Potion, Rest, Search",
             "• Potion — drink a Potion of Healing (2d4+2 HP). Costs one supply/resource.\n\n" +
                 "• Short Rest — catch your breath: recover some HP and some special uses (once per clear). " +
-                "• Long Rest — full HP and special/supply restore (every 5 rooms; also once per clear). " +
+                "• Long Rest — full HP and special/supply restore (every 5 rooms in Story, Crawl, Arena, Endless, Raid & Challenge; also once per clear). " +
                 "Not a full night's sleep.\n\n" +
                 "• Search (Srch) — look for treasure or danger (skill check). Can find gold… or a trap."
         ),
@@ -188,4 +188,24 @@ object BeginnerGuide {
             append("Rest when the room is clear — Short or Long, once per clear.")
         }
     }
+
+    /** Plain-English meaning of a weapon/armor bonus for inventory & shop. */
+    fun gearBonusFlavor(type: String, bonus: Int): String {
+        val b = bonus.coerceAtLeast(0)
+        return when {
+            type.equals("Weapon", ignoreCase = true) || type.equals("W", ignoreCase = true) ->
+                "Weapon +$b: adds +$b to your attack roll and +$b to damage when you hit."
+            type.equals("Armor", ignoreCase = true) || type.equals("A", ignoreCase = true) ->
+                "Armor +$b: raises your Armor Class (AC) by $b. Higher AC = harder to hit."
+            type.equals("Potion", ignoreCase = true) || type.equals("P", ignoreCase = true) ->
+                "Potion: drink from Inventory (Use). Consumed when you drink it."
+            else ->
+                if (b > 0) "Bonus +$b improves this item's main combat effect." else "No bonus yet — upgrade or find stronger gear."
+        }
+    }
+
+    fun gearStatsHelpBlurb(): String =
+        "Weapon bonus → attack & damage. Armor bonus → Armor Class (AC). " +
+            "Higher rarity usually means stronger bonuses. Upgrade at merchants when you can afford it."
+
 }

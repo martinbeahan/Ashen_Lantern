@@ -58,6 +58,8 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
     roomCount_ = 1;
     dmOnlyTable_ = false;
     roomSearchUsed_ = false; roomRestUsed_ = false;
+    longRestProgress_ = 0;
+    longRestNextAvailableRoom_ = 0;
     isMerchantRoom_ = false;
     dmName_.clear();
     // Local / solo table is always the turn authority (clients opt out via prepareClientJoin).
@@ -236,6 +238,7 @@ void Game::dmAdvanceRoom() {
         return;
     }
     roomCount_++;
+    advanceLongRestProgress();
     roomSearchUsed_ = false; roomRestUsed_ = false;
     spawnRoomContent();
     const bool bossRoom = hasLivingBossEnemy();
@@ -3031,6 +3034,7 @@ void Game::playerRest(bool force) {
     }
     if (isMerchantRoom_) {
         roomCount_++;
+        advanceLongRestProgress();
         spawnRoomContent();
         const bool bossRoom = hasLivingBossEnemy();
         const std::string bossToast = lastEvent_;
@@ -3080,6 +3084,11 @@ void Game::playerRest(bool force) {
 }
 
 
+
+void Game::advanceLongRestProgress() {
+    longRestProgress_++;
+}
+
 void Game::playerLongRest(bool force) {
     if (gameOver_) { lastEvent_ = "Game Over — start a new adventure."; return; }
     if (!turnOrder_.empty() && currentTurnIndex_ >= 0
@@ -3103,8 +3112,8 @@ void Game::playerLongRest(bool force) {
         dmSay("You've already taken your rest in this chamber. Move on before resting again.");
         return;
     }
-    if (!force && roomCount_ < longRestNextAvailableRoom_) {
-        const int left = longRestNextAvailableRoom_ - roomCount_;
+    if (!force && longRestProgress_ < longRestNextAvailableRoom_) {
+        const int left = longRestNextAvailableRoom_ - longRestProgress_;
         lastEvent_ = "Long Rest on cooldown — clear " + std::to_string(left) +
                      " more room" + (left == 1 ? "" : "s") + " first (every 5 rooms).";
         dmSay("A full Long Rest takes time — push through a few more chambers, or take a Short Rest now.");
@@ -3122,7 +3131,7 @@ void Game::playerLongRest(bool force) {
     }
     if (!force) {
         roomRestUsed_ = true;
-        longRestNextAvailableRoom_ = roomCount_ + 5; // Long Rest every 5 rooms
+        longRestNextAvailableRoom_ = longRestProgress_ + 5; // Long Rest every 5 rooms (all modes)
     }
     lastEvent_ = "Long Rest complete. Full strength and supplies restored.";
     dmSay("Safe enough to settle in. A Long Rest restores your hit points and special uses in full.");
@@ -3239,6 +3248,7 @@ void Game::playerAdvanceFromCleared() {
 
     // Boss Raid / Challenge Dungeon clear: keep spoils on the same hero, restore prior adventure mode.
     if (isBossRaid()) {
+        advanceLongRestProgress(); // cleared vault counts as a room for Long Rest
         finishBossRaidKeepParty();
         lastEvent_ = "Raid victorious! Spoils kept on your story hero. Onward resumes your adventure, or use Menu.";
         dmSay(lastEvent_);
@@ -3246,6 +3256,7 @@ void Game::playerAdvanceFromCleared() {
         return;
     }
     if (isChallengeDungeon()) {
+        advanceLongRestProgress(); // cleared vault counts as a room for Long Rest
         finishChallengeDungeonKeepParty();
         lastEvent_ = "Challenge Dungeon cleared! Spoils kept on your story hero. Onward resumes your adventure, or use Menu.";
         dmSay(lastEvent_);
@@ -3255,6 +3266,7 @@ void Game::playerAdvanceFromCleared() {
     if (isArena()) {
         if (arenaWave_ < ARENA_MAX_WAVES) {
             const int next = arenaWave_ + 1;
+            advanceLongRestProgress(); // wave clear counts as a room for Long Rest
             spawnArenaWave(next);
             lastEvent_ = "Onward — Ember Ring Wave " + std::to_string(next)
                 + "/" + std::to_string(ARENA_MAX_WAVES) + " (score " + std::to_string(arenaScore_) + ").";
@@ -3262,6 +3274,7 @@ void Game::playerAdvanceFromCleared() {
             addJournalEntry("Advanced to Arena Wave " + std::to_string(next) + ".");
             return;
         }
+        advanceLongRestProgress(); // final wave clear counts for Long Rest
         finishArenaKeepParty();
         lastEvent_ = "Ember Ring cleared! Final score " + std::to_string(arenaScore_)
             + ". Spoils kept on your story hero. Onward resumes your adventure, or use Menu.";
@@ -3272,6 +3285,7 @@ void Game::playerAdvanceFromCleared() {
     }
     if (isEndlessDeep()) {
         const int next = endlessDepth_ + 1;
+        advanceLongRestProgress(); // depth clear counts as a room for Long Rest
         spawnEndlessDepth(next);
         lastEvent_ = "Onward — Ashen Deep Depth " + std::to_string(next)
             + " (best this run " + std::to_string(endlessBestDepthThisRun_) + ").";
@@ -3303,6 +3317,7 @@ void Game::playerAdvanceFromCleared() {
             && questBeat_ < static_cast<int>(SoloQuestBeat::RESOLUTION)) {
             questBeat_++;
             roomCount_++;
+            advanceLongRestProgress();
             roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
@@ -3315,6 +3330,7 @@ void Game::playerAdvanceFromCleared() {
             questComplete_ = true;
             questBeat_ = static_cast<int>(SoloQuestBeat::ACT2_GREEN);
             roomCount_++;
+            advanceLongRestProgress();
             roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
@@ -3327,6 +3343,7 @@ void Game::playerAdvanceFromCleared() {
             && questBeat_ < static_cast<int>(SoloQuestBeat::ACT2_SETTLED)) {
             questBeat_++;
             roomCount_++;
+            advanceLongRestProgress();
             roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
@@ -3340,6 +3357,7 @@ void Game::playerAdvanceFromCleared() {
             questComplete_ = true;
             questBeat_ = static_cast<int>(SoloQuestBeat::ACT3_RUMOR);
             roomCount_++;
+            advanceLongRestProgress();
             roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
@@ -3352,6 +3370,7 @@ void Game::playerAdvanceFromCleared() {
             && questBeat_ < static_cast<int>(SoloQuestBeat::ACT3_SEALED)) {
             questBeat_++;
             roomCount_++;
+            advanceLongRestProgress();
             roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
@@ -3366,6 +3385,7 @@ void Game::playerAdvanceFromCleared() {
             questComplete_ = true;
             questBeat_ = static_cast<int>(SoloQuestBeat::ACT4_WATCH);
             roomCount_++;
+            advanceLongRestProgress();
             roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
@@ -3378,6 +3398,7 @@ void Game::playerAdvanceFromCleared() {
             && questBeat_ < static_cast<int>(SoloQuestBeat::ACT4_KINDLED)) {
             questBeat_++;
             roomCount_++;
+            advanceLongRestProgress();
             roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
@@ -3393,6 +3414,7 @@ void Game::playerAdvanceFromCleared() {
         questAct2Complete_ = true;
         questComplete_ = true;
         roomCount_++;
+            advanceLongRestProgress();
         roomSearchUsed_ = false; roomRestUsed_ = false;
         spawnRoomContent();
         const bool bossRoom = hasLivingBossEnemy();
@@ -3423,6 +3445,7 @@ void Game::playerAdvanceFromCleared() {
         && !isSoloQuestScripted()) {
         questBeat_ = static_cast<int>(SoloQuestBeat::ACT3_RUMOR);
         roomCount_++;
+            advanceLongRestProgress();
         roomSearchUsed_ = false; roomRestUsed_ = false;
         applySoloQuestRoom();
         if (!enemies_.empty()) rollInitiative();
@@ -3438,6 +3461,7 @@ void Game::playerAdvanceFromCleared() {
         && !isSoloQuestScripted()) {
         questBeat_ = static_cast<int>(SoloQuestBeat::ACT4_WATCH);
         roomCount_++;
+            advanceLongRestProgress();
         roomSearchUsed_ = false; roomRestUsed_ = false;
         applySoloQuestRoom();
         if (!enemies_.empty()) rollInitiative();
@@ -3448,6 +3472,7 @@ void Game::playerAdvanceFromCleared() {
     }
 
     roomCount_++;
+    advanceLongRestProgress();
     roomSearchUsed_ = false; roomRestUsed_ = false;
     spawnRoomContent();
     const bool bossRoom = hasLivingBossEnemy();
@@ -3792,7 +3817,7 @@ std::string Game::serialize() {
        << "," << arenaWave_ << "," << arenaScore_ << "," << arenaWavesCleared_
        << "," << endlessDepth_ << "," << endlessBestDepthThisRun_
        << "," << (questAct4Complete_ ? 1 : 0) << "," << (questAct4EmberFound_ ? 1 : 0)
-       << "," << (roomRestUsed_ ? 1 : 0) << "," << longRestNextAvailableRoom_ << "|";
+       << "," << (roomRestUsed_ ? 1 : 0) << "," << longRestNextAvailableRoom_ << "," << longRestProgress_ << "|";
     // Section 1: Descriptions
     ss << roomDescription_ << "~" << lastEvent_ << "|";
     // Section 2: Players
@@ -3928,6 +3953,9 @@ void Game::deserialize(const std::string& data) {
             else roomRestUsed_ = false;
             if (std::getline(ss_sub, val, ',')) longRestNextAvailableRoom_ = std::stoi(val);
             else longRestNextAvailableRoom_ = 0;
+            // Mode-safe Long Rest progress (backward compatible: fall back to roomCount_).
+            if (std::getline(ss_sub, val, ',')) longRestProgress_ = std::stoi(val);
+            else longRestProgress_ = roomCount_;
         }
     }
 

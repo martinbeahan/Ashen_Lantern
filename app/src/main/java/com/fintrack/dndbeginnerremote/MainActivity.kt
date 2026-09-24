@@ -67,8 +67,10 @@ class MainActivity : AppCompatActivity() {
     /** Dedupe short kill / rare-loot juice toasts within a session tick. */
     private var lastKillPopKey = ""
     private var lastRareLootKey = ""
-    private var selectedEnemyName: String? = null
-    private var selectedAllyName: String? = null
+    /** Roster slot index for foes (names can duplicate — never key selection by name alone). */
+    private var selectedEnemyIndex: Int? = null
+    /** Roster slot index for allies. */
+    private var selectedAllyIndex: Int? = null
     private var foeTargetingMode = false
     private var allyTargetingMode = false
     private var lastSelectionRoomKey = ""
@@ -708,12 +710,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun resolveSelectedIndex(needEnemy: Boolean): Int? {
         if (needEnemy) {
-            val name = selectedEnemyName ?: return null
-            return livingUnits(true).firstOrNull { it.second.name == name }?.first
+            val idx = selectedEnemyIndex ?: return null
+            // Prefer exact roster slot; livingUnits filters dead foes but keeps original indices.
+            return livingUnits(true).firstOrNull { it.first == idx }?.first
         }
-        val name = selectedAllyName
-        if (name != null) {
-            livingUnits(false).firstOrNull { it.second.name == name }?.first?.let { return it }
+        val idx = selectedAllyIndex
+        if (idx != null) {
+            livingUnits(false).firstOrNull { it.first == idx }?.first?.let { return it }
         }
         // Potion defaults to self
         return livingUnits(false).firstOrNull { it.second.name.equals(localPlayerName, true) }?.first
@@ -721,8 +724,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun clearCombatSelection(reason: String? = null) {
-        selectedEnemyName = null
-        selectedAllyName = null
+        selectedEnemyIndex = null
+        selectedAllyIndex = null
         foeTargetingMode = false
         allyTargetingMode = false
         if (reason != null) Log.d(TAG, "Cleared selection: $reason")
@@ -739,7 +742,7 @@ class MainActivity : AppCompatActivity() {
             performOrQueue(actionType, idx) {
                 action(idx)
                 // Clear selection after the action resolves
-                if (needEnemy) selectedEnemyName = null else selectedAllyName = null
+                if (needEnemy) selectedEnemyIndex = null else selectedAllyIndex = null
                 applySelectionHighlights()
             }
             return
@@ -2950,6 +2953,8 @@ class MainActivity : AppCompatActivity() {
         equippedTv.text = buildString {
             append("Weapon: ${weapon ?: "None"}")
             append("\nArmor: ${armor ?: "None"}")
+            append("\n\n")
+            append(BeginnerGuide.gearStatsHelpBlurb())
         }
         val classId = when {
             forName.equals(localPlayerName, true) -> localClassId
@@ -3224,7 +3229,7 @@ class MainActivity : AppCompatActivity() {
         if (cleaned.isEmpty()) return
         if (combatFeed.isNotEmpty() && combatFeed.last() == cleaned) return
         combatFeed.addLast(cleaned)
-        while (combatFeed.size > 6) combatFeed.removeFirst()
+        while (combatFeed.size > 14) combatFeed.removeFirst()
         logText.text = combatFeed.joinToString("\n")
         val scroll = findViewById<android.widget.ScrollView?>(R.id.combatLogScroll)
         scroll?.post { scroll.fullScroll(View.FOCUS_DOWN) }
@@ -3709,7 +3714,30 @@ class MainActivity : AppCompatActivity() {
                 metaTv.text = buildString {
                     append("$rarity · $cls · $type · $slotLabel · upg $upgLvl · sell ${sellPrice}g")
                     if (classLocked) append(" · $lockMsg")
+                    val bonusInt = bonus.toIntOrNull() ?: 0
+                    if (type.equals("Weapon", true) || type.equals("Armor", true) || type.equals("Potion", true)) {
+                        append("\n")
+                        append(BeginnerGuide.gearBonusFlavor(type, bonusInt))
+                    }
                     if (legText.isNotBlank()) append("\n$legText")
+                }
+                // Long-press for a fuller beginner explanation (matches existing inspect UX).
+                row.setOnLongClickListener {
+                    val bonusInt = bonus.toIntOrNull() ?: 0
+                    val body = buildString {
+                        append(itemLabel)
+                        append("\n\n")
+                        append(BeginnerGuide.gearBonusFlavor(type, bonusInt))
+                        append("\n\n")
+                        append(BeginnerGuide.gearStatsHelpBlurb())
+                        if (legText.isNotBlank()) append("\n\n").append(legText)
+                    }
+                    AlertDialog.Builder(this)
+                        .setTitle("Item info")
+                        .setMessage(body)
+                        .setPositiveButton("OK", null)
+                        .show()
+                    true
                 }
                 sellBtn.text = "Sell (${sellPrice}g)"
                 val hasAlly = companionNameSafe().isNotBlank()
@@ -3923,7 +3951,17 @@ class MainActivity : AppCompatActivity() {
                 val nameTv = row.findViewById<TextView>(R.id.shopItemName)
                 nameTv.text = "$name (+$bonus) · $type"
                 nameTv.setTextColor(rarityColor(rarity))
-                row.findViewById<TextView>(R.id.shopItemCost).text = "$rarity · $cls · ${cost}g"
+                val bonusInt = bonus.toIntOrNull() ?: 0
+                val flavor = BeginnerGuide.gearBonusFlavor(type, bonusInt)
+                row.findViewById<TextView>(R.id.shopItemCost).text = "$rarity · $cls · ${cost}g\n$flavor"
+                row.setOnLongClickListener {
+                    AlertDialog.Builder(this)
+                        .setTitle(name)
+                        .setMessage("$flavor\n\n${BeginnerGuide.gearStatsHelpBlurb()}")
+                        .setPositiveButton("OK", null)
+                        .show()
+                    true
+                }
                 val buy = row.findViewById<Button>(R.id.shopBuyBtn)
                 fun updateBuyEnabled() {
                     buy.isEnabled = parsePlayerGold() >= cost
@@ -4357,11 +4395,13 @@ class MainActivity : AppCompatActivity() {
             clearCombatSelection("roster membership changed")
         } else {
             // Drop selection if the named unit is now dead / gone
-            if (selectedEnemyName != null && foes.none { it.name == selectedEnemyName && it.hp > 0 }) {
-                selectedEnemyName = null
+            val eIdx = selectedEnemyIndex
+            if (eIdx != null && (eIdx !in foes.indices || foes[eIdx].hp <= 0)) {
+                selectedEnemyIndex = null
             }
-            if (selectedAllyName != null && party.none { it.name == selectedAllyName }) {
-                selectedAllyName = null
+            val aIdx = selectedAllyIndex
+            if (aIdx != null && aIdx !in party.indices) {
+                selectedAllyIndex = null
             }
         }
         rebuildColumn(partyColumn, party, alignEnd = false, isEnemyColumn = false)
@@ -4387,7 +4427,7 @@ class MainActivity : AppCompatActivity() {
                 orientation = LinearLayout.VERTICAL
                 gravity = if (alignEnd) Gravity.END else Gravity.START
                 setPadding(4, 4, 4, 4)
-                tag = unit.name
+                tag = index // unique slot (duplicate names allowed)
             }
             val idleRes = spriteFor(unit)
             val img = ImageView(this).apply {
@@ -4405,8 +4445,10 @@ class MainActivity : AppCompatActivity() {
             }.also { img ->
                 if (unit.hp > 0) startIdleBob(img)
             }
+            val dupeCount = units.count { it.name == unit.name }
+            val displayName = if (dupeCount > 1) "${unit.name} #${index + 1}" else unit.name
             val name = TextView(this).apply {
-                text = unit.name
+                text = displayName
                 setTextColor(Color.parseColor("#FFFFE08A"))
                 textSize = 11f
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
@@ -4451,21 +4493,23 @@ class MainActivity : AppCompatActivity() {
 
     private fun onBattleUnitTapped(name: String, index: Int, isEnemy: Boolean) {
         if (isEnemy) {
-            if (selectedEnemyName == name) {
-                selectedEnemyName = null // retap clears
+            if (selectedEnemyIndex == index) {
+                selectedEnemyIndex = null // retap clears
             } else {
-                selectedEnemyName = name
+                selectedEnemyIndex = index
             }
             foeTargetingMode = false
             stopTargetPulse()
             applySelectionHighlights()
-            Toast.makeText(this, "Target: $name", Toast.LENGTH_SHORT).show()
+            val dupe = livingUnits(true).count { it.second.name == name } > 1
+            val label = if (dupe) "$name #${index + 1}" else name
+            Toast.makeText(this, "Target: $label", Toast.LENGTH_SHORT).show()
         } else {
             if (allyTargetingMode) {
-                if (selectedAllyName == name) {
-                    selectedAllyName = null
+                if (selectedAllyIndex == index) {
+                    selectedAllyIndex = null
                 } else {
-                    selectedAllyName = name
+                    selectedAllyIndex = index
                 }
                 allyTargetingMode = false
                 stopTargetPulse()
@@ -4483,15 +4527,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applySelectionHighlights() {
-        fun paint(column: LinearLayout, selected: String?) {
+        fun paint(column: LinearLayout, selectedIndex: Int?) {
             for (i in 0 until column.childCount) {
                 val child = column.getChildAt(i)
-                val selectedHere = selected != null && child.tag == selected
+                val slot = child.tag as? Int
+                val selectedHere = selectedIndex != null && slot == selectedIndex
                 child.background = if (selectedHere) getDrawable(R.drawable.bg_sprite_selected) else null
             }
         }
-        paint(partyColumn, selectedAllyName)
-        paint(enemyColumn, selectedEnemyName)
+        paint(partyColumn, selectedAllyIndex)
+        paint(enemyColumn, selectedEnemyIndex)
     }
 
     private fun startTargetPulse(column: LinearLayout) {
@@ -4523,16 +4568,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun findSpriteByName(column: LinearLayout, name: String): ImageView? {
+        // Legacy name lookup (animations / chat). Prefer findSpriteByIndex for targeting.
         for (i in 0 until column.childCount) {
             val child = column.getChildAt(i)
-            val tag = child.tag?.toString().orEmpty()
-            if (tag.equals(name, ignoreCase = true) || tag.contains(name, ignoreCase = true) ||
-                name.contains(tag, ignoreCase = true)
+            val nameTv = (child as? LinearLayout)?.getChildAt(1) as? TextView
+            val label = nameTv?.text?.toString().orEmpty()
+            if (label.equals(name, ignoreCase = true) || label.contains(name, ignoreCase = true) ||
+                name.contains(label, ignoreCase = true)
             ) {
                 return child.findViewWithTag("sprite") as? ImageView
             }
         }
         return null
+    }
+
+    private fun findSpriteByIndex(column: LinearLayout, index: Int): ImageView? {
+        for (i in 0 until column.childCount) {
+            val child = column.getChildAt(i)
+            if (child.tag as? Int == index) {
+                return child.findViewWithTag("sprite") as? ImageView
+            }
+        }
+        return column.getChildAt(index)?.findViewWithTag("sprite") as? ImageView
     }
 
     private fun firstSprite(column: LinearLayout): ImageView? {
@@ -4580,10 +4637,10 @@ class MainActivity : AppCompatActivity() {
                 enemyColumn.getChildAt(targetEnemyIndex).findViewWithTag<ImageView?>("sprite")
             !attackerIsPlayer && targetAllyIndex != null && targetAllyIndex < partyColumn.childCount ->
                 partyColumn.getChildAt(targetAllyIndex).findViewWithTag<ImageView?>("sprite")
-            selectedEnemyName != null && attackerIsPlayer ->
-                findSpriteByName(enemyColumn, selectedEnemyName!!)
-            selectedAllyName != null && !attackerIsPlayer ->
-                findSpriteByName(partyColumn, selectedAllyName!!)
+            selectedEnemyIndex != null && attackerIsPlayer ->
+                findSpriteByIndex(enemyColumn, selectedEnemyIndex!!)
+            selectedAllyIndex != null && !attackerIsPlayer ->
+                findSpriteByIndex(partyColumn, selectedAllyIndex!!)
             else -> firstSprite(defenderCol)
         }
         val facing = if (a.scaleX < 0f) -1f else 1f
@@ -4991,8 +5048,8 @@ class MainActivity : AppCompatActivity() {
         }
         val summary = event.let { if (it.length > 120) it.take(117) + "…" else it }
         diceSummary?.text = summary
-        root.isClickable = false
-        root.isFocusable = false
+        root.isClickable = true
+        root.isFocusable = true
         root.visibility = View.VISIBLE
         root.alpha = 0f
         root.scaleX = 0.92f
@@ -5007,14 +5064,20 @@ class MainActivity : AppCompatActivity() {
             flashScreen(true)
         }
         diceHideRunnable?.let { handler.removeCallbacks(it) }
-        val holdMs = 1400L
+        // Readable on phones: hold longer; tap overlay to dismiss early (combat never stuck).
+        val holdMs = if (crit) 3600L else 3000L
         val hide = Runnable {
             root.animate().alpha(0f).setDuration(200).withEndAction {
                 root.visibility = View.GONE
+                root.setOnClickListener(null)
             }.start()
         }
         diceHideRunnable = hide
         handler.postDelayed(hide, holdMs)
+        root.setOnClickListener {
+            diceHideRunnable?.let { handler.removeCallbacks(it) }
+            hide.run()
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

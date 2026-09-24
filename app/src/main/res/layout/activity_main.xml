@@ -243,19 +243,23 @@
         <ScrollView
             android:id="@+id/combatLogScroll"
             android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:fillViewport="true"
+            android:layout_height="96dp"
+            android:minHeight="72dp"
+            android:fillViewport="false"
             android:scrollbars="vertical"
             android:fadeScrollbars="false"
-            android:paddingBottom="4dp">
+            android:paddingBottom="4dp"
+            android:overScrollMode="ifContentScrolls">
             <TextView
                 android:id="@+id/combatLogText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="The adventure begins…"
                 android:textColor="@color/parchment"
-                android:textSize="12sp"
-                android:lineSpacingExtra="2dp" />
+                android:textSize="11sp"
+                android:lineSpacingExtra="2dp"
+                android:breakStrategy="simple"
+                android:hyphenationFrequency="none" />
         </ScrollView>
 
         <!-- Hidden chat row kept for code compatibility; collapsed by default height 0 via gone -->
