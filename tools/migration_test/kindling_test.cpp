@@ -126,7 +126,7 @@ int main() {
         const auto h = headerFields(s);
         // v2.29 appends the combat-curve fields (37 = "S3" ...); 34–36 are unchanged.
         CHECK(h.size() >= 37 && h[34] == "E2" && h[35] == "1" && h[36] == "0");
-        CHECK(h.size() == 44 && h[37] == "S3");
+        CHECK(h.size() == 47 && h[37] == "S3"); // v2.30 appends 44..46 (enemy AI)
         Game g2; CHECK(g2.deserialize(s));
         CHECK(g2.getStoryChoices() == "1,0");
         CHECK(g2.serialize() == s);

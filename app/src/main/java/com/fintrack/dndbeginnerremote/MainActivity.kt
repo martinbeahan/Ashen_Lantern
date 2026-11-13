@@ -113,6 +113,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var chkSfx: CheckBox
     private lateinit var chkDmVoice: CheckBox
     private lateinit var chkReduceFlash: CheckBox
+    private var chkIntentChips: CheckBox? = null
+    private var chkIntentNumbers: CheckBox? = null
     private lateinit var btnSettingsTutorial: Button
     private lateinit var btnSettingsAbandon: Button
     private lateinit var btnSettingsReturnMenu: Button
@@ -145,6 +147,11 @@ class MainActivity : AppCompatActivity() {
     private var dmVoiceEnabled = false
     /** Softens/disables full-screen flashes & rapid opacity strobes (photosensitive-friendly). Default OFF. */
     private var reduceFlashEnabled = false
+    /** v2.30: foe intent chips (pref_intent_chips) and exact numbers when party INT is 14+ (pref_intent_numbers). */
+    private var intentChipsEnabled = true
+    private var intentNumbersEnabled = true
+    private var lastIntentBannerSeq = -1
+    private var phaseBannerView: TextView? = null
     private var gameAudio: GameAudio? = null
     private var lastAudioBed: GameAudio.Track? = null
     /** Sticky while a boss / raid fight is active so bed stays BOSS after the event scrolls. */
@@ -227,6 +234,10 @@ class MainActivity : AppCompatActivity() {
     /** v2.28: non-adopting summary of a save blob ("" = would not load). Tab-separated. */
     external fun describeSaveState(data: String): String
     external fun getBattleRoster(): String
+    /** v2.30: foe intents for the chips (see EnemyIntentUi.parseIntents). Empty outside solo curve fights. */
+    external fun getEnemyIntents(): String
+    /** v2.30: hero status codes, "heroIdx,codes;..." (see EnemyIntentUi.parseStatuses). */
+    external fun getStatusEffects(): String
     external fun getDetailedSheet(playerName: String): String
     /** "xp,threshold,level,pending" for one hero; empty if missing. */
     external fun getXpProgress(playerName: String): String
@@ -527,6 +538,8 @@ class MainActivity : AppCompatActivity() {
         sfxEnabled = prefs().getBoolean("pref_sfx_enabled", true)
         dmVoiceEnabled = prefs().getBoolean("pref_dm_voice_enabled", false)
         reduceFlashEnabled = prefs().getBoolean("pref_reduce_flash", false)
+        intentChipsEnabled = prefs().getBoolean("pref_intent_chips", true)
+        intentNumbersEnabled = prefs().getBoolean("pref_intent_numbers", true)
         preferredDifficulty = prefs().getInt("pref_difficulty", 0).coerceIn(0, 3)
         gameAudio = GameAudio(this).also {
             it.start(musicEnabled, sfxEnabled, dmVoiceEnabled)
@@ -1498,6 +1511,8 @@ class MainActivity : AppCompatActivity() {
         chkSfx = findViewById(R.id.chkSfx)
         chkDmVoice = findViewById(R.id.chkDmVoice)
         chkReduceFlash = findViewById(R.id.chkReduceFlash)
+        chkIntentChips = findViewById(R.id.chkIntentChips)
+        chkIntentNumbers = findViewById(R.id.chkIntentNumbers)
         btnSettingsTutorial = findViewById(R.id.btnSettingsTutorial)
         btnSettingsReturnMenu = findViewById(R.id.btnSettingsReturnMenu)
         btnSettingsBossRaid = findViewById(R.id.btnSettingsBossRaid)
@@ -1609,6 +1624,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        bindIntentToggles()
         btnSettingsTutorial.setOnClickListener {
             hideSettingsOverlay()
             showTutorial(0) {}
@@ -1707,6 +1723,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        bindIntentToggles()
         btnSettingsAbandon.visibility = if (sessionActive) View.VISIBLE else View.GONE
         findViewById<View?>(R.id.btnSettingsAdventures)?.visibility = if (isOnline()) View.GONE else View.VISIBLE
         btnSettingsReturnMenu.visibility = if (sessionActive) View.VISIBLE else View.GONE
@@ -4915,6 +4932,157 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshBattleArena() {
+        refreshBattleArenaRoster()
+        refreshIntentChips()
+    }
+
+    private fun bindIntentToggles() {
+        chkIntentChips?.setOnCheckedChangeListener(null)
+        chkIntentNumbers?.setOnCheckedChangeListener(null)
+        chkIntentChips?.isChecked = intentChipsEnabled
+        chkIntentNumbers?.isChecked = intentNumbersEnabled
+        chkIntentNumbers?.isEnabled = intentChipsEnabled
+        chkIntentChips?.setOnCheckedChangeListener { _, checked ->
+            intentChipsEnabled = checked
+            prefs().edit().putBoolean("pref_intent_chips", checked).apply()
+            chkIntentNumbers?.isEnabled = checked
+            if (::battleArena.isInitialized) refreshIntentChips()
+        }
+        chkIntentNumbers?.setOnCheckedChangeListener { _, checked ->
+            intentNumbersEnabled = checked
+            prefs().edit().putBoolean("pref_intent_numbers", checked).apply()
+            if (::battleArena.isInitialized) refreshIntentChips()
+        }
+    }
+
+    /**
+     * v2.30 enemy AI: an intent chip at the top of each foe's sprite slot (glyph, plus the
+     * number when the party's INT is 14+ and the setting is on), status badges on heroes, and a
+     * phase / warning banner once per new bannerSeq. Reduce flashing: everything static; with it
+     * off only HEAVY chips pulse gently and the banner fades. Solo only — online sends nothing.
+     */
+    private fun refreshIntentChips() {
+        if (!::enemyColumn.isInitialized || !::partyColumn.isInitialized) return
+        val snap = EnemyIntentUi.parseIntents(try { getEnemyIntents() } catch (_: Throwable) { "" })
+        val statuses = EnemyIntentUi.parseStatuses(try { getStatusEffects() } catch (_: Throwable) { "" })
+        val numbers = EnemyIntentUi.showNumbers(snap, intentNumbersEnabled)
+        val density = resources.displayMetrics.density
+        val byFoe = snap.intents.associateBy { it.foeIndex }
+        for (i in 0 until enemyColumn.childCount) {
+            val wrap = enemyColumn.getChildAt(i)
+            val idx = wrap.tag as? Int ?: continue
+            val slot = wrap.findViewWithTag<FrameLayout?>("slot") ?: continue
+            val intent = byFoe[idx]
+            val foeCodes = intent?.statuses.orEmpty()
+            val text = if (intentChipsEnabled && intent != null) EnemyIntentUi.chipText(intent, numbers) else ""
+            val badge = EnemyIntentUi.statusBadge(foeCodes)
+            val full = listOf(text, badge).filter { it.isNotEmpty() }.joinToString("  ")
+            val chip = intentChipView(slot, "intent", density, top = true)
+            (chip.getTag(R.id.battleArena) as? android.animation.Animator)?.cancel()
+            chip.setTag(R.id.battleArena, null)
+            chip.alpha = 1f
+            if (full.isEmpty()) { chip.visibility = View.GONE; continue }
+            chip.text = full
+            chip.visibility = View.VISIBLE
+            val desc = listOfNotNull(
+                if (intentChipsEnabled && intent != null) EnemyIntentUi.describe(intent, numbers).ifEmpty { null } else null,
+                EnemyIntentUi.statusNames(foeCodes).ifEmpty { null }
+            ).joinToString(". ")
+            chip.contentDescription = desc
+            chip.setOnLongClickListener { Toast.makeText(this, desc, Toast.LENGTH_SHORT).show(); true }
+            if (intent != null && intentChipsEnabled && EnemyIntentUi.chipPulses(intent, reduceFlashEnabled)) {
+                val anim = android.animation.ObjectAnimator.ofFloat(chip, "alpha", 1f, 0.65f).apply {
+                    duration = 1100
+                    repeatMode = android.animation.ValueAnimator.REVERSE
+                    repeatCount = android.animation.ValueAnimator.INFINITE
+                }
+                chip.setTag(R.id.battleArena, anim)
+                anim.start()
+            }
+        }
+        for (i in 0 until partyColumn.childCount) {
+            val wrap = partyColumn.getChildAt(i)
+            val idx = wrap.tag as? Int ?: continue
+            val slot = wrap.findViewWithTag<FrameLayout?>("slot") ?: continue
+            val codes = statuses[idx].orEmpty()
+            val chip = intentChipView(slot, "status", density, top = true)
+            if (codes.isEmpty()) { chip.visibility = View.GONE; continue }
+            chip.text = EnemyIntentUi.statusBadge(codes)
+            chip.contentDescription = EnemyIntentUi.statusNames(codes)
+            chip.visibility = if (chip.text.isNullOrEmpty()) View.GONE else View.VISIBLE
+            chip.setOnLongClickListener { Toast.makeText(this, EnemyIntentUi.statusNames(codes), Toast.LENGTH_SHORT).show(); true }
+        }
+        if (lastIntentBannerSeq < 0) { lastIntentBannerSeq = snap.bannerSeq; return } // don't replay on resume
+        EnemyIntentUi.newBanner(snap, lastIntentBannerSeq)?.let { showPhaseBanner(it) }
+        lastIntentBannerSeq = maxOf(lastIntentBannerSeq, snap.bannerSeq)
+    }
+
+    private fun intentChipView(slot: FrameLayout, tag: String, density: Float, top: Boolean): TextView {
+        slot.findViewWithTag<TextView?>(tag)?.let { return it }
+        val tv = TextView(this).apply {
+            this.tag = tag
+            textSize = 12f
+            setTextColor(getColor(R.color.ae_bone))
+            setBackgroundColor(0xCC120E0B.toInt())
+            setPadding((6 * density).toInt(), (1 * density).toInt(), (6 * density).toInt(), (1 * density).toInt())
+            maxLines = 1
+            visibility = View.GONE
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+                (if (top) Gravity.TOP else Gravity.BOTTOM) or Gravity.CENTER_HORIZONTAL
+            )
+        }
+        slot.addView(tv)
+        return tv
+    }
+
+    /** Phase change / "finish the fallen" warning. Static with Reduce flashing; else a soft fade. */
+    private fun showPhaseBanner(text: String) {
+        if (!::battleArena.isInitialized) return
+        val parent = battleArena.parent as? FrameLayout ?: run {
+            Toast.makeText(this, text, Toast.LENGTH_LONG).show(); return
+        }
+        val density = resources.displayMetrics.density
+        val tv = phaseBannerView ?: TextView(this).apply {
+            textSize = 15f
+            setTextColor(getColor(R.color.ae_bone))
+            setBackgroundColor(0xE0120E0B.toInt())
+            gravity = Gravity.CENTER
+            setPadding((12 * density).toInt(), (6 * density).toInt(), (12 * density).toInt(), (6 * density).toInt())
+            androidx.core.content.res.ResourcesCompat.getFont(this@MainActivity, R.font.cinzel)?.let { typeface = it }
+            elevation = 8 * density
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE // read out by TalkBack
+            phaseBannerView = this
+        }
+        if (tv.parent == null) {
+            parent.addView(tv, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP
+            ))
+        }
+        tv.text = text
+        tv.contentDescription = text
+        tv.animate().cancel()
+        tv.removeCallbacks(hidePhaseBanner)
+        tv.visibility = View.VISIBLE
+        if (EnemyIntentUi.bannerAnimates(reduceFlashEnabled)) {
+            tv.alpha = 0f
+            tv.animate().alpha(1f).setDuration(350).start()
+        } else {
+            tv.alpha = 1f
+        }
+        tv.postDelayed(hidePhaseBanner, 2600)
+    }
+
+    private val hidePhaseBanner = Runnable {
+        val tv = phaseBannerView ?: return@Runnable
+        if (EnemyIntentUi.bannerAnimates(reduceFlashEnabled)) {
+            tv.animate().alpha(0f).setDuration(350).withEndAction { tv.visibility = View.GONE }.start()
+        } else {
+            tv.visibility = View.GONE
+        }
+    }
+
+    private fun refreshBattleArenaRoster() {
         val roster = getBattleRoster()
         if (roster == lastBattleRoster) {
             applySelectionHighlights()

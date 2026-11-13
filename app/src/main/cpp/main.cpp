@@ -1025,6 +1025,24 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getBattleRoster([[maybe_unused]
     });
 }
 
+// v2.30 enemy AI: "numbers|bannerSeq|banner|idx,intent,side,target,label,value,statuses;..."
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getEnemyIntents([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuardStr(env, "getEnemyIntents", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return env->NewStringUTF(g_Game.getEnemyIntents().c_str());
+    });
+}
+
+// v2.30 hero statuses: "heroIdx,codes;..." (B burn, M marked, G guarded, L blind, S slowed, K shackled, I inspired, R rattled)
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getStatusEffects([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuardStr(env, "getStatusEffects", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return env->NewStringUTF(g_Game.getStatusEffects().c_str());
+    });
+}
+
 
 JNIEXPORT jstring JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_getXpProgress([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName) {

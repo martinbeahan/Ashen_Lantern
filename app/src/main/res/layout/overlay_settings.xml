@@ -122,6 +122,35 @@
                 style="@style/Text.DnD.SectionLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="Combat" />
+
+            <CheckBox
+                android:fontFamily="@font/cormorant"
+                android:id="@+id/chkIntentChips"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="44dp"
+                android:text="Foe intent chips (what each foe will do next)"
+                android:textColor="@color/parchment"
+                android:buttonTint="@color/gold"
+                android:paddingBottom="4dp" />
+
+            <CheckBox
+                android:fontFamily="@font/cormorant"
+                android:id="@+id/chkIntentNumbers"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="44dp"
+                android:text="Exact intent numbers (party INT 14+)"
+                android:textColor="@color/parchment"
+                android:buttonTint="@color/gold"
+                android:paddingBottom="4dp" />
+
+            <TextView
+                android:fontFamily="@font/cormorant"
+                style="@style/Text.DnD.SectionLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:text="Run" />
 
             <TextView

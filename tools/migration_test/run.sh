@@ -7,7 +7,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 src="$here/../../app/src/main/cpp"
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
-cp "$src"/{Game.cpp,GameSave.cpp,Game.h,GameLogic.h,QuestScript.h,EncounterAuthorship.h,Bestiary.h,SaveCodec.h,MemoryCatalog.h,CombatCurve.h} "$work"/
+cp "$src"/{Game.cpp,GameSave.cpp,Game.h,GameLogic.h,QuestScript.h,EncounterAuthorship.h,Bestiary.h,SaveCodec.h,MemoryCatalog.h,CombatCurve.h,EnemyAi.h} "$work"/
 cp "$here/AndroidOut.h" "$here/migration_test.cpp" "$here/save_safety_test.cpp" "$here/kindling_test.cpp" "$here/memory_test.cpp" "$here/slots_test.cpp" "$work"/
 ndk_bin="$(ls -d "${ANDROID_HOME:-$HOME/Android/Sdk}"/ndk/*/toolchains/llvm/prebuilt/linux-x86_64/bin 2>/dev/null | sort | tail -1 || true)"
 if [[ -n "$ndk_bin" && -x "$ndk_bin/clang++" ]]; then
@@ -28,3 +28,6 @@ fi
 cp "$here/combat_test.cpp" "$work"/
 "${cxx[@]}" -std=c++17 -O0 -o "$work/combat_test" "$work/combat_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp"
 "$work/combat_test"
+cp "$here/ai_test.cpp" "$work"/
+"${cxx[@]}" -std=c++17 -O0 -o "$work/ai_test" "$work/ai_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp"
+"$work/ai_test"

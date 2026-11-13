@@ -4,6 +4,7 @@
 #include "SaveCodec.h"
 #include "MemoryCatalog.h"
 #include "CombatCurve.h"
+#include "EnemyAi.h"
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
@@ -186,7 +187,9 @@ void Game::applyStarterPaddingForStory() {
         p->bonusMaxHp += 2; // v2.29: kept through level-ups (was lost at the first level-up)
         p->recomputeMaxHp();
         p->currentHp = p->maxHp;
-        p->maxResources += 1;
+        p->bonusMaxResources += 1; // v2.30: kept through level-ups (was lost at the first level-up)
+        p->applyStatsForLevel();
+        p->currentHp = p->maxHp;
         p->resources = p->maxResources;
     }
 }
@@ -401,6 +404,7 @@ bool Game::setCompanionClass(CharacterClass cl) {
     const int dss = old->deathSaveSuccesses;
     const int dsf = old->deathSaveFailures;
     const int keptBonusHp = old->bonusMaxHp; // v2.29: story padding / CON-point HP survive a reclass
+    const int keptBonusRes = old->bonusMaxResources; // v2.30: story +1 resource survives too
     const std::string uid = old->uid;
     const std::string newName = companionNameForClass(cl);
 
@@ -443,6 +447,7 @@ bool Game::setCompanionClass(CharacterClass cl) {
             }
         }
         neu->bonusMaxHp = keptBonusHp;
+        neu->bonusMaxResources = keptBonusRes;
         neu->applyStatsForLevel();
         neu->calculateAC();
         neu->currentHp = neu->maxHp;
@@ -1283,7 +1288,16 @@ void Game::rollInitiative() {
 
     turnOrder_.clear();
     if (isMerchantRoom_) return;
+    bool freshFight = false;
+    for (const auto& e : enemies_) if (e && e->curvePending) { freshFight = true; break; }
     applyEncounterCurve(); // v2.29: freshly spawned foes get their EL / role numbers (solo only)
+    if (freshFight) {
+        // v2.30: a new fight — statuses from the last room are gone, the round count restarts.
+        combatRound_ = 1;
+        fledFoes_ = 0;
+        roomFoeTotal_ = static_cast<int>(enemies_.size());
+        for (auto& p : players_) if (p) p->status = Character::Statuses{};
+    }
 
     for (auto& p : players_) {
         if (p->isDead) continue; // fallen heroes stay out of initiative
@@ -1299,6 +1313,14 @@ void Game::rollInitiative() {
         return a->initiative > b->initiative;
     });
     currentTurnIndex_ = 0;
+    if (enemyAiActive()) {
+        // v2.30: every foe shows its first intent before anyone acts.
+        for (auto& e : enemies_) {
+            if (!e || e->curveEL <= 0) continue;
+            updateBossPhase(*e, false);
+            if (e->ai.move == 0) planEnemyMove(*e);
+        }
+    }
 }
 
 void Game::rebuildTurnOrder() {
@@ -2030,7 +2052,11 @@ void Game::maybeGrantRaidKeyFromBoss(const std::string& foeName, const std::stri
 
 void Game::advanceTurn() {
     if (turnOrder_.empty()) { currentTurnIndex_ = 0; return; }
+    // v2.30: the actor's statuses tick down at the end of its own turn (Burn deals damage).
+    endTurnStatuses(getCurrentActor());
+    if (turnOrder_.empty()) { currentTurnIndex_ = 0; return; }
     currentTurnIndex_ = (currentTurnIndex_ + 1) % static_cast<int>(turnOrder_.size());
+    if (currentTurnIndex_ == 0) ++combatRound_;
 }
 
 void Game::removeFromTurnOrder(Character* c) {
@@ -2755,6 +2781,13 @@ void Game::enterClearedRoom(Character* actor) {
         // Pressure reward: +5% XP (and gold, see grantKillLoot) per flawless-room step.
         xpGained = static_cast<int>(std::lround(xpGained * curve::pressureMultiplier(pressure_)));
     }
+    if (fledFoes_ > 0 && roomFoeTotal_ > 0) {
+        // v2.30: a foe that slipped away gives half its share of the room's XP.
+        const double kept = 1.0 - 0.5 * std::min(fledFoes_, roomFoeTotal_) / static_cast<double>(roomFoeTotal_);
+        xpGained = std::max(1, static_cast<int>(std::lround(xpGained * kept)));
+    }
+    fledFoes_ = 0;
+    for (auto& p : players_) if (p) p->status = Character::Statuses{}; // fight over: statuses end
     noteRoomOutcomeForCurve();
     for (auto& p : players_) {
         if (p->addXp(xpGained)) {
@@ -2944,6 +2977,7 @@ void Game::purgeDownedEnemies() {
     Character* looter = getCurrentActor();
     for (auto it = enemies_.begin(); it != enemies_.end(); ) {
         if ((*it)->currentHp <= 0 || (*it)->isDowned) {
+            returnStolenGold(**it, looter);
             grantKillLoot(looter, (*it)->name, (*it)->enemyId);
             removeFromTurnOrder(it->get());
             it = enemies_.erase(it);
@@ -2980,7 +3014,7 @@ void Game::allyTurn() {
     // 1) Heal a downed / critically hurt ally when we can (potion or Cleric Healing Word).
     const int healIdx = pickAllyAiHealTarget();
     if (healIdx >= 0 && actor->resources > 0) {
-        if (actor->characterClass == CharacterClass::CLERIC) {
+        if (actor->characterClass == CharacterClass::CLERIC && actor->status.shackled <= 0) {
             dmSay(actor->name + " calls a Healing Word for a wounded ally.");
             playerSpecialAction(0); // Cleric special ignores enemy index; heals lowest HP
         } else {
@@ -3003,8 +3037,10 @@ void Game::allyTurn() {
     Character& enemy = *enemies_[static_cast<size_t>(target)];
 
     // 3) Class special when it clearly beats a basic swing and we have a use left.
-    if (actor->resources > 0 && actor->characterClass != CharacterClass::CLERIC
-        && allySpecialBeatsBasic(*actor, enemy)) {
+    // v2.30: a Fighter's Action Surge is once per fight — don't burn the turn retrying it.
+    const bool surgeSpent = actor->characterClass == CharacterClass::FIGHTER && actor->specialUsedThisCombat;
+    if (actor->resources > 0 && actor->characterClass != CharacterClass::CLERIC && !surgeSpent
+        && actor->status.shackled <= 0 && allySpecialBeatsBasic(*actor, enemy)) {
         dmSay(actor->name + " uses " + actor->getSpecialAbilityName() + "!");
         playerSpecialAction(target);
         if (roomCount_ != roomBefore) return;
@@ -3169,12 +3205,15 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
         actor->nextAttackPenalty = 0;
         result.total -= mockPenalty;
     }
+    const int blindPenalty = (targetIsEnemy && actor->status.blind > 0) ? ai::kBlindToHit : 0;
+    result.total -= blindPenalty; // v2.30: Crown flare
 
     std::stringstream ss;
     ss << actor->name << " attacks " << target.name << "! d20=" << result.dieRoll
        << " + " << mod << " (ability) + " << pb << " (prof) + " << gearBonus
        << " (magic)";
     if (mockPenalty > 0) ss << " - " << mockPenalty << " (rattled)";
+    if (blindPenalty > 0) ss << " - " << blindPenalty << " (blinded)";
     ss << " = " << result.total << " vs AC " << target.armorClass << ". ";
 
     bool hit = result.total >= target.armorClass || result.isCriticalHit;
@@ -3196,6 +3235,7 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
         if (targetIsEnemy) {
             noteDailyQuestDamage(dmg);
             applyLegendaryOnHit(actor, dmg);
+            noteFoeDamaged(target, dmg, actor, result.isCriticalHit); // v2.30: stagger / phases
         }
         pushVisualEvent(targetIsEnemy ? VisualEventType::ENEMY_DAMAGE : VisualEventType::PLAYER_DAMAGE, targetIndex);
         ss << (result.isCriticalHit ? "CRITICAL HIT! " : "Hit! ") << "Damage " << dmg;
@@ -3219,6 +3259,7 @@ void Game::resolveEnemyDefeated(Character* actor, int /*targetEnemyIndex*/) {
     // Strip turnOrder_ entries BEFORE destroying the Character (no dangling pointers).
     for (auto it = enemies_.begin(); it != enemies_.end(); ) {
         if ((*it)->currentHp <= 0) {
+            returnStolenGold(**it, actor);
             grantKillLoot(actor, (*it)->name, (*it)->enemyId); // sets Felled … lastEvent_ + journal/DM
             removeFromTurnOrder(it->get());
             it = enemies_.erase(it);
@@ -3253,7 +3294,7 @@ void Game::playerAttack(int targetEnemyIndex) {
     if (killed || enemy.currentHp <= 0) {
         resolveEnemyDefeated(actor, targetEnemyIndex);
     } else {
-        currentTurnIndex_ = (currentTurnIndex_ + 1) % static_cast<int>(turnOrder_.size());
+        advanceTurn();
     }
 }
 
@@ -3277,10 +3318,11 @@ void Game::playerHeal(int targetPlayerIndex) {
     Character& target = *players_[static_cast<size_t>(targetPlayerIndex)];
     int amount = getRandomInt(1, 4) + getRandomInt(1, 4) + 2;
     target.heal(amount);
+    if (&target != actor) actor->status.healedRecently = 2; // v2.30: foes notice healers
     lastEvent_ = actor->name + " drinks a Potion of Healing on " + target.name + " for " + std::to_string(amount) + " HP.";
     dmSay(target.name + " feels vitality return as the potion takes hold.");
     addChatMessage("Combat", lastEvent_);
-    currentTurnIndex_ = (currentTurnIndex_ + 1) % static_cast<int>(turnOrder_.size());
+    advanceTurn();
 }
 
 void Game::playerSpecialAction(int targetEnemyIndex) {
@@ -3292,6 +3334,13 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
 
     int playerIdx = 0;
     for (size_t i = 0; i < players_.size(); ++i) if (players_[i].get() == actor) playerIdx = static_cast<int>(i);
+
+    if (actor->status.shackled > 0) {
+        // v2.30: Shackle / Rattle — no class feature this turn (the turn is not spent).
+        lastEvent_ = actor->name + " is shackled — no " + actor->getSpecialAbilityName() + " this turn.";
+        addChatMessage("Combat", lastEvent_);
+        return;
+    }
 
     // Cleric Healing Word can target allies without an enemy
     if (actor->characterClass == CharacterClass::CLERIC) {
@@ -3309,10 +3358,11 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
         int amount = getRandomInt(1, 4) + wis;
         if (amount < 1) amount = 1;
         ally.heal(amount);
+        if (&ally != actor) actor->status.healedRecently = 2; // v2.30: foes notice healers
         lastEvent_ = actor->name + " casts Healing Word on " + ally.name + " for " + std::to_string(amount) + " HP.";
         dmSay("A soft glow knits " + ally.name + "'s wounds — Healing Word.");
         addChatMessage("Combat", lastEvent_);
-        currentTurnIndex_ = (currentTurnIndex_ + 1) % static_cast<int>(turnOrder_.size());
+        advanceTurn();
         return;
     }
 
@@ -3338,7 +3388,7 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
             performWeaponAttack(actor, enemy, playerIdx, true, targetEnemyIndex, false);
         }
         if (enemy.currentHp <= 0) resolveEnemyDefeated(actor, targetEnemyIndex);
-        else currentTurnIndex_ = (currentTurnIndex_ + 1) % static_cast<int>(turnOrder_.size());
+        else advanceTurn();
         return;
     }
 
@@ -3346,7 +3396,7 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
         dmSay(actor->name + " slips into a flank and strikes — Sneak Attack!");
         performWeaponAttack(actor, enemy, playerIdx, true, targetEnemyIndex, true);
         if (enemy.currentHp <= 0) resolveEnemyDefeated(actor, targetEnemyIndex);
-        else currentTurnIndex_ = (currentTurnIndex_ + 1) % static_cast<int>(turnOrder_.size());
+        else advanceTurn();
         return;
     }
 
@@ -3356,13 +3406,14 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
         for (int i = 0; i < 3; ++i) total += getRandomInt(1, 4) + 1;
         enemy.takeDamage(total);
         noteDailyQuestDamage(total);
+        noteFoeDamaged(enemy, total, actor, true); // a spell scorches like a crit (Hydra regrowth)
         pushVisualEvent(VisualEventType::PLAYER_ATTACK, playerIdx);
         pushVisualEvent(VisualEventType::ENEMY_DAMAGE, targetEnemyIndex);
         lastEvent_ = actor->name + " casts Magic Missile! Three darts deal " + std::to_string(total) + " force damage to " + enemy.name + ".";
         dmSay("Glowing darts streak unerringly to their mark.");
         addChatMessage("Combat", lastEvent_);
         if (enemy.currentHp <= 0) resolveEnemyDefeated(actor, targetEnemyIndex);
-        else currentTurnIndex_ = (currentTurnIndex_ + 1) % static_cast<int>(turnOrder_.size());
+        else advanceTurn();
         return;
     }
 
@@ -3372,6 +3423,7 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
         RollResult result = CombatSystem::performAttackRoll(*actor);
         int mod = CombatSystem::getPrimaryModifier(*actor);
         int pb = CombatSystem::proficiencyBonusForLevel(actor->level);
+        if (actor->status.blind > 0) result.total -= ai::kBlindToHit; // v2.30: Crown flare
         bool hit = result.total >= enemy.armorClass || result.isCriticalHit;
         if (result.isCriticalFail) hit = false;
         if (encounterCurveActive()) {
@@ -3389,6 +3441,7 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
             if (dmg < 1) dmg = 1;
             enemy.takeDamage(dmg);
             noteDailyQuestDamage(dmg);
+            noteFoeDamaged(enemy, dmg, actor, result.isCriticalHit);
             enemy.nextAttackPenalty = 2;
             pushVisualEvent(VisualEventType::ENEMY_DAMAGE, targetEnemyIndex);
             ss << (result.isCriticalHit ? "CRITICAL! " : "Hit! ")
@@ -3402,7 +3455,7 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
         lastEvent_ = ss.str();
         addChatMessage("Combat", lastEvent_);
         if (enemy.currentHp <= 0) resolveEnemyDefeated(actor, targetEnemyIndex);
-        else currentTurnIndex_ = (currentTurnIndex_ + 1) % static_cast<int>(turnOrder_.size());
+        else advanceTurn();
         return;
     }
 }
@@ -3945,6 +3998,13 @@ int Game::pickAllyAiEnemyTarget() const {
         if (e->maxHp > 0 && e->currentHp * 3 <= e->maxHp) score += 20;
         // Slight bias toward lower AC (easier to hit with a basic attack).
         score += std::max(0, 16 - e->armorClass);
+        if (enemyAiActive() && e->curveEL > 0) {
+            // v2.30 (2f): casters and supports first, and break a telegraphed Slam / heavy.
+            const int role = e->curveRole;
+            if (role == static_cast<int>(curve::Role::CASTER) || role == static_cast<int>(curve::Role::SUPPORT)) score += 30;
+            if (ai::intentOf(ai::moveFromInt(e->ai.move)) == ai::Intent::HEAVY) score += 25;
+            if (ai::intentOf(ai::moveFromInt(e->ai.move)) == ai::Intent::HEAL) score += 20;
+        }
         if (score > bestScore) {
             bestScore = score;
             best = static_cast<int>(i);
@@ -4028,6 +4088,12 @@ void Game::enemyTurn() {
         enemy->curveWarnTurns--;
         lastEvent_ = "WARNING! " + telegraphLine(*enemy);
         addChatMessage("Combat", lastEvent_);
+        if (enemyAiActive() && enemy->curveEL > 0 && enemy->ai.move == 0) planEnemyMove(*enemy);
+        return;
+    }
+    if (enemyAiActive() && enemy->curveEL > 0) {
+        // v2.30: roles, intents and boss phases (EnemyAi.h). Legacy / online foes fall through.
+        runEnemyMove(*enemy, enemyIdx);
         return;
     }
     // Bell-Herald (story beat 24): flavour only — the toll hushes Wren; no mechanical effect.
@@ -4283,6 +4349,9 @@ void Game::resetCombatCurveState() {
     lastRoomOverBudget_ = false;
     heroDroppedThisRoom_ = false;
     pendingSurprise_ = false;
+    combatRound_ = 0;
+    roomFoeTotal_ = 0;
+    fledFoes_ = 0;
 }
 
 int Game::encounterModeBonus() const {
@@ -4468,6 +4537,871 @@ std::string Game::telegraphLine(const Character& foe) const {
     if (foe.enemyId == "boss_prior") return "Bones knit into a mitre — the Ossuary Prior rises. It strikes next turn.";
     if (foe.enemyId == "boss_wick_king") return "Molten wax hardens into a crown — the Wick King rises. He strikes next turn.";
     return foe.name + " gathers itself. It strikes next turn.";
+}
+
+// ======================================================================================
+// v2.30 enemy AI (PR 2): intents, roles, statuses, boss phases. Solo only (enemyAiActive).
+// ======================================================================================
+
+int Game::heroIndexOf(const Character* c) const {
+    for (size_t i = 0; i < players_.size(); ++i) if (players_[i].get() == c) return static_cast<int>(i);
+    return -1;
+}
+
+int Game::enemyIndexOf(const Character* c) const {
+    for (size_t i = 0; i < enemies_.size(); ++i) if (enemies_[i].get() == c) return static_cast<int>(i);
+    return -1;
+}
+
+int Game::livingFoeCount() const {
+    int n = 0;
+    for (const auto& e : enemies_) if (e && !e->isDead && !e->isDowned && e->currentHp > 0) ++n;
+    return n;
+}
+
+bool Game::heroHasIntBonus() const {
+    for (const auto& p : players_) {
+        if (p && !p->isDead && p->effectiveAttr(3) >= ai::kIntentNumbersInt) return true;
+    }
+    return false;
+}
+
+void Game::announceBanner(const std::string& text) {
+    ++bannerSeq_;
+    bannerText_ = text;
+    addChatMessage("Combat", text);
+}
+
+void Game::returnStolenGold(Character& foe, Character* looter) {
+    if (foe.ai.stolenGold <= 0) return;
+    Character* to = looter;
+    if (!to || to->isDead || to->isFoe()) {
+        to = nullptr;
+        for (auto& p : players_) if (p && !p->isDead) { to = p.get(); break; }
+    }
+    if (to) {
+        to->gold += foe.ai.stolenGold;
+        addChatMessage("Combat", to->name + " takes back " + std::to_string(foe.ai.stolenGold) + " stolen gold.");
+    }
+    foe.ai.stolenGold = 0;
+}
+
+namespace {
+bool moveNeedsHero(ai::Move m) {
+    using ai::Intent;
+    const ai::MoveInfo& mi = ai::moveInfo(m);
+    if (mi.aoe) return false;
+    switch (mi.intent) {
+        case Intent::NONE: case Intent::GUARD: case Intent::BUFF: case Intent::HEAL:
+        case Intent::SUMMON: case Intent::FLEE:
+            return false;
+        default:
+            return true;
+    }
+}
+bool isStanding(const Character* c) {
+    return c && !c->isDead && !c->isDowned && c->currentHp > 0;
+}
+} // namespace
+
+int Game::pickAiHeroTarget(const Character& foe, int behaviour) {
+    const ai::Tier tier = ai::tierFor(difficulty_);
+    std::vector<ai::HeroView> hv;
+    hv.reserve(players_.size());
+    for (size_t i = 0; i < players_.size(); ++i) {
+        const Character* p = players_[i].get();
+        ai::HeroView v;
+        v.alive = p && !p->isDead;
+        if (p) {
+            v.downed = p->isDowned || p->currentHp <= 0;
+            v.hp = p->currentHp; v.maxHp = p->maxHp; v.ac = p->armorClass;
+            v.healer = p->characterClass == CharacterClass::CLERIC || p->characterClass == CharacterClass::BARD;
+            v.healedRecently = p->status.healedRecently > 0;
+            v.marked = p->status.marked > 0;
+            v.hitMe = foe.ai.lastHitBy == static_cast<int>(i);
+            for (const auto& e : enemies_) {
+                if (!e || e.get() == &foe || !isStanding(e.get())) continue;
+                if (e->ai.target == static_cast<int>(i) && moveNeedsHero(ai::moveFromInt(e->ai.move))) ++v.focus;
+            }
+        }
+        hv.push_back(v);
+    }
+    // Hollow Crown (phase 2+): never the same hero twice in a row while another stands.
+    if (foe.enemyId == "boss_hollow_crown" && foe.ai.phase >= 2 && foe.ai.lastTarget >= 0
+        && static_cast<size_t>(foe.ai.lastTarget) < hv.size()) {
+        int standing = 0;
+        for (const auto& v : hv) if (v.alive && !v.downed) ++standing;
+        if (standing > 1) hv[static_cast<size_t>(foe.ai.lastTarget)].alive = false;
+    }
+    std::vector<double> noise;
+    for (size_t i = 0; i < hv.size(); ++i) noise.push_back(getRandomInt(0, 9999) / 10000.0);
+    const double roll = getRandomInt(0, 9999) / 10000.0;
+    return ai::pickTarget(hv, tier, behaviour, noise, roll);
+}
+
+void Game::planEnemyMove(Character& foe) {
+    using ai::Move;
+    auto& A = foe.ai;
+    const ai::Tier tier = ai::tierFor(difficulty_);
+    const int beh = bestiary::behaviour(foe.enemyId);
+    const bool sloppy = tier == ai::Tier::SLOPPY;
+    auto rnd01 = [this]() { return getRandomInt(0, 9999) / 10000.0; };
+    // Sloppy foes use their trick only when it's obvious (about half the time it's ready).
+    auto ready = [&]() { return A.cooldown == 0 && (!sloppy || rnd01() < 0.5); };
+    const double hpFrac = foe.maxHp > 0 ? static_cast<double>(foe.currentHp) / foe.maxHp : 1.0;
+    A.target = -1;
+
+    if (beh == bestiary::BEH_BOSS) {
+        planBossMove(foe, static_cast<int>(tier));
+        A.lastHitBy = -1;
+        return;
+    }
+    Move m = Move::STRIKE;
+    // Wickthieves and hounds slip away under 25% (Medium and up). Never undead or bosses.
+    if (bestiary::canFlee(foe.enemyId) && tier >= ai::Tier::TACTICAL && hpFrac < ai::kFleeBelow) {
+        A.move = static_cast<int>(Move::SLIP_AWAY);
+        A.lastHitBy = -1;
+        dmSay(foe.name + " glances at the way out — it will slip away next turn!");
+        return;
+    }
+    // Nightmare only: a Ruthless brute may go for a downed hero — always telegraphed first.
+    if (tier == ai::Tier::RUTHLESS && bestiary::role(foe.enemyId) == static_cast<int>(curve::Role::BRUTE)) {
+        for (size_t i = 0; i < players_.size(); ++i) {
+            const Character* p = players_[i].get();
+            if (p && !p->isDead && (p->isDowned || p->currentHp <= 0) && rnd01() < 0.5) {
+                A.move = static_cast<int>(Move::FINISH_DOWNED);
+                A.target = static_cast<int>(i);
+                A.lastHitBy = -1;
+                announceBanner("WARNING! " + foe.name + " eyes the fallen " + p->name + " — it will strike them next turn!");
+                return;
+            }
+        }
+    }
+    switch (beh) {
+        case bestiary::BEH_SNATCH: m = Move::SNATCH; break;
+        case bestiary::BEH_BACKSTAB:
+            if (ready()) { m = Move::BACKSTAB; A.cooldown = ai::cooldownFor(tier, 2); }
+            break;
+        case bestiary::BEH_SHIELDWALL: {
+            int best = -1; double bestFrac = sloppy ? 0.25 : 0.5;
+            for (size_t i = 0; i < enemies_.size(); ++i) {
+                const Character* e = enemies_[i].get();
+                if (!isStanding(e) || e == &foe || e->status.guarded > 0 || e->maxHp <= 0) continue;
+                const double f = static_cast<double>(e->currentHp) / e->maxHp;
+                if (f < bestFrac) { bestFrac = f; best = static_cast<int>(i); }
+            }
+            for (const auto& e : enemies_) // one shield-wall per ally at a time
+                if (e.get() != &foe && ai::moveFromInt(e->ai.move) == Move::SHIELD_WALL && e->ai.target == 100 + best) best = -1;
+            if (best >= 0 && A.cooldown == 0) {
+                m = Move::SHIELD_WALL; A.target = 100 + best; A.cooldown = ai::cooldownFor(tier, 3);
+            }
+            break;
+        }
+        case bestiary::BEH_PACK: m = Move::PACK_BITE; break;
+        case bestiary::BEH_SWARM: m = Move::SWARM_BITE; break;
+        case bestiary::BEH_KNIT:
+        case bestiary::BEH_RALLY: {
+            if (beh == bestiary::BEH_KNIT && A.cooldown == 0) {
+                int best = -1; double bestFrac = ai::healBelow(tier);
+                for (size_t i = 0; i < enemies_.size(); ++i) {
+                    const Character* e = enemies_[i].get();
+                    if (!isStanding(e) || !bestiary::isUndead(e->enemyId) || e->maxHp <= 0) continue;
+                    const double f = static_cast<double>(e->currentHp) / e->maxHp;
+                    if (f < bestFrac) { bestFrac = f; best = static_cast<int>(i); }
+                }
+                if (best >= 0) {
+                    m = Move::KNIT; A.target = 100 + best; A.cooldown = ai::cooldownFor(tier, 2);
+                    break;
+                }
+            }
+            bool someoneToRally = false, brute = false;
+            for (const auto& e : enemies_) {
+                if (!isStanding(e.get()) || e.get() == &foe) continue;
+                if (e->status.inspired <= 0) someoneToRally = true;
+                if (e->curveRole == static_cast<int>(curve::Role::BRUTE)) brute = true;
+            }
+            // Coordinated+: always buff before the brutes swing; otherwise when it's ready.
+            if (someoneToRally && A.cooldown == 0 && (brute && tier >= ai::Tier::COORDINATED ? true : ready())) {
+                m = Move::RALLY; A.cooldown = ai::cooldownFor(tier, 3);
+            }
+            break;
+        }
+        case bestiary::BEH_SLAM:
+            if (ready()) { m = Move::SLAM; A.stagger = 0; A.cooldown = ai::cooldownFor(tier, 3); }
+            break;
+        case bestiary::BEH_SHACKLE:
+            if (ready()) { m = Move::SHACKLE; A.cooldown = ai::cooldownFor(tier, 3); }
+            break;
+        case bestiary::BEH_FINISHER: m = Move::FINISH; break;
+        case bestiary::BEH_MARKER: {
+            m = Move::CINDER_BOLT; // casters actually cast
+            if (tier >= ai::Tier::COORDINATED && A.cooldown == 0) {
+                // Coordinated: interrupt a healer (Rattle -> no class feature next turn).
+                for (size_t i = 0; i < players_.size(); ++i) {
+                    const Character* p = players_[i].get();
+                    if (isStanding(p) && p->status.shackled <= 0
+                        && (p->characterClass == CharacterClass::CLERIC || p->status.healedRecently > 0)) {
+                        m = Move::RATTLE_HEALER; A.target = static_cast<int>(i); A.cooldown = ai::cooldownFor(tier, 2);
+                        break;
+                    }
+                }
+                if (m == Move::RATTLE_HEALER) break;
+            }
+            bool anyMarked = false;
+            for (const auto& p : players_) if (p && p->status.marked > 0) anyMarked = true;
+            if (!anyMarked && ready()) { m = Move::MARK; A.cooldown = ai::cooldownFor(tier, 3); }
+            break;
+        }
+        default: break;
+    }
+    A.move = static_cast<int>(m);
+    if (moveNeedsHero(m) && A.target < 0) A.target = pickAiHeroTarget(foe, beh);
+    A.lastHitBy = -1;
+}
+
+void Game::planBossMove(Character& foe, int tierInt) {
+    using ai::Move;
+    auto& A = foe.ai;
+    const ai::Tier tier = static_cast<ai::Tier>(tierInt);
+    if (A.phase <= 0) A.phase = 1;
+    const int ph = A.phase;
+    const std::string& id = foe.enemyId;
+    const bool room = livingFoeCount() < curve::difficultyInfo(difficulty_).maxFoes;
+    Move m = Move::STRIKE;
+    int target = -1;
+    auto standingHero = [this](int i) {
+        return i >= 0 && static_cast<size_t>(i) < players_.size() && isStanding(players_[static_cast<size_t>(i)].get());
+    };
+    if (id == "boss_sexton") {
+        if (ph >= 2 && !(A.flags & ai::F_CALL2) && room) m = Move::SEXTON_CALL;
+        else if (ph >= 3 && A.cooldown == 0) {
+            m = Move::SNUFF; A.cooldown = ai::cooldownFor(tier, 3);
+            if (standingHero(0)) target = 0; // the lantern-bearer
+        }
+    } else if (id == "boss_collector") {
+        if (ph >= 2 && !(A.flags & ai::F_CALL2)) {
+            m = Move::TALLY;
+            int rich = -1;
+            for (size_t i = 0; i < players_.size(); ++i)
+                if (isStanding(players_[i].get()) && (rich < 0 || players_[i]->gold > players_[static_cast<size_t>(rich)]->gold)) rich = static_cast<int>(i);
+            target = rich;
+        } else if (ph >= 3 && !(A.flags & ai::F_CALL3)) {
+            m = Move::VENN_CALL;
+        }
+    } else if (id == "boss_warden") {
+        if (ph >= 3) m = (A.alt % 2 == 0) ? Move::WARDEN_GUARD : Move::TWIN_STRIKE;
+        else if (ph >= 2 && A.cooldown == 0) { m = Move::EMBER_WOUND; A.cooldown = ai::cooldownFor(tier, 4); }
+    } else if (id == "boss_herald") {
+        if (ph >= 3 && !(A.flags & ai::F_CALL3)) m = Move::BELL_CRACK;
+        else if (ph >= 2 && A.cooldown == 0) { m = Move::TOLL; A.cooldown = 2; } // every 3rd turn
+    } else if (id == "boss_wick_king") {
+        if (ph >= 2 && !(A.flags & ai::F_CALL2) && room) m = Move::KING_CALL;
+        else if (ph >= 3 && A.cooldown == 0) { m = Move::CROWN_FLARE; A.cooldown = ai::cooldownFor(tier, 3); }
+    } else if (id == "boss_prior") {
+        if (ph >= 2 && !(A.flags & ai::F_CALL2)) m = Move::RELIQUARY;
+        else if (ph >= 3 && !(A.flags & ai::F_CALL3) && room) m = Move::RAISE_DEAD;
+    } else if (id == "boss_drake") {
+        if (ph >= 3) m = (A.alt % 2 == 0) ? Move::TAKE_FLIGHT : Move::DIVE;
+        else if (ph >= 2 && A.cooldown == 0) { m = Move::CINDER_BREATH; A.cooldown = ai::cooldownFor(tier, 3); }
+    } else if (id == "boss_hollow_crown") {
+        if (ph >= 3 && A.cooldown == 0) { m = Move::TYRANTS_DUE; A.cooldown = ai::cooldownFor(tier, 3); }
+    } else if (id == "boss_ember_hydra") {
+        if (ph >= 2) m = Move::HEADS;
+        else m = (A.alt % 2 == 0) ? Move::HYDRA_FIRE : Move::STRIKE; // the Hydra casts
+    } else if (id == "boss_nightfang") {
+        if (ph >= 3 && !(A.flags & ai::F_CALL3) && room) m = Move::BROOD;
+        else if (ph >= 2 && A.cooldown == 0) { m = Move::WEBS; A.cooldown = ai::cooldownFor(tier, 3); }
+    }
+    A.move = static_cast<int>(m);
+    A.target = target;
+    if (moveNeedsHero(m) && A.target < 0) A.target = pickAiHeroTarget(foe, bestiary::BEH_BOSS);
+}
+
+bool Game::foeStrike(Character& foe, int foeIdx, int heroIdx, double dmgMult, int hitBonus,
+                     bool exempt, bool autoHit, const std::string& moveLabel, int* dealt) {
+    if (dealt) *dealt = 0;
+    if (heroIdx < 0 || static_cast<size_t>(heroIdx) >= players_.size() || !players_[static_cast<size_t>(heroIdx)]) return false;
+    Character& hero = *players_[static_cast<size_t>(heroIdx)];
+    if (hero.isDead) return false;
+    pushVisualEvent(VisualEventType::ENEMY_ATTACK, foeIdx);
+    RollResult result = CombatSystem::performAttackRoll(foe);
+    std::string notes;
+    if (foe.nextAttackPenalty > 0) {
+        result.total -= foe.nextAttackPenalty;
+        notes += " -" + std::to_string(foe.nextAttackPenalty) + " (rattled)";
+        foe.nextAttackPenalty = 0;
+    }
+    int bonus = hitBonus;
+    if (foe.status.inspired > 0) bonus += ai::kInspiredToHit;
+    if (hero.status.marked > 0) bonus += ai::kMarkToHit;
+    if (bonus != 0) notes += std::string(" ") + (bonus > 0 ? "+" : "") + std::to_string(bonus) + " (allies / marks)";
+    result.total += bonus;
+    bool hit = true, crit = false;
+    if (!autoHit) {
+        const curve::HitCheck hc = curve::attackHits(result.dieRoll, result.total - result.dieRoll, hero.armorClass);
+        hit = hc.hit;
+        crit = result.isCriticalHit && hit && !exempt; // a telegraphed heavy is already the big hit
+        if (hc.clamped) notes += " (needs " + std::to_string(hc.need) + "+ — hit clamp)";
+    }
+    const std::string head = autoHit
+        ? foe.name + " — " + moveLabel + " on " + hero.name + " (no roll)"
+        : foe.name + " — " + moveLabel + " on " + hero.name + "! d20=" + std::to_string(result.dieRoll)
+          + " = " + std::to_string(result.total) + " vs AC " + std::to_string(hero.armorClass) + notes;
+    if (!hit) {
+        lastEvent_ = head + ". Miss!";
+        addChatMessage("Combat", lastEvent_);
+        return false;
+    }
+    if (foe.curveRole == static_cast<int>(curve::Role::BOSS)) dmgMult *= ai::kBossDamageScale;
+    const int avgX10 = std::max(10, static_cast<int>(std::lround(foe.curveAvgDmgX10 * dmgMult)));
+    int dmg = curve::rollFoeDamage(avgX10, foe.curveEL, crit, false);
+    std::string guard;
+    if (!hero.isDowned && !hero.isStable) {
+        const int capped = curve::overkillCap(dmg, hero.maxHp, exempt);
+        if (capped < dmg) {
+            dmg = capped;
+            guard = " (guarded: max 45% of " + hero.name + "'s HP)";
+        } else if (exempt && curve::overkillCap(dmg, hero.maxHp) < dmg) {
+            guard = " (telegraphed heavy — not guarded)";
+        }
+    }
+    tryFightShield(&hero, dmg);
+    const bool wasDowned = hero.isDowned || hero.isStable;
+    hero.takeDamage(dmg, wasDowned && crit);
+    if (dealt) *dealt = dmg;
+    pushVisualEvent(VisualEventType::PLAYER_DAMAGE, heroIdx);
+    lastEvent_ = head + guard + ". " + (crit ? "CRITICAL HIT! " : "Hit! ") + "Damage " + std::to_string(dmg) + ".";
+    addChatMessage("Combat", lastEvent_);
+    if (!wasDowned && hero.isDowned) heroDroppedThisRoom_ = true;
+    if (hero.isDowned) hero.status = Character::Statuses{};
+    if (hero.isDead) {
+        dmSay(hero.name + " is slain!");
+        removeFromTurnOrder(&hero);
+        checkPartyDefeat();
+    } else if (!wasDowned && hero.isDowned) {
+        dmSay(hero.name + " drops! Death saving throws will follow on their turns.");
+    } else if (wasDowned && hero.isDowned) {
+        dmSay(hero.name + " takes a death-save failure from the blow" + (crit ? std::string(" (critical — two failures)!") : std::string(".")));
+    }
+    return true;
+}
+
+bool Game::summonFoe(const std::string& enemyId, CharacterClass cl, const Character& summoner) {
+    if (livingFoeCount() >= curve::difficultyInfo(difficulty_).maxFoes) return false;
+    auto f = newEnemy(enemyId, cl, "call");
+    int party = 0;
+    std::vector<curve::PartyMember> pm;
+    for (const auto& p : players_) if (p && !p->isDead) { ++party; pm.push_back(curve::memberOf(*p)); }
+    party = std::max(1, party);
+    const int accuracyEl = pm.empty() ? summoner.curveEL : curve::encounterLevel(pm, 0);
+    const curve::Role r = curve::roleFromInt(bestiary::role(enemyId));
+    const curve::FoeStats st = curve::foeStats(r, std::max(1, summoner.curveEL), difficulty_, party,
+                                               ai::kSummonScale, accuracyEl);
+    f->maxHp = st.maxHp; f->currentHp = st.maxHp; f->armorClass = st.ac;
+    f->curveEL = std::max(1, summoner.curveEL);
+    f->curveRole = static_cast<int>(r);
+    f->curveToHit = st.toHit;
+    f->curveAvgDmgX10 = std::max(10, static_cast<int>(std::lround(st.avgDmgX10 * ai::kSummonDmgScale)));
+    f->curvePending = false;
+    f->resources = 0;
+    f->initiative = getRandomInt(1, 20) + f->initiativeModifier();
+    Character* raw = f.get();
+    enemies_.push_back(std::move(f));
+    ++roomFoeTotal_;
+    rebuildTurnOrder();
+    planEnemyMove(*raw);
+    return true;
+}
+
+void Game::foeSlipsAway(Character& foe) {
+    std::string line = foe.name + " slips away into the dark";
+    if (foe.ai.stolenGold > 0) line += " with " + std::to_string(foe.ai.stolenGold) + " of your gold";
+    line += "! (no loot; half XP for it)";
+    lastEvent_ = line;
+    addChatMessage("Combat", line);
+    dmSay(foe.name + " is gone.");
+    ++fledFoes_;
+    Character* looter = nullptr;
+    for (auto& p : players_) if (p && !p->isDead) { looter = p.get(); break; }
+    removeFromTurnOrder(&foe);
+    for (auto it = enemies_.begin(); it != enemies_.end(); ++it) {
+        if (it->get() == &foe) { enemies_.erase(it); break; }
+    }
+    // Drop any 0-HP foes left behind, then clear the room if nobody remains.
+    bool anyLeft = false;
+    for (const auto& e : enemies_) if (isStanding(e.get())) anyLeft = true;
+    if (!anyLeft) {
+        for (auto it = enemies_.begin(); it != enemies_.end();) {
+            returnStolenGold(**it, looter);
+            grantKillLoot(looter, (*it)->name, (*it)->enemyId);
+            removeFromTurnOrder(it->get());
+            it = enemies_.erase(it);
+        }
+        enterClearedRoom(looter);
+    }
+}
+
+void Game::updateBossPhase(Character& foe, bool announce) {
+    if (bestiary::behaviour(foe.enemyId) != bestiary::BEH_BOSS || foe.maxHp <= 0) return;
+    if (foe.currentHp <= 0 || foe.isDead) return;
+    const int want = (foe.currentHp * 3 <= foe.maxHp) ? 3 : ((foe.currentHp * 3 <= foe.maxHp * 2) ? 2 : 1);
+    if (foe.ai.phase <= 0) {
+        // First look (spawn or a loaded v2.29 boss): set silently from HP.
+        foe.ai.phase = announce ? 1 : want;
+        if (!announce) return;
+    }
+    if (want <= foe.ai.phase) return;
+    foe.ai.phase = want;
+    struct Bark { const char* id; const char* p2; const char* p3; };
+    static const Bark kBarks[] = {
+        {"boss_sexton", "The Sexton rings for help — the ash stirs.", "The Sexton turns on the lantern-bearer: \"Snuff it out.\""},
+        {"boss_collector", "Venn opens his ledger: \"Let's settle the tally.\"", "Venn whistles for his enforcers."},
+        {"boss_warden", "Embers bleed from the First Lamplighter's wounds.", "The First Lamplighter braces — guard, then two blows."},
+        {"boss_herald", "The toll is real now. Every third bell, hold steady.", "The bell cracks — the Herald grows reckless."},
+        {"boss_wick_king", "The Wick King calls his thieves.", "The Wick King's crown flares white-hot."},
+        {"boss_prior", "The Prior lifts the reliquary.", "The Prior raises the fallen."},
+        {"boss_drake", "Cinders gather in the Drake's throat.", "The Drake takes to the air."},
+        {"boss_hollow_crown", "Crownless — the Hollow Crown turns from foe to foe.", "The Hollow Crown demands its due."},
+        {"boss_ember_hydra", "The Hydra splits — three heads strike.", "Severed heads regrow unless the blow lands true."},
+        {"boss_nightfang", "The Matriarch spins her webs.", "The brood answers its mother."},
+    };
+    std::string bark = "It changes.";
+    for (const auto& b : kBarks) if (foe.enemyId == b.id) bark = want >= 3 ? b.p3 : b.p2;
+    announceBanner("PHASE " + std::to_string(want) + " — " + foe.name);
+    dmSay(bark);
+    planEnemyMove(foe); // the chip shows the phase move a turn ahead
+}
+
+void Game::noteFoeDamaged(Character& foe, int dmg, const Character* by, bool crit) {
+    if (!enemyAiActive() || foe.curveEL <= 0 || dmg <= 0) return;
+    const int hi = heroIndexOf(by);
+    if (hi >= 0) foe.ai.lastHitBy = hi;
+    if (crit) foe.ai.critThisRound = true;
+    if (ai::moveFromInt(foe.ai.move) == ai::Move::SLAM && foe.currentHp > 0) {
+        const int need = static_cast<int>(std::ceil(ai::kStaggerShare * foe.maxHp));
+        const bool before = foe.ai.stagger >= need;
+        foe.ai.stagger += dmg;
+        if (!before && foe.ai.stagger >= need) dmSay(foe.name + " staggers — the Millstone Slam is broken!");
+    }
+    if (foe.currentHp > 0) updateBossPhase(foe, true);
+}
+
+void Game::endTurnStatuses(Character* c) {
+    if (!c || !enemyAiActive()) return;
+    auto& st = c->status;
+    if (st.burn > 0) {
+        if (!c->isDead && !c->isDowned && c->currentHp > 0 && st.burnDmg > 0) {
+            const bool wasUp = c->currentHp > 0;
+            c->takeDamage(st.burnDmg);
+            addChatMessage("Combat", c->name + " burns for " + std::to_string(st.burnDmg) + ".");
+            if (!c->isFoe() && wasUp && c->isDowned) {
+                heroDroppedThisRoom_ = true;
+                dmSay(c->name + " drops! Death saving throws will follow on their turns.");
+            }
+        }
+        if (--st.burn <= 0) { st.burn = 0; st.burnDmg = 0; }
+    }
+    if (st.marked > 0) --st.marked;
+    if (st.blind > 0) --st.blind;
+    if (st.shackled > 0) --st.shackled;
+    if (st.inspired > 0) --st.inspired;
+    if (st.healedRecently > 0) --st.healedRecently;
+    if (st.guarded > 0 && --st.guarded == 0) c->armorClass -= ai::kGuardAc;
+    if (st.slowed > 0 && --st.slowed == 0) {
+        c->initiative = st.slowedFromInit;
+        st.slowedFromInit = 0;
+        rebuildTurnOrder();
+    }
+    if (c->isFoe() && c->ai.critThisRound && c->enemyId != "boss_ember_hydra") c->ai.critThisRound = false;
+}
+
+void Game::runEnemyMove(Character& foe, int foeIdx) {
+    using ai::Move;
+    auto& A = foe.ai;
+    if (A.phase == 0) updateBossPhase(foe, false); // a loaded v2.29 boss: phase from its HP, silently
+    if (A.cooldown > 0) A.cooldown--;
+    if (A.move == 0) planEnemyMove(foe);
+    Move m = ai::moveFromInt(A.move);
+    const ai::MoveInfo& mi = ai::moveInfo(m);
+    const int beh = bestiary::behaviour(foe.enemyId);
+    const std::string foeUid = foe.uid;
+    auto stillHere = [this, &foeUid]() {
+        for (const auto& e : enemies_) if (e && e->uid == foeUid) return isStanding(e.get());
+        return false;
+    };
+    auto heroAt = [this](int i) -> Character* {
+        return (i >= 0 && static_cast<size_t>(i) < players_.size()) ? players_[static_cast<size_t>(i)].get() : nullptr;
+    };
+    auto foeAt = [this](int i) -> Character* {
+        return (i >= 0 && static_cast<size_t>(i) < enemies_.size()) ? enemies_[static_cast<size_t>(i)].get() : nullptr;
+    };
+    auto standingHeroes = [this]() {
+        std::vector<int> v;
+        for (size_t i = 0; i < players_.size(); ++i) if (isStanding(players_[i].get())) v.push_back(static_cast<int>(i));
+        return v;
+    };
+    const int el = std::max(1, foe.curveEL);
+
+    // Resolve the target (a hero who fell or died since the plan: pick again, same move).
+    int t = A.target;
+    if (moveNeedsHero(m)) {
+        if (m == Move::FINISH_DOWNED) {
+            Character* h = heroAt(t);
+            if (!h || h->isDead || !(h->isDowned || h->currentHp <= 0)) { m = Move::STRIKE; t = -1; }
+        } else if (!isStanding(heroAt(t))) {
+            t = pickAiHeroTarget(foe, beh);
+        }
+        if (t < 0 || !heroAt(t) || heroAt(t)->isDead) { checkPartyDefeat(); return; }
+        if (m == Move::SWARM_BITE && !isStanding(heroAt(t))) {
+            addChatMessage("Combat", foe.name + " circles, hissing — it won't touch the fallen.");
+            A.lastTarget = t;
+            planEnemyMove(foe);
+            return;
+        }
+        // Only Nightmare's telegraphed "finish the fallen" may strike a downed hero while others stand.
+        if (m != Move::FINISH_DOWNED && !isStanding(heroAt(t)) && !standingHeroes().empty()) {
+            t = standingHeroes().front();
+        }
+    }
+    if (mi.aoe && standingHeroes().empty()) {
+        // An area move with nobody standing: strike a fallen hero instead (never stall the fight).
+        t = pickAiHeroTarget(foe, beh);
+        if (t < 0) { checkPartyDefeat(); return; }
+        m = Move::STRIKE;
+    }
+    const ai::MoveInfo& mv = ai::moveInfo(m);
+    const std::string label = mv.label;
+
+    switch (m) {
+        case Move::STRIKE: case Move::FINISH: case Move::PACK_BITE: case Move::SWARM_BITE:
+        case Move::SNATCH: case Move::BACKSTAB: case Move::SHACKLE: case Move::FINISH_DOWNED:
+        case Move::SNUFF: case Move::DIVE: case Move::TYRANTS_DUE: case Move::CINDER_BOLT:
+        case Move::HYDRA_FIRE: case Move::SLAM: {
+            if (m == Move::SLAM && A.stagger >= static_cast<int>(std::ceil(ai::kStaggerShare * foe.maxHp))) {
+                lastEvent_ = foe.name + " is staggered — the Millstone Slam never lands.";
+                addChatMessage("Combat", lastEvent_);
+                A.stagger = 0;
+                break;
+            }
+            int bonus = 0;
+            double mult = mv.dmgMult;
+            if (m == Move::PACK_BITE) {
+                for (const auto& e : enemies_)
+                    if (e.get() != &foe && isStanding(e.get()) && e->enemyId == foe.enemyId && e->ai.target == t) ++bonus;
+            }
+            if (m == Move::SWARM_BITE) {
+                int rats = 0;
+                for (const auto& e : enemies_) if (e.get() != &foe && isStanding(e.get()) && e->enemyId == foe.enemyId) ++rats;
+                mult += rats * 10.0 / std::max(10, foe.curveAvgDmgX10); // +1 damage per other rat
+            }
+            const int goldBefore = heroAt(t) ? heroAt(t)->gold : 0;
+            const bool hit = foeStrike(foe, foeIdx, t, mult, bonus, mv.heavyExempt, mv.autoHit, label);
+            Character* h = heroAt(t);
+            if (hit && h && m == Move::SNATCH && goldBefore > 0) {
+                const int steal = std::max(1, static_cast<int>(std::lround(goldBefore * ai::kSnatchShare)));
+                const int took = std::min(steal, h->gold);
+                h->gold -= took;
+                A.stolenGold += took;
+                addChatMessage("Combat", foe.name + " snatches " + std::to_string(took) + " gold from " + h->name + "!");
+            }
+            if (hit && h && m == Move::SHACKLE && isStanding(h)) {
+                if (ai::savePasses(getRandomInt(1, 20), h->effectiveAttr(2), el)) {
+                    addChatMessage("Combat", h->name + " shrugs off the shackle (CON save).");
+                } else {
+                    h->status.shackled = 1;
+                    addChatMessage("Combat", h->name + " is shackled — no class feature next turn.");
+                }
+            }
+            if (m == Move::SLAM) A.stagger = 0;
+            break;
+        }
+        case Move::TWIN_STRIKE: {
+            A.alt++;
+            dmSay(foe.name + " strikes twice!");
+            foeStrike(foe, foeIdx, t, 1.0, 0, false, false, label);
+            if (!gameOver_) {
+                int t2 = isStanding(heroAt(t)) ? t : pickAiHeroTarget(foe, beh);
+                if (t2 >= 0 && heroAt(t2) && !heroAt(t2)->isDead) foeStrike(foe, foeIdx, t2, 1.0, 0, false, false, label);
+            }
+            break;
+        }
+        case Move::HEADS: {
+            dmSay(foe.name + "'s three heads strike!");
+            for (int k = 0; k < 3 && !gameOver_; ++k) {
+                const std::vector<int> up = standingHeroes();
+                // Nobody standing: the heads go for the fallen, as every foe always has.
+                const int th = up.empty() ? pickAiHeroTarget(foe, beh)
+                                          : up[static_cast<size_t>(getRandomInt(0, static_cast<int>(up.size()) - 1))];
+                if (th < 0) break;
+                foeStrike(foe, foeIdx, th, mv.dmgMult, 0, false, false, label);
+            }
+            break;
+        }
+        case Move::SHIELD_WALL: {
+            Character* ally = foeAt(t - 100);
+            if (ally && isStanding(ally)) {
+                if (ally->status.guarded <= 0) ally->armorClass += ai::kGuardAc;
+                ally->status.guarded = 1;
+                lastEvent_ = foe.name + " raises a shield-wall over " + (ally == &foe ? std::string("itself") : ally->name) + " (+3 AC).";
+            } else {
+                lastEvent_ = foe.name + " holds its ground.";
+            }
+            addChatMessage("Combat", lastEvent_);
+            break;
+        }
+        case Move::WARDEN_GUARD: case Move::TAKE_FLIGHT: {
+            A.alt++;
+            if (foe.status.guarded <= 0) foe.armorClass += ai::kGuardAc;
+            foe.status.guarded = 1;
+            lastEvent_ = m == Move::TAKE_FLIGHT ? foe.name + " takes flight (+3 AC) — it will dive next turn!"
+                                                : foe.name + " guards (+3 AC).";
+            addChatMessage("Combat", lastEvent_);
+            break;
+        }
+        case Move::RALLY: {
+            int n = 0;
+            for (auto& e : enemies_) if (e.get() != &foe && isStanding(e.get())) { e->status.inspired = 2; ++n; }
+            lastEvent_ = foe.name + " lets out a rally cry — " + std::to_string(n) + " allies +2 to hit for 2 rounds.";
+            addChatMessage("Combat", lastEvent_);
+            break;
+        }
+        case Move::KNIT: case Move::RELIQUARY: {
+            Character* who = (m == Move::RELIQUARY) ? &foe : foeAt(t - 100);
+            if (m == Move::RELIQUARY) A.flags |= ai::F_CALL2;
+            if (who && isStanding(who)) {
+                const int amt = std::max(1, static_cast<int>(std::lround(who->maxHp * (m == Move::KNIT ? ai::kKnitHeal : ai::kReliquaryHeal))));
+                who->heal(amt);
+                lastEvent_ = foe.name + (m == Move::KNIT ? " knits bones: " : " lifts the reliquary: ") + who->name
+                    + " heals " + std::to_string(amt) + ".";
+                addChatMessage("Combat", lastEvent_);
+            }
+            break;
+        }
+        case Move::MARK: case Move::TALLY: {
+            Character* h = heroAt(t);
+            if (m == Move::TALLY) A.flags |= ai::F_CALL2;
+            if (h && isStanding(h)) {
+                h->status.marked = (m == Move::TALLY) ? 3 : 2;
+                lastEvent_ = foe.name + (m == Move::TALLY ? " tallies " : " marks ") + h->name + " — foes +2 to hit them.";
+                addChatMessage("Combat", lastEvent_);
+            }
+            break;
+        }
+        case Move::RATTLE_HEALER: case Move::CROWN_FLARE: case Move::WEBS: {
+            Character* h = heroAt(t);
+            if (!h || !isStanding(h)) break;
+            if (m == Move::RATTLE_HEALER) {
+                if (ai::savePasses(getRandomInt(1, 20), h->effectiveAttr(4), el)) {
+                    lastEvent_ = h->name + " keeps their focus (WIS save) against " + foe.name + "'s rattle.";
+                } else {
+                    h->status.shackled = 1;
+                    lastEvent_ = foe.name + " rattles " + h->name + " — no class feature next turn.";
+                }
+            } else if (m == Move::CROWN_FLARE) {
+                h->status.blind = 1;
+                lastEvent_ = foe.name + "'s crown flares — " + h->name + " is blinded (-4 to hit next turn).";
+            } else {
+                if (h->status.slowed <= 0) {
+                    h->status.slowedFromInit = h->initiative;
+                    int lowest = h->initiative;
+                    for (Character* c : turnOrder_) if (c) lowest = std::min(lowest, c->initiative);
+                    h->initiative = lowest - 1;
+                    rebuildTurnOrder();
+                }
+                h->status.slowed = 2;
+                lastEvent_ = foe.name + " webs " + h->name + " — slowed, acts last for 2 rounds.";
+            }
+            addChatMessage("Combat", lastEvent_);
+            break;
+        }
+        case Move::EMBER_WOUND: {
+            for (int i : standingHeroes()) {
+                Character* h = heroAt(i);
+                const bool saved = ai::savePasses(getRandomInt(1, 20), h->effectiveAttr(2), el);
+                int per = std::max(1, static_cast<int>(std::lround(foe.curveAvgDmgX10 / 10.0 * 0.35 * ai::kBossDamageScale)));
+                if (saved) per = std::max(1, per / 2);
+                h->status.burn = 2;
+                h->status.burnDmg = per;
+                addChatMessage("Combat", h->name + " burns (" + std::to_string(per) + " a turn for 2 turns" + (saved ? ", halved by CON save" : "") + ").");
+            }
+            lastEvent_ = foe.name + " — Ember wound!";
+            break;
+        }
+        case Move::TOLL: {
+            int rattled = 0;
+            for (int i : standingHeroes()) {
+                Character* h = heroAt(i);
+                if (!ai::savePasses(getRandomInt(1, 20), h->effectiveAttr(4), el)) {
+                    h->nextAttackPenalty = std::max(h->nextAttackPenalty, ai::kRattle);
+                    ++rattled;
+                }
+            }
+            lastEvent_ = "The bell tolls — " + std::to_string(rattled) + " hero(es) rattled (-2 next attack; WIS save).";
+            addChatMessage("Combat", lastEvent_);
+            if (!dmOnlyTable_) wrenSay("…");
+            break;
+        }
+        case Move::BELL_CRACK: {
+            A.flags |= ai::F_CALL3;
+            foe.curveToHit += 2;
+            foe.armorClass = std::max(1, foe.armorClass - 2);
+            lastEvent_ = "The bell cracks! " + foe.name + " +2 to hit, -2 AC.";
+            addChatMessage("Combat", lastEvent_);
+            break;
+        }
+        case Move::CINDER_BREATH: {
+            dmSay(foe.name + " breathes cinders over the party!");
+            for (int i : standingHeroes()) {
+                if (gameOver_) break;
+                Character* h = heroAt(i);
+                const bool saved = ai::savePasses(getRandomInt(1, 20), h->effectiveAttr(1), el);
+                foeStrike(foe, foeIdx, i, saved ? mv.dmgMult / 2 : mv.dmgMult, 0, true, true,
+                          saved ? std::string("Cinder breath (DEX save, half)") : label);
+            }
+            break;
+        }
+        case Move::SEXTON_CALL: case Move::RAISE_DEAD: case Move::KING_CALL: case Move::BROOD: case Move::VENN_CALL: {
+            if (m == Move::SEXTON_CALL || m == Move::KING_CALL) A.flags |= ai::F_CALL2;
+            else A.flags |= ai::F_CALL3;
+            int called = 0;
+            if (m == Move::VENN_CALL && vennChoice_ == VENN_SPARED) {
+                lastEvent_ = foe.name + " reaches for a whistle — and lets it fall. No one answers.";
+                addChatMessage("Combat", lastEvent_);
+                break;
+            }
+            const char* id = "enemy_ashbound";
+            CharacterClass cl = CharacterClass::FIGHTER;
+            int count = 1;
+            if (m == Move::KING_CALL) { id = "enemy_wickthief"; cl = CharacterClass::ROGUE; count = 2; }
+            else if (m == Move::BROOD) { id = "enemy_gloamhound"; cl = CharacterClass::ROGUE; count = 2; }
+            else if (m == Move::VENN_CALL) { id = "enemy_tithe_enforcer"; }
+            for (int k = 0; k < count; ++k) if (summonFoe(id, cl, foe)) ++called;
+            lastEvent_ = called > 0 ? foe.name + " — " + label + " (" + std::to_string(called) + " joins the fight)."
+                                    : foe.name + " calls out, but no one comes.";
+            addChatMessage("Combat", lastEvent_);
+            break;
+        }
+        case Move::SLIP_AWAY: {
+            foeSlipsAway(foe); // foe is gone after this
+            return;
+        }
+        default:
+            foeStrike(foe, foeIdx, t, 1.0, 0, false, false, "Attack");
+            break;
+    }
+    if (gameOver_ || !stillHere()) return;
+    if (moveNeedsHero(m)) A.lastTarget = t;
+    // Hydra, phase 3: regrows 10% at the end of its turn unless a crit landed this round.
+    if (foe.enemyId == "boss_ember_hydra" && A.phase >= 3) {
+        if (A.critThisRound) {
+            addChatMessage("Combat", "The stumps are seared — no regrowth this round.");
+        } else {
+            const int amt = std::max(1, static_cast<int>(std::lround(foe.maxHp * ai::kHydraRegrow)));
+            foe.heal(amt);
+            addChatMessage("Combat", foe.name + " regrows " + std::to_string(amt) + " HP.");
+        }
+        A.critThisRound = false;
+    } else if (foe.enemyId == "boss_ember_hydra" && m == Move::HYDRA_FIRE) {
+        A.alt++;
+    } else if (foe.enemyId == "boss_ember_hydra" && m == Move::STRIKE) {
+        A.alt++;
+    }
+    planEnemyMove(foe); // next turn's intent is on the chip right away
+}
+
+std::string Game::moveChipLabel(const Character& foe) const {
+    const ai::Move m = ai::moveFromInt(foe.ai.move);
+    std::string label = ai::moveInfo(m).label;
+    const int t = foe.ai.target;
+    if (t >= 100) {
+        const int fi = t - 100;
+        if (fi >= 0 && static_cast<size_t>(fi) < enemies_.size() && enemies_[static_cast<size_t>(fi)])
+            label += " " + (enemies_[static_cast<size_t>(fi)].get() == &foe ? std::string("self") : enemies_[static_cast<size_t>(fi)]->name);
+    } else if (t >= 0 && static_cast<size_t>(t) < players_.size() && players_[static_cast<size_t>(t)]) {
+        label += " → " + players_[static_cast<size_t>(t)]->name;
+    } else if (ai::moveInfo(m).aoe) {
+        label += " → everyone";
+    }
+    if (m == ai::Move::SLAM || m == ai::Move::SNUFF || m == ai::Move::DIVE || m == ai::Move::TYRANTS_DUE)
+        label += " (next turn)";
+    return savecodec::listSafe(label);
+}
+
+int Game::moveChipValue(const Character& foe) const {
+    const ai::Move m = ai::moveFromInt(foe.ai.move);
+    const ai::MoveInfo& mi = ai::moveInfo(m);
+    if (m == ai::Move::KNIT || m == ai::Move::RELIQUARY) {
+        const int fi = foe.ai.target - 100;
+        const Character* who = m == ai::Move::RELIQUARY ? &foe
+            : ((fi >= 0 && static_cast<size_t>(fi) < enemies_.size()) ? enemies_[static_cast<size_t>(fi)].get() : nullptr);
+        if (!who) return 0;
+        return std::max(1, static_cast<int>(std::lround(who->maxHp * (m == ai::Move::KNIT ? ai::kKnitHeal : ai::kReliquaryHeal))));
+    }
+    const double bs = foe.curveRole == static_cast<int>(curve::Role::BOSS) ? ai::kBossDamageScale : 1.0;
+    if (m == ai::Move::EMBER_WOUND) return std::max(1, static_cast<int>(std::lround(foe.curveAvgDmgX10 / 10.0 * 0.35 * bs)));
+    if (mi.dmgMult <= 0) return 0;
+    return std::max(1, static_cast<int>(std::lround(foe.curveAvgDmgX10 / 10.0 * mi.dmgMult * bs)));
+}
+
+std::string Game::getEnemyIntents() const {
+    std::ostringstream ss;
+    ss << (heroHasIntBonus() ? 1 : 0) << "|" << bannerSeq_ << "|" << savecodec::listSafe(bannerText_) << "|";
+    if (!enemyAiActive()) return ss.str();
+    bool first = true;
+    for (size_t i = 0; i < enemies_.size(); ++i) {
+        const Character* e = enemies_[i].get();
+        if (!e || e->curveEL <= 0 || !isStanding(e)) continue;
+        int intent = static_cast<int>(ai::intentOf(ai::moveFromInt(e->ai.move)));
+        std::string label = moveChipLabel(*e);
+        int value = moveChipValue(*e);
+        int side = -1, tgt = -1;
+        if (e->curveWarnTurns > 0) {
+            intent = static_cast<int>(ai::Intent::HEAVY);
+            label = "Rising — strikes next turn";
+            value = 0;
+        }
+        const ai::Move m = ai::moveFromInt(e->ai.move);
+        if (e->ai.target >= 100) { side = 1; tgt = e->ai.target - 100; if (enemies_.size() > static_cast<size_t>(tgt) && enemies_[static_cast<size_t>(tgt)].get() == e) side = 2; }
+        else if (e->ai.target >= 0) { side = 0; tgt = e->ai.target; }
+        else if (ai::moveInfo(m).aoe) side = 3;
+        else if (ai::intentOf(m) == ai::Intent::GUARD || ai::intentOf(m) == ai::Intent::HEAL) side = 2;
+        if (!first) ss << ";";
+        first = false;
+        ss << i << "," << intent << "," << side << "," << tgt << "," << label << "," << value << ","
+           << ai::statusCodes(*e);
+    }
+    return ss.str();
+}
+
+std::string Game::getStatusEffects() const {
+    std::ostringstream ss;
+    if (!enemyAiActive()) return "";
+    bool first = true;
+    for (size_t i = 0; i < players_.size(); ++i) {
+        const Character* p = players_[i].get();
+        if (!p) continue;
+        const std::string codes = ai::statusCodes(*p);
+        if (codes.empty()) continue;
+        if (!first) ss << ";";
+        first = false;
+        ss << i << "," << codes;
+    }
+    return ss.str();
+}
+
+void Game::simBeginFight(const std::vector<std::string>& enemyIds, bool surprise) {
+    for (auto& e : enemies_) removeFromTurnOrder(e.get());
+    enemies_.clear();
+    isMerchantRoom_ = false;
+    gameOver_ = false;
+    for (const auto& id : enemyIds) {
+        CharacterClass cl = CharacterClass::FIGHTER;
+        if (id == "boss_ember_hydra" || id == "enemy_tithe_watcher") cl = CharacterClass::WIZARD;
+        else if (id.rfind("enemy_wickthief", 0) == 0 || id == "enemy_gloamhound" || id == "boss_nightfang") cl = CharacterClass::ROGUE;
+        enemies_.push_back(newEnemy(id, cl));
+    }
+    pendingSurprise_ = surprise;
+    rollInitiative();
 }
 
 } // namespace dnd

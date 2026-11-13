@@ -200,7 +200,7 @@ int main() {
         const std::string s = g.serialize();
         CHECK(!contains(s, "mem_"));
         const auto h = s.substr(0, s.find('|'));
-        CHECK(std::count(h.begin(), h.end(), ',') == 43); // v2.25 37-field header + v2.29 curve fields (37..43)
+        CHECK(std::count(h.begin(), h.end(), ',') == 46); // v2.25 37-field header + v2.29 curve (37..43) + v2.30 AI (44..46)
         Game again; CHECK(again.deserialize(s));
         CHECK(again.needsMemoryContext() && drained(again).empty()); // load never replays grants
     }
