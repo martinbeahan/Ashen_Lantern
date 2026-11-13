@@ -1,5 +1,7 @@
 # Ash & Ember — Phase 1 (v2.20 / 59)
 
+> **Update (v2.21):** the placeholder column below is historical — Phase 2 gave every ID its own art and renamed five foes. See [`ASH_EMBER_PHASE2.md`](ASH_EMBER_PHASE2.md).
+
 Plumbing + legal hygiene + first art slice + Act 1 rewrite. Spec: Ash & Ember art direction and
 "The Kindling" plot (approved by Martin).
 

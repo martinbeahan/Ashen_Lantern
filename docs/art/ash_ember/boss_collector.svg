@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- COLLECTOR SALLOW VENN — Ashen Lantern original (Ash & Ember). Faces left, feet ~y478. VectorDrawable-safe: paths/circles, flat fills + fill-opacity, evenodd, simple strokes. -->
+<path fill="#1C1A1E" d="M188 188 Q240 176 292 190 L304 240 L310 310 Q332 362 382 400 L424 440 L392 436 L402 462 L364 444 L360 470 L330 440 L300 452 L290 430 L276 446 L270 420 L230 420 L222 446 L212 428 L196 444 L198 410 Q190 360 186 310 L182 240 Z"/>
+<path fill="#141216" d="M286 200 L300 204 L322 270 L322 318 L308 320 L306 274 Z"/>
+<path fill="#1C1A1E" d="M310 300 L320 298 L346 382 L336 386 Z"/>
+<path fill="#1C1A1E" d="M336 376 Q358 420 334 452 Q314 470 294 452 Q318 444 326 422 Q330 402 326 382 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M336 376 Q358 420 334 452 Q314 470 294 452"/>
+<path fill="#141216" d="M248 410 L270 410 L274 466 L288 478 L244 478 L252 466 Z"/>
+<path fill="#1C1A1E" d="M212 410 L236 410 L234 466 L246 478 L198 478 L210 468 Z"/>
+<path fill="#2A262C" d="M206 300 L300 300 L302 312 L204 312 Z"/>
+<path fill="none" stroke="#4A4650" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M212 194 L240 246 L270 194"/>
+<path fill="#4A4650" fill-rule="evenodd" d="M223 260 a17,17 0 1,0 34,0 a17,17 0 1,0 -34,0 Z M236 260 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z M248.4 260 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M242.9 269.5 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M231.9 269.5 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M226.4 260 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M231.9 250.5 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M242.9 250.5 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z"/>
+<path fill="#1C1A1E" d="M204 150 L258 148 L262 170 Q300 160 340 176 L376 166 L352 186 L378 198 L338 194 Q296 186 256 186 L214 182 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M262 170 Q300 160 340 176 L376 166"/>
+<path fill="#1C1A1E" d="M200 118 L262 116 Q266 150 254 176 L214 180 Q200 160 200 118 Z"/>
+<path fill="#0B0A0C" d="M204 120 L258 118 L256 142 L206 144 Z"/>
+<circle cx="219.5" cy="133" r="8.8" fill="#5FD3C6" fill-opacity="0.13"/><path fill="#5FD3C6" d="M214 137 L225 132 L226 135 L217 140 Z"/><circle cx="241.5" cy="130.5" r="8.8" fill="#5FD3C6" fill-opacity="0.13"/><path fill="#5FD3C6" d="M236 134 L247 130 L248 133 L239 137 Z"/>
+<path fill="#1C1A1E" d="M190 114 Q196 70 236 66 Q272 68 276 110 Z"/>
+<path fill="#1C1A1E" d="M146 120 Q220 96 304 108 Q316 114 304 122 Q220 116 152 130 Z"/>
+<path fill="#2A262C" d="M262 104 Q290 66 330 30 Q312 70 272 108 Z"/>
+<path fill="none" stroke="#2A262C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M286 80 L300 76 M296 68 L310 62 M306 56 L320 50"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M146 120 Q220 96 304 108"/>
+<path fill="#1C1A1E" d="M196 200 Q170 230 150 262 L136 270 L146 284 Q176 262 212 228 Z"/>
+<path fill="#D9D2C3" fill-opacity="0.55" d="M82 262 L130 252 L134 292 L86 302 Z M130 252 L172 262 L170 300 L134 292 Z"/>
+<path fill="none" stroke="#2A262C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M92 272 L124 266 M92 282 L124 276 M140 264 L164 270 M140 276 L164 282"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M182 240 L186 310 Q190 360 198 410"/>
+</svg>

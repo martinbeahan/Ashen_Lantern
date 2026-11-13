@@ -11,12 +11,16 @@
  * boss-seen flags, endgame loot gates and saves key off this ID — never off the
  * display name. Display names may change freely; IDs must not.
  *
- * The ID string doubles as the Android drawable entry for the sprite
- * (MainActivity.spriteForEnemyId). Every ID has its own entry there; foes without
- * new art map to a placeholder through their own entry, not a shared fallback.
+ * The ID string doubles as the Android drawable name for the sprite
+ * (MainActivity.spriteForEnemyId): res/drawable/<id>.xml, one distinct Ash & Ember
+ * silhouette per ID (Phase 2, v2.21). Nothing borrows another foe's art.
  *
  * legacyName = the pre-v2.20 display name. Used ONLY by save migration
- * (Game::deserialize) for saves written before enemyId existed.
+ * (Game::deserialize) for saves written before enemyId existed. Any other former
+ * display name (e.g. a v2.20 Phase-1 name that Phase 2 renamed) goes in aliases().
+ *
+ * Saves that DO carry an enemyId are re-labelled with the current displayName on
+ * load, so renames reach existing v2.20+ saves without touching the save format.
  */
 namespace dnd {
 namespace bestiary {
@@ -32,7 +36,7 @@ struct EnemyArchetype {
 // NOTE: append only — never rename or reuse an id (saves + online sync store it).
 inline const EnemyArchetype* table(size_t& count) {
     static const EnemyArchetype kTable[] = {
-        // Wickthieves (were goblins) — Ash & Ember art: enemy_wickthief
+        // Wickthieves (were goblins)
         {"enemy_wickthief",          "Wickthief",            "Goblin",              0, false},
         {"enemy_wickthief_scout",    "Wickthief Scout",      "Goblin Scout",        0, false},
         {"enemy_wickthief_cutpurse", "Wickthief Cutpurse",   "Goblin Ambusher",     0, false},
@@ -40,20 +44,20 @@ inline const EnemyArchetype* table(size_t& count) {
         {"enemy_wickthief_river",    "River Wickthief",      "River Goblin",        0, false},
         {"enemy_wickthief_root",     "Root Wickthief",       "Root Goblin",         0, false},
         {"enemy_wickthief_fen",      "Fen Wickthief",        "Marsh Goblin",        0, false},
-        // Ashbound (were skeletons) — Ash & Ember art: enemy_ashbound
+        // Ashbound (were skeletons)
         {"enemy_ashbound",           "Ashbound",             "Skeleton",            0, false},
         {"enemy_ashbound_bonebound", "Bonebound Ashbound",   "Bonebound Skeleton",  0, false},
-        // Gloamhound (was wolf) — placeholder art
+        // Gloamhound (was wolf)
         {"enemy_gloamhound",         "Gloamhound",           "Wolf",                0, false},
-        // Criers (heralds) — placeholder art
-        {"enemy_crier_bone",         "Bone Herald",          "Bone Herald",         0, false},
+        // Criers (heralds)
+        {"enemy_crier_bone",         "Bone Crier",           "Bone Herald",         0, false},
         {"enemy_crier_wick",         "Wickthief Herald",     "Goblin Herald",       0, false},
-        // Not yet re-art'd: keep names, own ID entries (placeholder art)
-        {"enemy_tallow_rat",         "Giant Rat",            "Giant Rat",           0, false},
-        {"enemy_brute",              "Ogre",                 "Ogre",                0, false},
-        {"enemy_tithe_enforcer",     "Debt Enforcer",        "Debt Enforcer",       0, false},
+        // Renamed in Phase 2 (v2.21) — display only; IDs unchanged. Old names live in kAliases.
+        {"enemy_tallow_rat",         "Tallow Rat",           "Giant Rat",           0, false},
+        {"enemy_brute",              "Millstone Brute",      "Ogre",                0, false},
+        {"enemy_tithe_enforcer",     "Tithe Enforcer",       "Debt Enforcer",       0, false},
         {"enemy_tithe_scavenger",    "Ash Scavenger",        "Ash Scavenger",       0, false},
-        {"enemy_tithe_watcher",      "Ashwake Scout",        "Ashwake Scout",       0, false},
+        {"enemy_tithe_watcher",      "Tithe Watcher",        "Ashwake Scout",       0, false},
         // Story bosses (bestiary names). Tier kept exactly as before (only the Warden was tiered).
         {"boss_sexton",              "The Lantern Sexton",   "Skeleton Champion",   0, false},
         {"boss_collector",           "Collector Sallow Venn","The Collector",       0, false},
@@ -70,6 +74,27 @@ inline const EnemyArchetype* table(size_t& count) {
     };
     count = sizeof(kTable) / sizeof(kTable[0]);
     return kTable;
+}
+
+struct NameAlias {
+    const char* name; // a former display name (pre-v2.20 or v2.20 Phase 1)
+    const char* id;
+};
+
+/** Former display names that are neither the legacyName nor the current displayName. */
+inline const NameAlias* aliases(size_t& count) {
+    static const NameAlias kAliases[] = {
+        // v2.20 (Phase 1) display names renamed in v2.21 (Phase 2). The pre-v2.20 names
+        // for these are the table legacyName (Giant Rat, Ogre, Debt Enforcer, Ashwake
+        // Scout, Bone Herald) — identical to the Phase-1 names except where listed here.
+        {"Giant Rat",      "enemy_tallow_rat"},
+        {"Ogre",           "enemy_brute"},
+        {"Debt Enforcer",  "enemy_tithe_enforcer"},
+        {"Ashwake Scout",  "enemy_tithe_watcher"},
+        {"Bone Herald",    "enemy_crier_bone"},
+    };
+    count = sizeof(kAliases) / sizeof(kAliases[0]);
+    return kAliases;
 }
 
 inline const EnemyArchetype* find(const std::string& id) {
@@ -110,6 +135,9 @@ inline std::string migrateLegacyName(const std::string& name) {
     for (size_t i = 0; i < n; ++i) {
         if (name == t[i].legacyName || name == t[i].displayName) return t[i].id;
     }
+    size_t na = 0;
+    const NameAlias* al = aliases(na);
+    for (size_t i = 0; i < na; ++i) if (name == al[i].name) return al[i].id;
     auto has = [&](const char* s) { return name.find(s) != std::string::npos; };
     // Bosses first (most specific), same precedence as the old substring logic.
     if (has("Hollow Crown")) return "boss_hollow_crown";
@@ -122,12 +150,15 @@ inline std::string migrateLegacyName(const std::string& name) {
     if (has("Skeleton Champion")) return "boss_sexton";
     if (has("Skeleton King")) return "boss_prior";
     if (has("Goblin King")) return "boss_wick_king";
-    if (has("Bone Herald")) return "enemy_crier_bone";
+    if (has("Bone Herald") || has("Bone Crier")) return "enemy_crier_bone";
     if (has("Goblin Herald")) return "enemy_crier_wick";
     if (has("Bonebound")) return "enemy_ashbound_bonebound";
     if (has("Skeleton")) return "enemy_ashbound";
     if (has("Wolf")) return "enemy_gloamhound";
-    if (has("Ogre")) return "enemy_brute";
+    if (has("Ogre") || has("Millstone Brute")) return "enemy_brute";
+    if (has("Debt Enforcer") || has("Tithe Enforcer")) return "enemy_tithe_enforcer";
+    if (has("Ashwake Scout") || has("Tithe Watcher")) return "enemy_tithe_watcher";
+    if (has("Ash Scavenger")) return "enemy_tithe_scavenger";
     if (has("Rat")) return "enemy_tallow_rat";
     if (has("Goblin")) return "enemy_wickthief";
     return "";

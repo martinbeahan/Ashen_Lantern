@@ -6,8 +6,8 @@ Original Ashen Lantern story continuation after Act 3 *Emberdeep Breach*. SRD-sa
 
 | Beat | Title | Shape |
 |------|-------|-------|
-| 20 | Vigil Watch | Soft open — Ashwake Scout; Search clue |
-| 21 | Greyfen Marsh | Marsh Goblin + Giant Rat |
+| 20 | Vigil Watch | Soft open — Tithe Watcher; Search clue |
+| 21 | Greyfen Marsh | Fen Wickthief + Tallow Rat |
 | 22 | Fen Causeway | Skeleton pair |
 | 23 | Vigil Niche | Soft Search — Vigil Ember |
 | 24 | Ashwake Threshold | Boss — Ashwake Herald |

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- BONE CRIER — Ashen Lantern original (Ash & Ember). Faces left, feet ~y478. VectorDrawable-safe: paths/circles, flat fills + fill-opacity, evenodd, simple strokes. -->
+<path fill="#141216" d="M296 92 L306 92 L304 478 L294 478 Z"/>
+<path fill="#141216" d="M270 104 L360 104 L360 112 L270 112 Z"/>
+<path fill="#141216" d="M306 112 L368 112 L366 230 L354 206 L344 244 L332 210 L320 236 L308 204 Z"/>
+<path fill="#D9D2C3" fill-opacity="0.5" d="M310 110 Q360 120 392 100 L394 106 Q362 128 312 118 Z"/>
+<path fill="#141216" d="M276 112 L280 112 L280 122 L276 122 Z"/>
+<path fill="#141216" d="M266 122 L290 122 Q298 144 302 166 L254 166 Q258 144 266 122 Z"/>
+<circle cx="278" cy="172" r="5" fill="#141216"/>
+<path fill="#141216" d="M244 340 L258 340 L272 400 L268 468 L292 474 L292 480 L256 480 L256 468 L256 402 Z"/>
+<circle cx="220" cy="256" r="22" fill="#F2A541" fill-opacity="0.55"/><circle cx="220" cy="256" r="10" fill="#FFD27A"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M 178 198 Q 212 188 254 202 L 248 240 Q 242 282 234 320 L 240 344 L 196 344 L 202 320 Q 190 282 186 240 Z M 198 220 Q 220 214 240 222 L 238 228 Q 220 221 199 226 Z M 200 238 Q 220 232 238 240 L 236 246 Q 220 239 201 244 Z M 202 256 Q 220 250 236 258 L 234 264 Q 220 257 203 262 Z M 204 274 Q 220 269 232 276 L 230 281 Q 220 275 205 279 Z"/>
+<path fill="#1C1A1E" d="M216 216 L224 216 L222 290 L218 290 Z"/>
+<path fill="#1C1A1E" d="M216 340 L234 340 L214 400 L222 466 L232 472 L230 478 L188 478 L196 470 L206 466 L198 400 Z"/>
+<path fill="#141216" d="M244 206 L254 202 L298 240 L302 254 L290 256 Z"/>
+<path fill="#1C1A1E" d="M184 204 L196 216 L158 238 L150 234 L136 176 L128 168 L134 164 L140 172 L138 156 L144 156 L146 172 L152 158 L158 160 L150 176 L158 226 Z"/>
+<path fill="#1C1A1E" d="M192 172 L212 172 L222 204 L200 204 Z"/>
+<path fill="#1C1A1E" d="M158 118 L164 98 L174 108 L180 88 L190 102 L198 84 L208 98 L218 92 L222 118 L224 160 L212 182 L190 180 L176 160 Z"/>
+<path fill="#0B0A0C" d="M178 134 L198 132 L202 168 L190 180 L180 164 Z"/>
+<path fill="#0B0A0C" d="M168 112 L184 108 L186 120 L170 124 Z M192 106 L210 104 L208 116 L194 118 Z"/>
+<circle cx="177" cy="117" r="8" fill="#5FD3C6" fill-opacity="0.14"/><circle cx="177" cy="117" r="3.2" fill="#5FD3C6"/><circle cx="201" cy="111" r="8" fill="#5FD3C6" fill-opacity="0.14"/><circle cx="201" cy="111" r="2.6" fill="#5FD3C6"/>
+<path fill="#D9D2C3" fill-opacity="0.55" d="M196 196 Q240 186 270 166 L274 172 Q244 196 200 204 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M158 118 L176 160"/><path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M216 340 L198 400 L206 466"/>
+<path fill="#141216" d="M232 76 L237 74.5 L237.5 80 L232.5 81 Z"/><path fill="#141216" d="M246 60 L251 58.5 L251.5 64 L246.5 65 Z"/><path fill="#141216" d="M226 52 L231 50.5 L231.5 56 L226.5 57 Z"/>
+</svg>

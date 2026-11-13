@@ -305,6 +305,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate started")
+        verifyEnemySpriteTable()
 
         
         try {
@@ -1573,6 +1574,11 @@ class MainActivity : AppCompatActivity() {
         chkReduceFlash.setOnCheckedChangeListener { _, checked ->
             reduceFlashEnabled = checked
             prefs().edit().putBoolean("pref_reduce_flash", checked).apply()
+            if (::battleArena.isInitialized) {
+                // Swap boss art to / from the calm (reduce-flash) variants.
+                lastBattleRoster = ""
+                refreshBattleArena()
+            }
             if (checked) {
                 // Stop any in-flight opacity strobes immediately.
                 sheetPulseAnimator?.cancel()
@@ -1652,6 +1658,11 @@ class MainActivity : AppCompatActivity() {
         chkReduceFlash.setOnCheckedChangeListener { _, checked ->
             reduceFlashEnabled = checked
             prefs().edit().putBoolean("pref_reduce_flash", checked).apply()
+            if (::battleArena.isInitialized) {
+                // Swap boss art to / from the calm (reduce-flash) variants.
+                lastBattleRoster = ""
+                refreshBattleArena()
+            }
             if (checked) {
                 sheetPulseAnimator?.cancel()
                 if (::btnSheet.isInitialized) btnSheet.alpha = 1f
@@ -4289,53 +4300,80 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Enemy sprite table keyed by the stable enemy ID (native Bestiary.h). Every ID has its
-     * own entry — no shared goblin fallback. Ash & Ember VectorDrawables (enemy_wickthief,
-     * enemy_ashbound, boss_wick_king) are authored facing left and have no attack frame
-     * (attacks are animated in code). Entries marked PLACEHOLDER reuse older CC0 bitmaps
-     * until their silhouette ships (Phase 2).
+     * Enemy sprite table keyed by the stable enemy ID (native Bestiary.h). Every one of the 27
+     * IDs has its own same-named Ash & Ember VectorDrawable (sources in docs/art/ash_ember/,
+     * converted with tools/svg2vd.py) — nothing borrows another foe's art. All are authored
+     * facing left and have no attack frame (attacks are animated in code).
      */
     private val enemySprites: Map<String, Int> = mapOf(
-        // Ash & Ember art
         "enemy_wickthief" to R.drawable.enemy_wickthief,
-        "enemy_wickthief_scout" to R.drawable.enemy_wickthief,
-        "enemy_wickthief_cutpurse" to R.drawable.enemy_wickthief,
-        "enemy_wickthief_cache" to R.drawable.enemy_wickthief,
-        "enemy_wickthief_river" to R.drawable.enemy_wickthief,
-        "enemy_wickthief_root" to R.drawable.enemy_wickthief,
-        "enemy_wickthief_fen" to R.drawable.enemy_wickthief,
-        "enemy_crier_wick" to R.drawable.enemy_wickthief,
+        "enemy_wickthief_scout" to R.drawable.enemy_wickthief_scout,
+        "enemy_wickthief_cutpurse" to R.drawable.enemy_wickthief_cutpurse,
+        "enemy_wickthief_cache" to R.drawable.enemy_wickthief_cache,
+        "enemy_wickthief_river" to R.drawable.enemy_wickthief_river,
+        "enemy_wickthief_root" to R.drawable.enemy_wickthief_root,
+        "enemy_wickthief_fen" to R.drawable.enemy_wickthief_fen,
         "enemy_ashbound" to R.drawable.enemy_ashbound,
-        "enemy_ashbound_bonebound" to R.drawable.enemy_ashbound,
-        "enemy_crier_bone" to R.drawable.enemy_ashbound,
-        "boss_sexton" to R.drawable.enemy_ashbound, // Lantern Sexton: Ashbound silhouette until its own art
-        "boss_prior" to R.drawable.enemy_ashbound, // Ossuary Prior: PLACEHOLDER (Ashbound)
+        "enemy_ashbound_bonebound" to R.drawable.enemy_ashbound_bonebound,
+        "enemy_gloamhound" to R.drawable.enemy_gloamhound,
+        "enemy_crier_bone" to R.drawable.enemy_crier_bone,
+        "enemy_crier_wick" to R.drawable.enemy_crier_wick,
+        "enemy_tallow_rat" to R.drawable.enemy_tallow_rat,
+        "enemy_brute" to R.drawable.enemy_brute,
+        "enemy_tithe_enforcer" to R.drawable.enemy_tithe_enforcer,
+        "enemy_tithe_scavenger" to R.drawable.enemy_tithe_scavenger,
+        "enemy_tithe_watcher" to R.drawable.enemy_tithe_watcher,
+        "boss_sexton" to R.drawable.boss_sexton,
+        "boss_collector" to R.drawable.boss_collector,
+        "boss_warden" to R.drawable.boss_warden,
+        "boss_herald" to R.drawable.boss_herald,
         "boss_wick_king" to R.drawable.boss_wick_king,
-        // PLACEHOLDER bitmaps (own entries; replaced in Phase 2)
-        "enemy_gloamhound" to R.drawable.sprite_wolf,
-        "enemy_tallow_rat" to R.drawable.sprite_wolf,
-        "enemy_brute" to R.drawable.sprite_ogre,
-        "enemy_tithe_enforcer" to R.drawable.sprite_skeleton,
-        "enemy_tithe_scavenger" to R.drawable.sprite_skeleton,
-        "enemy_tithe_watcher" to R.drawable.sprite_skeleton,
-        "boss_collector" to R.drawable.sprite_ogre,
-        "boss_warden" to R.drawable.sprite_ogre,
-        "boss_herald" to R.drawable.sprite_skeleton,
-        "boss_drake" to R.drawable.sprite_ogre,
-        "boss_hollow_crown" to R.drawable.boss_wick_king, // crowned silhouette PLACEHOLDER
-        "boss_ember_hydra" to R.drawable.sprite_ogre,
-        "boss_nightfang" to R.drawable.sprite_wolf,
+        "boss_prior" to R.drawable.boss_prior,
+        "boss_drake" to R.drawable.boss_drake,
+        "boss_hollow_crown" to R.drawable.boss_hollow_crown,
+        "boss_ember_hydra" to R.drawable.boss_ember_hydra,
+        "boss_nightfang" to R.drawable.boss_nightfang,
         // Unknown / future IDs from a newer host: neutral shadow, never a goblin.
         "enemy_unknown" to R.drawable.enemy_unknown
     )
 
-    /** Ash & Ember vector silhouettes: authored facing left, attack is code-animated (no _atk frame). */
-    private fun isAshEmberSprite(res: Int): Boolean =
-        res == R.drawable.enemy_wickthief || res == R.drawable.enemy_ashbound ||
-            res == R.drawable.boss_wick_king || res == R.drawable.enemy_unknown
+    /**
+     * Reduce-flash variants (tools/svg2vd.py --calm): the bosses whose amber light is a large
+     * glowing area — Ember Hydra's furnace door, the First Lamplighter's chest arch, the Ossuary
+     * Prior's censer and the Nightfang Matriarch's caged soul — swap to a version whose amber
+     * glow halos keep 30% alpha and solid amber 55%.
+     */
+    private val calmEnemySprites: Map<String, Int> = mapOf(
+        "boss_ember_hydra" to R.drawable.boss_ember_hydra_calm,
+        "boss_warden" to R.drawable.boss_warden_calm,
+        "boss_prior" to R.drawable.boss_prior_calm,
+        "boss_nightfang" to R.drawable.boss_nightfang_calm
+    )
 
-    private fun spriteForEnemyId(enemyId: String): Int =
-        enemySprites[enemyId] ?: enemySprites.getValue("enemy_unknown")
+    private val ashEmberSpriteRes: Set<Int> by lazy {
+        (enemySprites.values + calmEnemySprites.values).toSet()
+    }
+
+    /** Ash & Ember vector silhouettes: authored facing left, attack is code-animated (no _atk frame). */
+    private fun isAshEmberSprite(res: Int): Boolean = res in ashEmberSpriteRes
+
+    private fun spriteForEnemyId(enemyId: String): Int {
+        if (reduceFlashEnabled) calmEnemySprites[enemyId]?.let { return it }
+        return enemySprites[enemyId] ?: enemySprites.getValue("enemy_unknown")
+    }
+
+    /**
+     * Debug-build guard: all 27 Bestiary IDs must resolve to 27 distinct drawables (and the
+     * calm variants must be distinct too). Logs loudly instead of crashing release builds.
+     */
+    private fun verifyEnemySpriteTable() {
+        val ids = enemySprites.keys - "enemy_unknown"
+        val distinct = ids.map { enemySprites.getValue(it) }.toSet().size
+        val calmClash = calmEnemySprites.values.any { it in enemySprites.values }
+        if (ids.size != 27 || distinct != ids.size || calmClash) {
+            Log.e("AshEmber", "Enemy sprite table broken: ids=${ids.size} distinct=$distinct calmClash=$calmClash")
+        }
+    }
 
     private fun spriteFor(unit: BattleUnit): Int {
         if (!unit.isPlayer) return spriteForEnemyId(unit.enemyId)
@@ -4355,9 +4393,6 @@ class MainActivity : AppCompatActivity() {
             R.drawable.sprite_wizard -> R.drawable.sprite_wizard_atk
             R.drawable.sprite_rogue -> R.drawable.sprite_rogue_atk
             R.drawable.sprite_cleric -> R.drawable.sprite_cleric_atk
-            R.drawable.sprite_skeleton -> R.drawable.sprite_skeleton_atk
-            R.drawable.sprite_wolf -> R.drawable.sprite_wolf_atk
-            R.drawable.sprite_ogre -> R.drawable.sprite_ogre_atk
             else -> idleRes
         }
     }
@@ -4961,8 +4996,9 @@ class MainActivity : AppCompatActivity() {
                     .map { it.name.lowercase() }
                     .filter { it.isNotBlank() }
                 val foeNames = rosterFoeNames + listOf(
-                    "wickthief", "ashbound", "gloamhound", "ogre", "giant rat", "collector", "sexton",
-                    "lamplighter", "herald", "drake", "hydra", "nightfang", "crown", "prior", "king"
+                    "wickthief", "ashbound", "gloamhound", "tallow rat", "millstone brute", "tithe",
+                    "crier", "scavenger", "collector", "sexton", "lamplighter", "herald", "drake",
+                    "hydra", "nightfang", "crown", "prior", "king"
                 )
                 val attackerIsFoe = foeNames.any { attackerName.lowercase().contains(it) } ||
                     (attackerName.isBlank() && foeNames.any { e.contains(it) } &&

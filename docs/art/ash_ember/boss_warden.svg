@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- THE FIRST LAMPLIGHTER — Ashen Lantern original (Ash & Ember). Faces left, feet ~y478. VectorDrawable-safe: paths/circles, flat fills + fill-opacity, evenodd, simple strokes. -->
+<path fill="#141216" d="M350 200 L386 262 L390 334 L372 338 L366 272 L338 222 Z"/>
+<path fill="#141216" d="M282 396 L330 396 L334 470 L342 478 L276 478 L280 468 Z"/>
+<path fill="#F2A541" fill-opacity="0.05" d="M0 250 L222 230 L222 330 L0 420 Z"/>
+<path fill="#F2A541" fill-opacity="0.06" d="M0 290 L222 260 L222 320 L0 380 Z"/>
+<path fill="#F2A541" d="M220 342 L220 252 Q220 206 256 206 Q292 206 292 252 L292 342 Z"/>
+<path fill="#FFD27A" d="M232 342 L232 258 Q232 222 256 222 Q280 222 280 258 L280 342 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M160 170 L352 170 L362 220 L350 340 L330 360 L180 360 L162 340 L150 220 Z M220 342 L220 252 Q220 206 256 206 Q292 206 292 252 L292 342 Z"/>
+<circle cx="256" cy="290" r="70" fill="#F2A541" fill-opacity="0.07"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M136 160 L200 148 L212 200 L150 216 L124 190 Z M160 172 L170 168 L160 196 L154 194 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M312 148 L376 160 L388 190 L362 216 L300 200 Z M350 170 L358 172 L346 198 L340 196 Z"/>
+<path fill="#1C1A1E" d="M176 356 L336 356 L346 404 L322 396 L310 410 L290 396 L270 410 L250 396 L230 410 L210 396 L190 410 L166 404 Z"/>
+<path fill="#1C1A1E" d="M184 400 L232 400 L236 470 L244 478 L176 478 L182 468 Z"/>
+<path fill="#1C1A1E" d="M226 172 L286 172 L280 114 L258 60 L236 114 Z"/>
+<path fill="#1C1A1E" d="M224 172 L290 172 L296 160 L218 160 Z"/>
+<circle cx="258" cy="128" r="18" fill="#5FD3C6" fill-opacity="0.13"/>
+<path fill="#5FD3C6" d="M238 126 L278 122 L278 129 L238 133 Z"/>
+<path fill="#1C1A1E" d="M150 204 L118 262 L110 320 L132 326 L144 270 L172 222 Z"/>
+<circle cx="122" cy="322" r="15" fill="#1C1A1E"/>
+<path fill="#1C1A1E" d="M114 30 L126 30 L127 300 L115 300 Z M115 308 L127 306 L128 478 L118 478 Z"/>
+<path fill="#1C1A1E" d="M114 32 Q114 6 94 8 Q78 12 80 32 L88 32 Q88 20 96 20 Q106 20 106 32 Z"/>
+<path fill="#1C1A1E" d="M126 50 L150 44 L162 74 L136 82 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M150 220 L162 340"/><path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M114 30 L115 300"/>
+<path fill="#141216" d="M300 120 L305 118.5 L305.5 124 L300.5 125 Z"/><path fill="#141216" d="M320 96 L325 94.5 L325.5 100 L320.5 101 Z"/><path fill="#141216" d="M340 130 L345 128.5 L345.5 134 L340.5 135 Z"/><path fill="#141216" d="M196 110 L201 108.5 L201.5 114 L196.5 115 Z"/>
+</svg>

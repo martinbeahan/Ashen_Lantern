@@ -15,9 +15,9 @@ Fewer pure-random “empty room with 1–2 trash” feels in procedural crawl / 
 | `shadow_ambush` | Shadow Ambush | 2–3 goblin ambushers | 3 |
 | `bonebound_duo` | Bonebound Duo | Elite skeleton pair | 5 |
 | `relic_snatch` | Relic Snatch | Wolves + cache goblin (mini-objective) | 4 |
-| `kings_herald` | King's Herald | Boss-adjacent tease (Goblin/Bone Herald; no true boss spawn) | 6 |
+| `kings_herald` | King's Herald | Boss-adjacent tease (Wickthief Herald / Bone Crier; no true boss spawn) | 6 |
 | `wolf_pack` | Howl Corridor | Wolf pack pressure | 4 |
-| `ogre_roadblock` | Ogre Roadblock | Single ogre bruiser | 7 |
+| `ogre_roadblock` | Millstone Roadblock | Single Millstone Brute bruiser | 7 |
 
 Data table: `app/src/main/cpp/EncounterAuthorship.h`.
 

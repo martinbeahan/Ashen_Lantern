@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- THE BELL-HERALD OF THE TITHE — Ashen Lantern original (Ash & Ember). Faces left, feet ~y478. VectorDrawable-safe: paths/circles, flat fills + fill-opacity, evenodd, simple strokes. -->
+<path fill="#1C1A1E" d="M176 210 Q252 196 328 212 Q352 240 356 300 Q362 400 382 466 L382 480 L364 466 L346 480 L328 466 L310 480 L292 466 L274 480 L256 466 L238 480 L220 466 L202 480 L184 466 L166 480 L148 466 L130 480 L118 466 Q140 400 146 300 Q150 240 176 210 Z"/>
+<path fill="#0B0A0C" fill-opacity="0.6" d="M244 230 L254 230 L262 470 L238 470 Z"/>
+<path fill="#D9D2C3" fill-opacity="0.32" d="M175.9 285.8 L199.7 282.5 L204.1 314.2 L180.3 317.5 Z"/>
+<path fill="#D9D2C3" fill-opacity="0.32" d="M291 312.2 L314.6 316.3 L309 347.8 L285.4 343.7 Z"/>
+<path fill="#D9D2C3" fill-opacity="0.32" d="M201.7 374.8 L225.6 377.3 L222.3 409.2 L198.4 406.7 Z"/>
+<path fill="#D9D2C3" fill-opacity="0.32" d="M306.4 395.3 L330.3 392.8 L333.6 424.7 L309.7 427.2 Z"/>
+<path fill="#1C1A1E" d="M168 216 L156 174 L196 196 L212 184 L252 200 L292 184 L308 196 L348 174 L336 218 Z"/>
+<path fill="#141216" fill-rule="evenodd" d="M335 260 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z M337 260 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M344.8 280 a3.8,5.5 0 1,0 7.5,0 a3.8,5.5 0 1,0 -7.5,0 Z M346.8 280 a1.8,3.5 0 1,0 3.5,0 a1.8,3.5 0 1,0 -3.5,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M349 300 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z M351 300 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M352.8 320 a3.8,5.5 0 1,0 7.5,0 a3.8,5.5 0 1,0 -7.5,0 Z M354.8 320 a1.8,3.5 0 1,0 3.5,0 a1.8,3.5 0 1,0 -3.5,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M351 340 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z M353 340 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z"/>
+<path fill="#141216" d="M338 344 L374 340 L378 382 L342 386 Z"/>
+<path fill="#6E6872" fill-opacity="0.55" d="M196 70.4 Q210.4 92 204.4 101.6 Q196 110 187.6 101.6 Q181.6 92 196 70.4 Z"/>
+<path fill="#6E6872" fill-opacity="0.55" d="M190 122 Q202 140 197 148 Q190 155 183 148 Q178 140 190 122 Z"/>
+<path fill="#6E6872" fill-opacity="0.55" d="M304 55.6 Q319.6 79 313.1 89.4 Q304 98.5 294.9 89.4 Q288.4 79 304 55.6 Z"/>
+<path fill="#6E6872" fill-opacity="0.55" d="M316 118 Q328 136 323 144 Q316 151 309 144 Q304 136 316 118 Z"/>
+<path fill="#6E6872" fill-opacity="0.55" d="M250 7.2 Q263.2 27 257.7 35.8 Q250 43.5 242.3 35.8 Q236.8 27 250 7.2 Z"/>
+<path fill="#6E6872" fill-opacity="0.55" d="M222 33.6 Q231.6 48 227.6 54.4 Q222 60 216.4 54.4 Q212.4 48 222 33.6 Z"/>
+<path fill="#6E6872" fill-opacity="0.55" d="M282 28.8 Q292.8 45 288.3 52.2 Q282 58.5 275.7 52.2 Q271.2 45 282 28.8 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M210 60 Q256 38 292 62 Q302 100 306 140 Q312 160 328 172 L176 174 Q194 160 198 140 Q204 100 210 60 Z M268 70 L262 96 L272 112 L264 132 L269 134 L279 112 L269 96 L275 72 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M240 46 a11,11 0 1,0 22,0 a11,11 0 1,0 -22,0 Z M244 46 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z"/>
+<path fill="#0B0A0C" d="M184 174 Q252 190 320 174 Q302 200 252 202 Q202 200 184 174 Z"/>
+<circle cx="230" cy="186" r="10" fill="#5FD3C6" fill-opacity="0.14"/><circle cx="230" cy="186" r="3.4" fill="#5FD3C6"/><circle cx="272" cy="186" r="10" fill="#5FD3C6" fill-opacity="0.14"/><circle cx="272" cy="186" r="3.4" fill="#5FD3C6"/>
+<path fill="#2A262C" d="M248 182 L256 182 L258 218 Q262 228 252 232 Q242 228 246 218 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M210 60 Q204 100 198 140 Q194 160 176 174"/>
+<path fill="#1C1A1E" d="M128 70 L138 70 L136 300 L126 300 Z M126 308 L136 306 L134 478 L124 478 Z"/>
+<path fill="#1C1A1E" d="M138 72 L138 40 Q162 18 180 40 L162 46 Q150 40 144 56 L148 100 L138 112 Z M128 70 L108 54 L128 86 Z"/>
+<path fill="#1C1A1E" d="M184 228 Q158 252 142 272 L136 286 L150 292 Q172 266 198 246 Z"/>
+<circle cx="134" cy="282" r="12" fill="#1C1A1E"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M146 300 Q140 400 118 466"/><path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M128 70 L126 300"/>
+</svg>
