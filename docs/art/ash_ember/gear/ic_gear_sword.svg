@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<!-- Ash & Ember gear glyph: sword. Original Ashen Lantern art; paths/circles only. -->
+<path fill="#3A3640" d="M261 356.2 L307.5 129.2 L296 74 L260 117.4 L195 339.8 Z"/><path fill="#D9D2C3" fill-rule="evenodd" d="M263.2 354.5 L309.7 126.4 L302 72 L270.5 117 L208.8 341.5 Z M275.3 121.3 L253.3 321.3 L242.7 318.7 L264.7 118.7 Z"/><path fill="#3A3640" d="M166 362 L170 346 L308 342 L312 360 L302 372 L174 374 Z"/><path fill="#6E6872" d="M178 354 L300 350 L298 360 L180 362 Z"/><path fill="#2A262C" d="M220.4 360.3 L200.8 452.8 L227.2 459.2 L251.6 367.7 Z"/><circle cx="231.2" cy="384.2" r="15" fill="#1C1A1E"/><circle cx="231.2" cy="384.2" r="11" fill="#2A262C"/><circle cx="226.1" cy="405.4" r="15" fill="#0B0A0C"/><circle cx="226.1" cy="405.4" r="11" fill="#2A262C"/><circle cx="221" cy="426.6" r="15" fill="#1C1A1E"/><circle cx="221" cy="426.6" r="11" fill="#2A262C"/><circle cx="214" cy="456" r="22" fill="#3A3640"/><circle cx="211" cy="453" r="14" fill="#4A4650"/><circle cx="210" cy="451" r="6" fill="#D9D2C3"/>
+</svg>

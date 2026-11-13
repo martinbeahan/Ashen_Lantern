@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<!-- Ash & Ember gear glyph: raid_key. Original Ashen Lantern art; paths/circles only. -->
+<circle cx="168" cy="256" r="110" fill="#F2A541" fill-opacity="0.1"/><circle cx="168" cy="256" r="96" fill="#3A3640"/><circle cx="168" cy="256" r="58" fill="#141216"/><path fill="#F2A541" d="M168 208 L216 256 L168 304 L120 256 Z"/><path fill="#FFD27A" d="M168 224 L200 256 L168 288 L136 256 Z"/><path fill="#3A3640" d="M164 228 L172 228 L172 284 L164 284 Z"/><path fill="#3A3640" d="M140 252 L196 252 L196 260 L140 260 Z"/><path fill="#4A4650" d="M250 230 L286 230 L286 282 L250 282 Z"/><path fill="#6E6872" d="M278 236 L430 236 L430 276 L278 276 Z"/><path fill="#F2A541" fill-opacity="0.45" d="M278 236 L294 236 L294 276 L278 276 Z"/><path fill="#3A3640" d="M370 276 L430 276 L430 292 L430 356 L402 356 L402 320 L386 320 L386 344 L360 344 L360 292 L370 292 Z"/><path fill="#3A3640" d="M430 228 L452 236 L452 276 L430 284 Z"/>
+</svg>

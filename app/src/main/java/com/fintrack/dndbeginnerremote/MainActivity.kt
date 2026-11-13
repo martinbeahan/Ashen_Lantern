@@ -361,6 +361,7 @@ class MainActivity : AppCompatActivity() {
         btnAttack = findViewById(R.id.btnAttack)
         btnSpecial = findViewById(R.id.btnSpecial)
         btnHeal = findViewById(R.id.btnHeal)
+        bindPotionButtonIcon()
         btnInteract = findViewById(R.id.btnInteract)
         btnRest = findViewById(R.id.btnRest)
         btnReset = findViewById(R.id.btnReset)
@@ -1390,7 +1391,7 @@ class MainActivity : AppCompatActivity() {
             btnMenuRaid.alpha = if (storyDone) 1f else 0.45f
             btnMenuRaid.text = if (storyDone) "Boss Raid ($keys/3 keys)" else "Boss Raid (locked)"
             if (::mainMenuRaidHint.isInitialized) {
-                mainMenuRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = true)
+                setRaidHint(mainMenuRaidHint, storyDone, keys, forMainMenu = true)
             }
         }
         if (::btnMenuChallenge.isInitialized) {
@@ -1882,7 +1883,7 @@ class MainActivity : AppCompatActivity() {
             btnSettingsBossRaid.isEnabled = storyDone
             btnSettingsBossRaid.alpha = if (storyDone) 1f else 0.45f
             btnSettingsBossRaid.text = if (storyDone) "Boss Raid ($keys/3 keys)" else "Boss Raid (locked)"
-            settingsRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = false)
+            setRaidHint(settingsRaidHint, storyDone, keys, forMainMenu = false)
             startMenuRaidKeyCountdown()
         }
         refreshSettingsChallengeEntry()
@@ -3302,7 +3303,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Rarity row stripe, glyph socket and pip (colour + shape, so colour-blind players can tell them apart). */
-    private fun bindRarityRow(row: View, rarity: String, socket: ImageView?, pip: ImageView?) {
+    private fun bindRarityRow(
+        row: View, rarity: String, socket: ImageView?, pip: ImageView?,
+        itemName: String = "", itemType: String = "",
+    ) {
         val k = rarityKey(rarity)
         row.background = getDrawable(
             when (k) {
@@ -3313,15 +3317,9 @@ class MainActivity : AppCompatActivity() {
                 else -> R.drawable.bg_item_row_common
             }
         )
-        socket?.setImageResource(
-            when (k) {
-                "uncommon" -> R.drawable.bg_item_socket_uncommon
-                "rare" -> R.drawable.bg_item_socket_rare
-                "epic" -> R.drawable.bg_item_socket_epic
-                "legendary" -> R.drawable.bg_item_socket_legendary
-                else -> R.drawable.bg_item_socket_common
-            }
-        )
+        // v2.27: socket = rarity frame (background) + gear glyph (src). Calm Legendary when reduce-flash is on.
+        socket?.setBackgroundResource(GearIcons.socketFor(k))
+        socket?.setImageResource(GearIcons.forItem(itemName, itemType, k, calm = reduceFlashEnabled))
         pip?.setImageResource(
             when (k) {
                 "uncommon" -> R.drawable.ic_rarity_uncommon
@@ -3432,6 +3430,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** v2.27: the combat Potion button shows the draught glyph (dims when disabled) instead of an emoji. */
+    private fun bindPotionButtonIcon() {
+        val icon = getDrawable(R.drawable.ic_gear_potion_button) ?: return
+        val px = (18 * resources.displayMetrics.density).toInt()
+        val mb = btnHeal as? com.google.android.material.button.MaterialButton
+        if (mb != null) {
+            mb.icon = icon
+            mb.iconGravity = com.google.android.material.button.MaterialButton.ICON_GRAVITY_TOP
+            mb.iconSize = px
+            mb.iconPadding = 0
+            mb.iconTint = null
+        } else {
+            icon.setBounds(0, 0, px, px)
+            btnHeal.setCompoundDrawablesRelative(null, icon, null, null)
+        }
+        btnHeal.text = "Potion"
+    }
+
+    /** v2.27: Raid Key hint text plus a 22dp raid_key glyph once raids are unlocked. */
+    private fun setRaidHint(tv: TextView, storyDone: Boolean, keys: Int, forMainMenu: Boolean) {
+        tv.text = raidKeyHintText(storyDone, keys, forMainMenu)
+        tv.setCompoundDrawablesRelative(if (storyDone) gearChip(GearIcons.RAID_KEY, 22) else null, null, null, null)
+    }
+
+    /** A gear glyph sized for a TextView/Button compound drawable. */
+    private fun gearChip(glyph: String, sizeDp: Int): android.graphics.drawable.Drawable? {
+        val d = getDrawable(GearIcons.drawable(glyph))?.mutate() ?: return null
+        val px = (sizeDp * resources.displayMetrics.density).toInt()
+        d.setBounds(0, 0, px, px)
+        return d
+    }
+
     private fun refreshRaidKeyCountdownUi() {
         syncRaidKeyDay()
         val storyDone = isMetaStoryComplete()
@@ -3441,7 +3471,7 @@ class MainActivity : AppCompatActivity() {
                 btnMenuRaid.text = "Boss Raid ($keys/3 keys)"
             }
             if (::mainMenuRaidHint.isInitialized) {
-                mainMenuRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = true)
+                setRaidHint(mainMenuRaidHint, storyDone, keys, forMainMenu = true)
             }
         }
         if (::settingsRoot.isInitialized && settingsRoot.visibility == View.VISIBLE) {
@@ -3449,7 +3479,7 @@ class MainActivity : AppCompatActivity() {
                 btnSettingsBossRaid.text = "Boss Raid ($keys/3 keys)"
             }
             if (::settingsRaidHint.isInitialized) {
-                settingsRaidHint.text = raidKeyHintText(storyDone, keys, forMainMenu = false)
+                setRaidHint(settingsRaidHint, storyDone, keys, forMainMenu = false)
             }
         }
         refreshDailyQuestsUi()
@@ -3911,6 +3941,8 @@ class MainActivity : AppCompatActivity() {
         }
         val view = layoutInflater.inflate(R.layout.dialog_inventory, null)
         val goldTv = view.findViewById<TextView>(R.id.invGoldText)
+        goldTv.setCompoundDrawablesRelative(gearChip(GearIcons.GOLD, 20), null, null, null)
+        goldTv.compoundDrawablePadding = (6 * resources.displayMetrics.density).toInt()
         val list = view.findViewById<LinearLayout>(R.id.invItemList)
         val dialog = AlertDialog.Builder(this)
             .setTitle("Inventory — $forName")
@@ -3972,7 +4004,7 @@ class MainActivity : AppCompatActivity() {
                 val itemLabel = "$name (+$bonus)"
                 nameTv.text = itemLabel
                 nameTv.setTextColor(rarityColor(rarity))
-                bindRarityRow(row, rarity, row.findViewById(R.id.invItemSocket), row.findViewById(R.id.invItemPip))
+                bindRarityRow(row, rarity, row.findViewById(R.id.invItemSocket), row.findViewById(R.id.invItemPip), name, type)
                 row.findViewById<View?>(R.id.invEquippedTag)?.visibility =
                     if (slot == "weapon" || slot == "armor") View.VISIBLE else View.GONE
                 val slotLabel = when (slot) {
@@ -4226,7 +4258,7 @@ class MainActivity : AppCompatActivity() {
                 val nameTv = row.findViewById<TextView>(R.id.shopItemName)
                 nameTv.text = "$name (+$bonus) · $type"
                 nameTv.setTextColor(rarityColor(rarity))
-                bindRarityRow(row, rarity, row.findViewById(R.id.shopItemSocket), row.findViewById(R.id.shopItemPip))
+                bindRarityRow(row, rarity, row.findViewById(R.id.shopItemSocket), row.findViewById(R.id.shopItemPip), name, type)
                 val bonusInt = bonus.toIntOrNull() ?: 0
                 val flavor = BeginnerGuide.gearBonusFlavor(type, bonusInt)
                 row.findViewById<TextView>(R.id.shopItemCost).text = "$rarity · $cls · ${cost}g\n$flavor"
@@ -4385,7 +4417,7 @@ class MainActivity : AppCompatActivity() {
             roomCleared -> "🚪\nOnward"
             else -> "⚔\nAttack"
         }
-        btnHeal.text = "⚗\nPotion"
+        btnHeal.text = "Potion"
         btnRest.text = if (isShop) "Leave" else "🌙\nRest"
         btnInteract.visibility = if (isShop) View.GONE else View.VISIBLE
         btnInteract.text = if (searchedRoom) "🔍\nDone" else "🔍\nSearch"
