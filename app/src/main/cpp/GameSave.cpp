@@ -164,6 +164,7 @@ bool Game::deserialize(const std::string& data, std::string* error) {
     clearSetPiecePending();
     pendingRaidKeyDrop_ = false;
     shopInventory_.clear();
+    resetMemoryRuntime(); // a loaded hero gets its Ledger context pushed again by Kotlin
 
     players_ = std::move(tmp.players_);
     enemies_ = std::move(tmp.enemies_);

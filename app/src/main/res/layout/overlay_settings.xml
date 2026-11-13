@@ -300,6 +300,17 @@
                 android:textSize="12sp"
                 android:visibility="gone" />
 
+            <Button
+                android:id="@+id/btnSettingsLedger"
+                style="@style/Widget.DnD.ActionButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="44dp"
+                android:layout_marginBottom="6dp"
+                android:text="Memory Ledger"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
             <TextView
                 android:fontFamily="@font/cormorant"
                 style="@style/Text.DnD.SectionLabel"

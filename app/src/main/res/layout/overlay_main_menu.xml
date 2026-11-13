@@ -275,6 +275,26 @@
                 android:visibility="gone" />
 
             <Button
+                android:id="@+id/btnMenuLedger"
+                style="@style/Widget.DnD.ActionButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Memory Ledger"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/mainMenuLedgerHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:fontFamily="@font/cormorant"
+                android:text="Finish the Kindling to open the glass."
+                android:textColor="@color/parchment_dark"
+                android:textSize="12sp"
+                android:paddingBottom="6dp" />
+
+            <Button
                 android:id="@+id/btnMenuHost"
                 style="@style/Widget.DnD.ActionButton"
                 android:layout_width="match_parent"

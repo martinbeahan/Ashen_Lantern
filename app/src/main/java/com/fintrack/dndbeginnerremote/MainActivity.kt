@@ -130,6 +130,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnMenuClaimDaily: Button
     private lateinit var settingsDailyQuests: TextView
     private lateinit var btnSettingsClaimDaily: Button
+    private lateinit var btnMenuLedger: Button
+    private lateinit var mainMenuLedgerHint: TextView
+    private lateinit var btnSettingsLedger: Button
     /** Last native daily-quest counter snap (rooms,fights,searches,damage,bosses). */
     private var lastDqSnap = intArrayOf(0, 0, 0, 0, 0)
     /** One-shot CTA after Acts 1–4 so player can open Boss Raid / menu without relaunch. */
@@ -284,6 +287,13 @@ class MainActivity : AppCompatActivity() {
     /** "venn,well": 0 undecided; Venn 1 spared / 2 ended; well 1 sealed in / 2 let rest. */
     external fun getStoryChoices(): String
     external fun refreshStoryRoomAfterLoad(): Boolean
+    // v2.26 Memory Ledger — native decides grants; the store is MemoryLedger.Store (meta prefs, slot 1).
+    external fun setMemoryLedgerContext(ownedCsv: String, crawlDry: Int)
+    external fun needsMemoryContext(): Boolean
+    external fun drainMemoryGrants(): String
+    external fun getProgressStoryMemories(): String
+    external fun previewStoryMemories(save: String): String
+    external fun getMemoryCatalog(venn: Int, well: Int): String
     external fun isStoryFullyComplete(): Boolean
     external fun consumePendingRaidKeyDrop(): Boolean
     external fun beginBossRaidFromCurrent(): Boolean
@@ -1284,6 +1294,7 @@ class MainActivity : AppCompatActivity() {
             prefs().edit().putBoolean("crash_guard", false).apply()
             btnReset.visibility = View.GONE
             Toast.makeText(this, "Welcome back, $localPlayerName (solo)", Toast.LENGTH_SHORT).show()
+            syncLedgerAfterSoloLoad()
         }
         refreshBattleArena()
         updateUi()
@@ -1436,6 +1447,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         refreshDailyQuestsUi()
+        refreshLedgerEntry()
     }
 
     private fun showDifficultyPicker(lockForRun: Boolean) {
@@ -1496,6 +1508,8 @@ class MainActivity : AppCompatActivity() {
         mainMenuDifficultyLabel = findViewById(R.id.mainMenuDifficultyLabel)
         mainMenuDailyQuests = findViewById(R.id.mainMenuDailyQuests)
         btnMenuClaimDaily = findViewById(R.id.btnMenuClaimDaily)
+        btnMenuLedger = findViewById(R.id.btnMenuLedger)
+        mainMenuLedgerHint = findViewById(R.id.mainMenuLedgerHint)
 
         settingsRoot = findViewById(R.id.settingsRoot)
         chkBeginnerTips = findViewById(R.id.chkBeginnerTips)
@@ -1520,6 +1534,7 @@ class MainActivity : AppCompatActivity() {
         settingsDifficultyText = findViewById(R.id.settingsDifficultyText)
         settingsDailyQuests = findViewById(R.id.settingsDailyQuests)
         btnSettingsClaimDaily = findViewById(R.id.btnSettingsClaimDaily)
+        btnSettingsLedger = findViewById(R.id.btnSettingsLedger)
 
         btnMenuContinue.setOnClickListener {
             // Menu stays until continueSavedGame succeeds (activateSession) or
@@ -1649,6 +1664,8 @@ class MainActivity : AppCompatActivity() {
         btnSettingsClose.setOnClickListener { hideSettingsOverlay() }
         btnMenuClaimDaily.setOnClickListener { claimDailyQuestsRewards() }
         btnSettingsClaimDaily.setOnClickListener { claimDailyQuestsRewards() }
+        btnMenuLedger.setOnClickListener { openMemoryLedger() }
+        btnSettingsLedger.setOnClickListener { openMemoryLedger() }
     }
 
     private fun showSettingsOverlay() {
@@ -1708,6 +1725,7 @@ class MainActivity : AppCompatActivity() {
         btnSettingsReturnMenu.visibility = if (sessionActive) View.VISIBLE else View.GONE
         refreshSettingsRaidEntry()
         refreshDailyQuestsUi()
+        refreshLedgerEntry()
         updateSettingsDifficultyText()
         settingsDifficultyText.setOnClickListener {
             if (sessionActive && runDifficulty >= 0) {
@@ -1781,6 +1799,8 @@ class MainActivity : AppCompatActivity() {
             ed.remove("save_state")
         }
         ed.apply()
+        // Abandon clears this slot's Ledger with the save; leaving Host / Join touches neither.
+        if (!leavingOnline) ledgerStore().clear()
         runDifficulty = -1
         wipeDialogShowing = false
         storyCompleteRoutesShown = false
@@ -2696,6 +2716,11 @@ class MainActivity : AppCompatActivity() {
         runDifficulty = preferredDifficulty.coerceIn(0, 3)
         resetGame(heroClass, localPlayerName, playMode, runDifficulty, companionClass, companionAutoAi)
         setHost(true)
+        // New Game: this slot's Ledger starts empty (per-hero; no spoilers on a fresh run).
+        try {
+            ledgerStore().startFresh(getSessionId())
+            setMemoryLedgerContext("", 0)
+        } catch (e: Exception) { Log.e(TAG, "ledger reset failed", e) }
         storyCompleteRoutesShown = (playMode == 2 || playMode == 3 || playMode == 4) // raid/challenge/arena past story gate
         maybeOfferTutorialThenCoach()
         activateSession()
@@ -3533,6 +3558,135 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    // --- v2.26 Memory Ledger ----------------------------------------------------------------------
+
+    private var ledgerStoreCache: MemoryLedger.Store? = null
+    /** The Continue save is slot 1 until save slots land; keys are ledger_slot_1_… in meta prefs. */
+    private fun ledgerStore(): MemoryLedger.Store =
+        ledgerStoreCache ?: MemoryLedger.Store(prefs(), MemoryLedger.SLOT_1).also { ledgerStoreCache = it }
+
+    /** Solo play on the Continue hero only. Host / Join never read or write the Ledger. */
+    private fun ledgerSoloSession(): Boolean {
+        if (!sessionActive || isOnlineHost || isOnlineClient) return false
+        return try { !isDmTable() } catch (_: Exception) { false }
+    }
+
+    /** Main menu: tie the Ledger to the hero in the Continue save and migrate it once (silently). */
+    private fun migrateLedgerFromSaveIfNeeded() {
+        if (!nativeReady || sessionActive) return
+        val save = livableSavedState() ?: return
+        val store = ledgerStore()
+        try {
+            store.ensureOwner(MemoryLedger.sessionIdFromSave(save))
+            if (!store.isMigrated()) store.migrateFrom(previewStoryMemories(save))
+        } catch (e: Exception) { Log.e(TAG, "ledger migration (menu) failed", e) }
+    }
+
+    /** After a solo Continue: same owner check, top up story memories by progress, push context. */
+    private fun syncLedgerAfterSoloLoad() {
+        if (!nativeReady || !ledgerSoloSession()) return
+        try {
+            val store = ledgerStore()
+            store.ensureOwner(getSessionId())
+            val firstTime = !store.isMigrated()
+            val added = store.migrateFrom(getProgressStoryMemories())
+            setMemoryLedgerContext(store.ids().joinToString(","), store.crawlDry())
+            if (firstTime && added > 0) {
+                showLedgerToast("The Lantern remembers $added voices. Open the Memory Ledger.")
+            }
+        } catch (e: Exception) { Log.e(TAG, "ledger sync failed", e) }
+    }
+
+    private fun pollMemoryLedger() {
+        val raw = try { drainMemoryGrants() } catch (_: Exception) { return }
+        if (!ledgerSoloSession()) return // online / Lanternkeeper: drained and dropped, store untouched
+        val store = ledgerStore()
+        try {
+            if (needsMemoryContext()) setMemoryLedgerContext(store.ids().joinToString(","), store.crawlDry())
+            val (dry, ids) = MemoryLedger.splitIds(raw)
+            dry.toIntOrNull()?.let { if (it != store.crawlDry()) store.setCrawlDry(it) }
+            val ch = getStoryChoices()
+            val (v0, w0) = store.choices()
+            if (ch != "$v0,$w0") store.setChoices(ch)
+            if (ids.isEmpty()) return
+            val added = store.add(ids, markUnread = true)
+            if (added.isEmpty()) return
+            val (venn, well) = store.choices()
+            val title = MemoryLedger.parseCatalog(getMemoryCatalog(venn, well))
+                .firstOrNull { it.id == added.last() }?.title ?: "a voice"
+            showLedgerToast(
+                if (added.size == 1) "A soul settles in the glass — $title. Open the Memory Ledger."
+                else "${added.size} souls settle in the glass — $title and more. Open the Memory Ledger."
+            )
+            refreshLedgerEntry()
+        } catch (e: Exception) { Log.e(TAG, "ledger poll failed", e) }
+    }
+
+    private fun refreshLedgerEntry() {
+        if (!::btnMenuLedger.isInitialized) return
+        migrateLedgerFromSaveIfNeeded()
+        val store = ledgerStore()
+        val hasSave = livableSavedState() != null
+        // Opens once Act 1 is done or any memory exists (a migrated Act 1 save opens at once).
+        val open = !store.isEmpty() && (hasSave || sessionActive)
+        val total = try { MemoryLedger.parseCatalog(getMemoryCatalog(0, 0)).size } catch (_: Exception) { 0 }
+        btnMenuLedger.isEnabled = open
+        btnMenuLedger.alpha = if (open) 1f else 0.45f
+        val unread = store.unread().size
+        btnMenuLedger.text = if (open && unread > 0) "Memory Ledger · $unread new" else "Memory Ledger"
+        mainMenuLedgerHint.text = if (open) "${store.count()} of $total kindled" else "Finish the Kindling to open the glass."
+        if (::btnSettingsLedger.isInitialized) {
+            btnSettingsLedger.visibility = if (ledgerSoloSession() && !store.isEmpty()) View.VISIBLE else View.GONE
+        }
+    }
+
+    private fun openMemoryLedger() {
+        val store = ledgerStore()
+        if (store.isEmpty() || isOnlineHost || isOnlineClient) {
+            Toast.makeText(this, "Finish the Kindling to open the glass.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val (venn, well) = store.choices()
+        val catalog = try { MemoryLedger.parseCatalog(getMemoryCatalog(venn, well)) } catch (_: Exception) { emptyList() }
+        if (catalog.isEmpty()) return
+        MemoryLedgerScreen(this, store, catalog).show()
+    }
+
+    private var ledgerToastView: TextView? = null
+
+    /** Short amber toast; a plain fade unless Reduce Flashing is on (then it simply appears). */
+    private fun showLedgerToast(message: String) {
+        val content = findViewById<android.widget.FrameLayout>(android.R.id.content) ?: return
+        ledgerToastView?.let { content.removeView(it) }
+        val d = resources.displayMetrics.density
+        val tv = TextView(this).apply {
+            text = message
+            setTextColor(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.ae_amber_core))
+            textSize = 14f
+            try { typeface = androidx.core.content.res.ResourcesCompat.getFont(this@MainActivity, R.font.cormorant) } catch (_: Exception) {}
+            setBackgroundResource(R.drawable.bg_narration_card)
+            setPadding((14 * d).toInt(), (10 * d).toInt(), (14 * d).toInt(), (10 * d).toInt())
+            gravity = android.view.Gravity.CENTER
+            isClickable = true
+            setOnClickListener { content.removeView(this); ledgerToastView = null }
+        }
+        val lp = android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT, android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+            android.view.Gravity.TOP
+        ).apply { val m = (16 * d).toInt(); setMargins(m, (72 * d).toInt(), m, 0) }
+        content.addView(tv, lp)
+        ledgerToastView = tv
+        if (reduceFlashEnabled) {
+            tv.alpha = 1f
+        } else {
+            tv.alpha = 0f
+            tv.animate().alpha(1f).setDuration(220).start()
+        }
+        handler.postDelayed({
+            if (ledgerToastView === tv) { content.removeView(tv); ledgerToastView = null }
+        }, 3600)
+    }
+
     private fun pollRaidKeyDrop() {
         try {
             if (consumePendingRaidKeyDrop()) {
@@ -4152,6 +4306,7 @@ class MainActivity : AppCompatActivity() {
         val status = getPlayerStatus()
         markMetaStoryCompleteIfNeeded()
         pollStoryChoice()
+        pollMemoryLedger()
         pollRaidKeyDrop()
         pollDailyQuestProgress()
         val isShop = isMerchantRoom()

@@ -9,6 +9,7 @@
 #include <deque>
 #include <memory>
 #include <random>
+#include <set>
 
 namespace dnd {
 
@@ -183,6 +184,25 @@ public:
      * and are left alone. Returns true if the description changed.
      */
     bool refreshStoryRoomAfterLoad();
+    // --- The Memory Ledger (v2.26). Grants are queued here; the per-hero store is Kotlin meta prefs. ---
+    /**
+     * Kotlin pushes the current hero's collected ids (csv) and the crawl pity counter after every
+     * load / new game. Until then pool grants (Rounds / Ember Ring) are held back so nothing is
+     * picked twice. Never called for Host / Join.
+     */
+    void setMemoryLedgerContext(const std::string& ownedCsv, int crawlDryRooms);
+    bool needsMemoryContext() const { return !memoryContextKnown_; }
+    /** "crawlDry|id,id,..." — newly granted ids since the last drain (empties the queue). */
+    std::string drainMemoryGrants();
+    /**
+     * Story memories this hero has already earned by progress: every guaranteed memory behind the
+     * current beat (or in a completed act), Search memories whose item flag is set, the current
+     * beat's enter / clear memories, and the Well's Judgment once the well choice exists.
+     * Format: "venn,well|id,id,...". Used for migration of pre-v2.26 saves and as a safety net.
+     */
+    std::string progressStoryMemories() const;
+    /** Same as progressStoryMemories() for a save string, without touching the live game. */
+    static std::string previewStoryMemories(const std::string& save);
     bool isQuestLanternRecovered() const { return questLanternRecovered_; }
     bool isQuestComplete() const { return questComplete_; }
     /** Solo scripted Act 1–4; false for crawl / raid / Host-as-DM / online. */
@@ -357,6 +377,11 @@ private:
     bool questAct4EmberFound_ = false;
     int vennChoice_ = VENN_UNDECIDED;  // header field 35 (after the E2 marker)
     int wellChoice_ = WELL_UNDECIDED;  // header field 36
+    // Memory Ledger (not saved — the store is Kotlin meta prefs, keyed by save slot).
+    std::vector<std::string> pendingMemories_;
+    std::set<std::string> memoryOwned_;
+    bool memoryContextKnown_ = false;
+    int memoryCrawlDry_ = 0;           // cleared crawl rooms since the last Rounds memory (pity at 8)
     int heraldTolls_ = 0;              // flavour counter for the Bell-Herald (not saved)
     int soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
     int difficulty_ = static_cast<int>(Difficulty::EASY);
@@ -401,6 +426,17 @@ private:
     void dmSay(const std::string& line);
     /** Wren, from inside the Lantern (chat tag [Lantern]) — only once she is in the glass. */
     void wrenSay(const std::string& line);
+    void resetMemoryRuntime();
+    /** Queue a memory if this hero doesn't have it. voice = Wren's remark in chat ([Lantern]). */
+    bool grantMemory(const char* id, bool voice);
+    void memoryOnBeatEnter();
+    void memoryOnStoryClear();
+    void memoryOnStorySearch();
+    bool memoryCrawlEligible() const;
+    void memoryOnCrawlEvent(bool search);
+    void memoryOnDeepDepth(int depth);
+    void memoryOnArenaApex();
+    void memoryOnRaidBoss(const std::string& foeId);
     void onStoryRoomCleared();
     void applyVennChoice(int option, bool silent);
     void applyWellChoice(int option, bool silent);

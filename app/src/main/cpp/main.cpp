@@ -9,6 +9,7 @@
 #include "AndroidOut.h"
 #include "Renderer.h"
 #include "Game.h"
+#include "MemoryCatalog.h"
 #include "SaveCodec.h"
 #include <stdexcept>
 #include <sstream>
@@ -656,6 +657,77 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_refreshStoryRoomAfterLoad([[may
     return jniGuard("refreshStoryRoomAfterLoad", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.refreshStoryRoomAfterLoad() ? JNI_TRUE : JNI_FALSE;
+    });
+}
+
+// --- v2.26 Memory Ledger. The store is Kotlin meta prefs (per save slot); native only decides grants. ---
+
+/** Push the current solo hero's collected ids (csv) and the Rounds pity counter. */
+JNIEXPORT void JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_setMemoryLedgerContext([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring ownedCsv, jint crawlDry) {
+    jniGuardVoid("setMemoryLedgerContext", [&]() {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        JUtf owned(env, ownedCsv);
+        g_Game.setMemoryLedgerContext(owned.str(), static_cast<int>(crawlDry));
+    });
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_needsMemoryContext([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuard("needsMemoryContext", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return g_Game.needsMemoryContext() ? JNI_TRUE : JNI_FALSE;
+    });
+}
+
+/** "crawlDry|id,id" — new grants since the last call (queue emptied). */
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_drainMemoryGrants([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuardStr(env, "drainMemoryGrants", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return env->NewStringUTF(g_Game.drainMemoryGrants().c_str());
+    });
+}
+
+/** "venn,well|ids" — story memories the live hero has earned by progress (migration / safety). */
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getProgressStoryMemories([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuardStr(env, "getProgressStoryMemories", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return env->NewStringUTF(g_Game.progressStoryMemories().c_str());
+    });
+}
+
+/** Same for a save string, parsed into a scratch game (the live game is untouched). */
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_previewStoryMemories([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring save) {
+    return jniGuardStr(env, "previewStoryMemories", [&]() -> jstring {
+        JUtf data(env, save);
+        return env->NewStringUTF(dnd::Game::previewStoryMemories(data.str()).c_str());
+    });
+}
+
+/**
+ * Whole catalogue, bodies coloured by the choices: records split by \x1e, fields by \x1f:
+ * id, title, speaker, place, body, wren, source, ribbon, lockedHint.
+ */
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getMemoryCatalog([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint venn, jint well) {
+    return jniGuardStr(env, "getMemoryCatalog", [&]() -> jstring {
+        std::string out;
+        for (const auto& m : dnd::memory::kMemories) {
+            if (!out.empty()) out += '\x1e';
+            out += m.id; out += '\x1f';
+            out += m.title; out += '\x1f';
+            out += m.speaker; out += '\x1f';
+            out += m.place; out += '\x1f';
+            out += dnd::memory::bodyFor(m, static_cast<int>(venn), static_cast<int>(well)); out += '\x1f';
+            out += (m.wren ? m.wren : ""); out += '\x1f';
+            out += std::to_string(m.source); out += '\x1f';
+            out += std::to_string(m.ribbon); out += '\x1f';
+            out += dnd::memory::lockedHintFor(m);
+        }
+        return env->NewStringUTF(out.c_str());
     });
 }
 

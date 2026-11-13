@@ -6,7 +6,21 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.25 / 64) — The Kindling, Acts 2–4
+## What's new (v2.26 / 65) — The Memory Ledger
+
+- **Memory Ledger** — open it from the main menu (under Daily Quests) or from Settings during a solo run. It holds 47 Ember Memories in three ribbons, **Wren**, **Maren** and **The Lantern**, with source filters (Story / Rounds / Deep / Ring / Raids). Tap a card to read it and Wren's remark. New cards are marked **NEW** until you open them. Uncollected cards say only "A voice not yet kindled" and where they're found, so nothing is spoiled
+- **Where memories come from:**
+  - **Story:** 23 across Acts 1–4. Most can't be missed; a few need a Search
+  - **Lamplighter's Rounds:** 8 Millhollow voices, once Wren is in the glass. A Search or a clear sometimes frees one, and one is guaranteed after 8 dry chambers
+  - **Ashen Deep:** 4 of Maren's memories at depths 5, 10, 20 and 30, told in reverse
+  - **Ember Ring:** 3 caged souls, from Wave 5 clears
+  - **Drowned Lantern raids:** 3 per town, on its first clear
+- **Your choices show** — Venn's and the Well's cards (and Old Sallow's in the Ember Ring) follow what you chose at The Tithe Broken and Breach Sealed
+- **Existing heroes** — on the first Continue (or menu visit) your save is credited with the six Act 1 memories plus every story memory your progress has already earned. Saves that finished Act 2 or Act 3 before v2.25 count as Venn ended / sealed in. Rounds, Deep, Ring and Raid memories are earned from now on
+- **Per hero** — New Game or Abandon starts an empty Ledger. Return to Menu, Raids, the Ring and the Deep keep it. The Ledger lives in app settings for the save slot (today's one save is slot 1, ready for save slots later), never inside the save or a Host/Join session. Host/Join never reads, grants or wipes it
+- Lore only: no stats, gear or set bonus. The grant toast is static when *Reduce flashing* is on
+
+## Previous (v2.25 / 64) — The Kindling, Acts 2–4
 
 - **Acts 2–4 rewritten** — the rest of the story now tells *The Kindling*. Same rooms, foes and rewards; new story:
   - **Act 2 — The Tithe** (was *Millhollow's Debt*): the grey collectors were never after grain. The village owes souls, the elders have been choosing who, and your name is next in the ledger. Beat 13 is now called **The Tithe Broken**
@@ -105,6 +119,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 ## Features
 
 - **Story adventure — *The Kindling*** — four original scripted acts (Act 1 *The Kindling*, Act 2 *The Tithe*, Act 3 *Emberdeep*, Act 4 *Ashwake Vigil*), with Continue mid-quest. You are the Lamplighter's child; after Act 1 your sister Wren lives in the Ashen Lantern and speaks in chat as **[Lantern]**. Two story choices — Sallow Venn's fate and what the Ember Seal does to the ash-dead — colour the ending
+- **Memory Ledger** — a book of 47 Ember Memories: short testimonies from the souls in the Lantern, with Wren's remarks, sorted into three ribbons (*Wren*, *Maren*, *The Lantern*). They come from story beats, Lamplighter's Rounds, the Ashen Deep, the Ember Ring and the Drowned Lantern raids. Lore only, no stat effects. Each hero has their own Ledger; uncollected cards show only where they are found
 - **Ash & Ember art** — original hand-authored silhouettes for all 27 foes (one per stable enemy ID) and all five hero classes, with code-driven idle sway / attack lunge / ash-dissolve animation; 16 original stage backgrounds chosen by mode and story beat; *Reduce flashing* stills them and calms the bright amber boss and hero glows
 - **Ash & Ember UI** — soot-and-amber panels, buttons and dialogs, Cinzel / Cormorant Garamond type, a candle-wick HP bar, a 10-ember XP row and rarity pips on loot
 - **Dungeon Crawl** — procedural rooms from the start (skip the scripted quest)
