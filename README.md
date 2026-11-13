@@ -6,7 +6,18 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.24 / 63) — Android 16 & play readiness
+## What's new (v2.25 / 64) — The Kindling, Acts 2–4
+
+- **Acts 2–4 rewritten** — the rest of the story now tells *The Kindling*. Same rooms, foes and rewards; new story:
+  - **Act 2 — The Tithe** (was *Millhollow's Debt*): the grey collectors were never after grain. The village owes souls, the elders have been choosing who, and your name is next in the ledger. Beat 13 is now called **The Tithe Broken**
+  - **Act 3 — Emberdeep** (was *Emberdeep Breach*): under the old well lie the village's own dead. The Breach Warden is the First Lamplighter, your ancestor, and he names **Maren Vey**
+  - **Act 4 — Ashwake Vigil**: the Vigil Spire is a siphon, Greyfen was a town, and at the end the Chandler unmasks, takes a piece of the Lantern, and walks down into the Ashen Deep. *Follow the ash.* Vigil Kindled now plays on the kindling pyre stage
+- **Wren speaks** — from the Ashen Shrine on, Wren comments from inside the Lantern in chat, tagged **[Lantern]**. The Bell-Herald's toll hushes her (flavour only)
+- **Two choices** — at The Tithe Broken: **Spare him** or **End it** (Sallow Venn). At Breach Sealed: **Seal them in** (the Lantern stays bright) or **Let them rest** (a dimmer Lantern). They change story text and the Act 4 epilogue, not combat. Back out to the menu before choosing and Continue asks again
+- **Old saves keep their place** — a mid-Act 2, 3 or 4 Continue stays on the same room and shows the new room text. Your journal and chat stay as they were. Saves that already finished Act 2 count Venn as ended, and saves that already finished Act 3 count the ash-dead as sealed in. Neither is asked again
+- Unchanged: Long Rest every 5 rooms, Short Rest once per clear, duplicate foes selectable by slot (`#2`), Host/Join never touches the solo save. No new art. The Memory Ledger comes in the next update
+
+## Previous (v2.24 / 63) — Android 16 & play readiness
 
 - **Ready for Android 16** — the app now targets Android 16 (API 36) with the current build tools (Android Gradle Plugin 8.13, Gradle 8.13), so it meets Google Play's upcoming target-API requirement. Details: [`docs/ANDROID16.md`](docs/ANDROID16.md)
 - **Full-screen that behaves** — the game hides the status and navigation bars with the modern Android API; swipe from an edge to peek at them. On phones with a camera notch or punch-hole, and when the keyboard is open for chat, the screen now stays clear of them
@@ -93,7 +104,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 ## Features
 
-- **Story adventure** — original scripted acts (Act 1 *The Kindling*, Act 2 *Millhollow's Debt*, Act 3 *Emberdeep Breach*, Act 4 *Ashwake Vigil*), with Continue mid-quest. You are the Lamplighter's child; your sister Wren and the Ashen Lantern are at the heart of it
+- **Story adventure — *The Kindling*** — four original scripted acts (Act 1 *The Kindling*, Act 2 *The Tithe*, Act 3 *Emberdeep*, Act 4 *Ashwake Vigil*), with Continue mid-quest. You are the Lamplighter's child; after Act 1 your sister Wren lives in the Ashen Lantern and speaks in chat as **[Lantern]**. Two story choices — Sallow Venn's fate and what the Ember Seal does to the ash-dead — colour the ending
 - **Ash & Ember art** — original hand-authored silhouettes for all 27 foes (one per stable enemy ID) and all five hero classes, with code-driven idle sway / attack lunge / ash-dissolve animation; 16 original stage backgrounds chosen by mode and story beat; *Reduce flashing* stills them and calms the bright amber boss and hero glows
 - **Ash & Ember UI** — soot-and-amber panels, buttons and dialogs, Cinzel / Cormorant Garamond type, a candle-wick HP bar, a 10-ember XP row and rarity pips on loot
 - **Dungeon Crawl** — procedural rooms from the start (skip the scripted quest)

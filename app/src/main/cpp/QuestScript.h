@@ -7,8 +7,8 @@ namespace dnd {
 
 /**
  * Solo story acts — original wording only.
- * Act 1 "The Kindling" (beats 1–6; was "Ashen Lantern"). Act 2 "Millhollow's Debt" (beats 8–13).
- * Act 3 "Emberdeep Breach" (beats 14–19). Act 4 "Ashwake Vigil" (beats 20–25).
+ * Act 1 "The Kindling" (beats 1–6; was "Ashen Lantern"). Act 2 "The Tithe" (beats 8–13; was "Millhollow's Debt").
+ * Act 3 "Emberdeep" (beats 14–19; was "Emberdeep Breach"). Act 4 "Ashwake Vigil" (beats 20–25).
  * POST_QUEST (7) = procedural rooms after full story (or legacy mid-save).
  * Compatible with 5e SRD monster/rule concepts only. Not an official D&D product.
  */
@@ -22,14 +22,14 @@ enum class SoloQuestBeat : int {
     LANTERN_VAULT = 5,
     RESOLUTION = 6,    // Ashen Shrine
     POST_QUEST = 7,    // Procedural after full story (legacy + post–Act 4)
-    // Act 2 — Millhollow's Debt
+    // Act 2 — The Tithe
     ACT2_GREEN = 8,
     ACT2_WEIR = 9,
     ACT2_CELLAR = 10,
     ACT2_LOFT = 11,
     ACT2_HALL = 12,
     ACT2_SETTLED = 13,
-    // Act 3 — Emberdeep Breach
+    // Act 3 — Emberdeep
     ACT3_RUMOR = 14,   // Rumors by the old well
     ACT3_WELL = 15,    // Descent into the well
     ACT3_ROOTS = 16,   // Root labyrinth
@@ -85,7 +85,7 @@ inline const char* soloQuestBeatName(int beat) {
         case SoloQuestBeat::ACT2_CELLAR: return "Flooded Cellar";
         case SoloQuestBeat::ACT2_LOFT: return "Ledger Loft";
         case SoloQuestBeat::ACT2_HALL: return "Collector's Hall";
-        case SoloQuestBeat::ACT2_SETTLED: return "Debt Settled";
+        case SoloQuestBeat::ACT2_SETTLED: return "The Tithe Broken"; // was "Debt Settled" (id unchanged)
         case SoloQuestBeat::ACT3_RUMOR: return "Wellside Rumor";
         case SoloQuestBeat::ACT3_WELL: return "Old Well Descent";
         case SoloQuestBeat::ACT3_ROOTS: return "Root Labyrinth";
@@ -107,9 +107,9 @@ inline const char* soloQuestActTitle(int beat) {
     if (b >= SoloQuestBeat::ACT4_WATCH && b <= SoloQuestBeat::ACT4_KINDLED)
         return "Ashwake Vigil";
     if (b >= SoloQuestBeat::ACT3_RUMOR && b <= SoloQuestBeat::ACT3_SEALED)
-        return "Emberdeep Breach";
+        return "Emberdeep";
     if (b >= SoloQuestBeat::ACT2_GREEN && b <= SoloQuestBeat::ACT2_SETTLED)
-        return "Millhollow's Debt";
+        return "The Tithe";
     if (b >= SoloQuestBeat::MILLHOLLOW && b <= SoloQuestBeat::RESOLUTION)
         return "The Kindling";
     return "";
@@ -164,6 +164,10 @@ struct QuestBeatScript {
     const char* roomDescription;
     const char* dmEnter;
     const char* journalOnEnter;
+    /** Wren's [Lantern] line on entering the beat (after she enters the glass at beat 6). */
+    const char* wrenOnEnter = nullptr;
+    /** Wren's [Lantern] line when the beat's fight is cleared. */
+    const char* wrenOnClear = nullptr;
 };
 
 // Act 1 — "The Kindling" (beat IDs 1–6; was "Ashen Lantern"). Original wording only.
@@ -240,163 +244,210 @@ inline const QuestBeatScript kAshenLanternBeats[] = {
     }
 };
 
-// Act 2 — Millhollow's Debt (beat IDs 8–13). Original plot; SRD foes only.
-inline const QuestBeatScript kMillhollowDebtBeats[] = {
+// Act 2 — The Tithe (beat IDs 8–13; was "Millhollow's Debt"). Original wording only.
+// The grey collectors were never after grain: Millhollow owes the Grey Tithe one kindling per
+// generation, the elders have been choosing who, and the protagonist's name is next. Same beat
+// ids, enemy ids, Search flags and gold as before, so saves and stage backdrops keep working.
+inline const QuestBeatScript kTitheBeats[] = {
     {
         8,
         "Millhollow Green",
-        "Dawn finds Millhollow's green crowded by hard-eyed collectors. "
-        "They claim a grain debt sealed under the old mill seal — ledgers no elder remembers signing. "
-        "A scarred sergeant points toward the river mill and weir.",
-        "Act 2 — Millhollow's Debt. Collectors demand tithe the village never owed. "
-        "Follow the millrace; find the true ledger; settle the debt without bleeding Millhollow dry.",
-        "Debt collectors arrived on Millhollow Green after the lantern's return."
+        "Dawn after Wren went into the glass. Grey coats stand on Millhollow's green, wet with dew, "
+        "in a line too straight for honest work. Elder Hesk will not meet your eye. A Tithe Enforcer "
+        "reads from a ribboned scroll in the slow voice of a funeral: a tithe overdue, a name owed, "
+        "the light still hungry.",
+        "Act 2 — The Tithe. These collectors are not here for grain. Find out what Millhollow owes, "
+        "and who has been paying it.",
+        "Grey Tithe collectors came to Millhollow Green. They talk about the debt like a funeral.",
+        "Hesk is sweating through his collar. I don't like that. I don't like any of this."
     },
     {
         9,
         "Millrace Weir",
-        "The millrace foams over a timber weir. Wet boards groan; a side path ducks under dripping moss toward the mill cellar. "
-        "Bootprints and grain sacks mark a smugglers' route.",
-        "The weir path is slick. Something scavenges among the sacks — quick and mean.",
-        "The party followed the millrace toward the flooded cellar."
+        "The millrace foams over a timber weir. Under the dripping boards a smugglers' run leads to the "
+        "mill cellar, and the sacks stacked along it are not grain: stoppered jars of ash, each tied "
+        "with a black funeral ribbon.",
+        "The weir path is slick, and something quick and mean is guarding the jars.",
+        "The millrace hides a smugglers' run: jars of ash in black ribbons, not grain.",
+        "They used to hide sugar under here. Now it's people."
     },
     {
         10,
         "Flooded Cellar",
-        "Knee-deep water fills the mill cellar. Crates float; a rusted grate leads up toward dry lofts. "
-        "Bones and gnawed rope litter the steps.",
-        "The cellar is not empty. Clear a path to the loft where the ledgers are kept.",
-        "The party entered the flooded mill cellar."
+        "Knee-deep water fills the mill cellar. Crates float among funeral ribbons and wax-stoppered ash. "
+        "A rusted grate leads up toward the dry loft. One of the Ashbound on the steps still wears a "
+        "Millhollow ribbon, tied the way only one family ever tied them.",
+        "The cellar is not empty. Clear a path up to the loft where the Tithe keeps its books.",
+        "The flooded cellar is full of tithed ash. One of the Ashbound wore a Millhollow ribbon.",
+        "That ribbon. That's Aunt Lise's knot.",
+        "Aunt Lise. They took her the winter I turned nine. They said she was unwell. She was only sad."
     },
     {
         11,
         "Ledger Loft",
-        "A dry loft above the mill. Shelves of wax-sealed ledgers; one book lies open with fresh ink — "
-        "names of Millhollow families and sums that grow each night. A quill still wet.",
-        "Search the loft for the coerced debt ledger. Soft open — no fight unless you dawdle into trouble later.",
-        "The party reached the Ledger Loft above the mill."
+        "A dry loft above the mill. Shelves of wax-sealed books. One lies open, the ink still wet: not "
+        "sums, but souls. Mother's name, dated last night, marked PAID. Below it, your name, the next "
+        "entry, in a hand that is not Hesk's. Wren's name is there too, struck through, with a note: "
+        "already kindled — surplus.",
+        "Search the loft for the soul-ledger. Soft open — no fight unless you leave it behind.",
+        "The Ledger Loft: a soul-ledger. Mother marked PAID. Your name is next. Wren: \"surplus\".",
+        "Surplus. They wrote surplus."
     },
     {
         12,
         "Collector's Hall",
-        "The mill's upper hall. Grain dust hangs in lantern light. The Collector waits with hired blades — "
-        "a bandit captain wearing a false mill seal on a chain.",
-        "The Collector will not surrender the forged seal lightly. End the shakedown here.",
-        "The party confronted the Collector in the mill hall."
+        "The mill's upper hall, hung with grey coats. Collector Sallow Venn waits with the ledger-seal on "
+        "a chain. He was born in Millhollow and sent away as a boy, the year the elders chose his father. "
+        "He looks tired, and almost honest.",
+        "Sallow Venn will not hand over the ledger-seal. He collects only what the village already agreed to.",
+        "Collector Sallow Venn waited in the mill hall with the ledger-seal.",
+        "He's from here. I hate that I feel sorry for him.",
+        "He's still breathing. He's on his knees. Don't decide yet — take him out to the green."
     },
     {
         13,
-        "Debt Settled",
-        "Millhollow's elders gather on the green. The coerced ledger burns in a clay bowl; ash drifts like snow. "
-        "The false seal is broken. Rest if you need — then Onward: a colder threat waits by the old well.",
-        "Millhollow's Debt is settled. The collectors scatter. Rest — then Onward for Act 3: Emberdeep Breach.",
-        "Millhollow's Debt complete — coerced ledger destroyed; false seal broken."
+        "The Tithe Broken",
+        "Millhollow's elders gather on the green. The soul-ledger burns in a clay bowl and the local "
+        "contract breaks with it; ash drifts like snow. Hesk, finally looking at you, admits the elders "
+        "have been choosing who goes into the light. Sallow Venn kneels in the wet grass. \"The Lantern "
+        "was never yours,\" he says. \"Ask what's under the well.\"",
+        "The Tithe is broken here, for now. Rest if you need — then Onward for Act 3: Emberdeep.",
+        "The Tithe Broken — the soul-ledger burned; Hesk confessed; Venn pointed at the well.",
+        "Hesk held the quill. All those years. He held the quill."
     }
 };
 
-// Act 3 — Emberdeep Breach (beat IDs 14–19). Original plot; SRD-flavored foes only.
-inline const QuestBeatScript kEmberdeepBreachBeats[] = {
+// Act 3 — Emberdeep (beat IDs 14–19; was "Emberdeep Breach"). Under the well is where Millhollow
+// has dumped its spent souls for three hundred years; the Ashbound are the village's own dead, and
+// the Breach Warden is the First Lamplighter, bound as a gate. He names Maren Vey.
+inline const QuestBeatScript kEmberdeepBeats[] = {
     {
         14,
         "Wellside Rumor",
-        "By Millhollow's old well, ash and warm steam rise from cracked stone. Villagers whisper of a glow under the water — "
-        "and of bones that crawl up the rope at night. A child points to fresh claw marks on the curb.",
-        "Act 3 — Emberdeep Breach. Something under the village drinks lantern-light. "
-        "Descend the well; find the Ember Seal; close the breach before Millhollow sinks into emberdark.",
-        "Rumors of a glowing breach gather at Millhollow's old well."
+        "Ash and warm steam rise from Millhollow's old well. Claw marks score the curb, and a child "
+        "points at them without a word. When the light is done with someone, an old woman mutters, "
+        "they go down. A Tithe scavenger is already picking through what crawled back up.",
+        "Act 3 — Emberdeep. The well is not a well. Go down and see what Millhollow has been burying.",
+        "Ash and steam at the old well. When the light is done with someone, they go down.",
+        "That's our well. That's where they put people when the light was done with them."
     },
     {
         15,
         "Old Well Descent",
-        "The well shaft opens into a damp gallery of roots and brick. Ember-orange veins pulse in the stone. "
-        "Wet footprints spiral downward — not all of them human.",
-        "The descent is watched. Clear the scavengers before the roots claim you.",
-        "The party descended the old well into ember-veined tunnels."
+        "The shaft opens into a gallery of roots and old brick. Ember veins pulse in the stone. Wet "
+        "footprints spiral down, not all of them adult, and a small shoe hangs caught in the rope-run.",
+        "The descent is watched. Clear the scavengers before the roots close in.",
+        "Down the old well: ember veins, wet footprints, a child's shoe in the rope-run.",
+        nullptr,
+        "A rope-boy. He hauled the ash-buckets and he fell. I don't even know his name, and that's worse."
     },
     {
         16,
         "Root Labyrinth",
-        "A maze of living roots and collapsed crypt niches. Pale fungi light the way; somewhere ahead, stone groans like a waking gate.",
-        "The labyrinth twists. Undead cling to the roots — keep together.",
-        "The party entered the Root Labyrinth beneath Millhollow."
+        "A maze of living roots and collapsed niches, lit by pale fungus. The Ashbound here do not wait "
+        "in rows. They come out of the walls, and every one of them is wearing a Millhollow face.",
+        "These are Millhollow's dead. Keep together, and do not look away.",
+        "The Root Labyrinth: the Ashbound are the village's own ancestors.",
+        "I know them. Old Pell. The baker. Don't you dare look away.",
+        "The baker. I stole the heels off his loaves every morning. His hands were always flour. They're ash now."
     },
     {
         17,
         "Ember Seal Niche",
-        "A quiet niche cut into warm stone. An iron disc — the Ember Seal — rests in a soot-black socket, still faintly hot. "
-        "No foes here unless you leave without it and return later.",
-        "Search for the Ember Seal. Soft open — claim the seal, then press Onward to the breach.",
-        "The party reached the Ember Seal Niche."
+        "A quiet niche cut into warm stone. The Ember Seal rests in a soot-black socket: an iron signet, "
+        "still warm, the First Lamplighter's own. Words run around the rim. No foes here unless you "
+        "leave without it.",
+        "Search for the Ember Seal — the only key that closes the wound kindly. Then press Onward.",
+        "The Ember Seal Niche: the First Lamplighter's signet, still warm."
     },
     {
         18,
         "Breach Threshold",
-        "A cracked arch frames a vertical wound of ember-light. Heat warps the air. The Breach Warden — a hulking ash-and-bone sentinel — "
-        "bars the threshold with a cracked iron polearm.",
-        "The Breach Warden will not yield. Defeat it, then seal the wound with the Ember Seal.",
-        "The party faced the Breach Warden at the ember threshold."
+        "A cracked arch frames a vertical wound of ember-light. Heat warps the air. Bound across it like "
+        "a bar across a door stands the First Lamplighter: your ancestor, made into a gate. He does not "
+        "want to fight you. He cannot do anything else.",
+        "The First Lamplighter is bound as a gate. Free him the only way left, then seal the wound.",
+        "The First Lamplighter, bound as the gate of the ember wound.",
+        "He has our grandmother's eyes. Oh, no. No.",
+        "He's family. We just… we just had to."
     },
     {
         19,
         "Breach Sealed",
-        "The Ember Seal locks into the arch. Ember-light dies to a dull coal. Cool air returns to Millhollow's well. "
-        "You may Rest — then Onward: dusk thins on the green, and a colder vigil waits west in Greyfen.",
-        "Emberdeep Breach is sealed. Rest if you need — then Onward for Act 4: Ashwake Vigil.",
-        "Emberdeep Breach complete — Ember Seal set; Millhollow's undercroft quiet again."
+        "The Ember Seal waits over the wound. It will close the well either way. Below, the ash-dead of "
+        "three hundred years are still down there, and the Lantern in your hands feels heavier for it.",
+        "The seal will close the wound. What happens to the souls below is yours to choose.",
+        "Breach Sealed — the First Lamplighter named Maren Vey before he went still."
     }
 };
 
-
-// Act 4 — Ashwake Vigil (beat IDs 20–25). Original plot; SRD-flavored foes only.
+// Act 4 — Ashwake Vigil (beat IDs 20–25; title kept). The Vigil Spire is a Tithe siphon, Greyfen
+// was a town, and at the Spire the Chandler unmasks as Maren Vey, takes a shard of the Lantern with
+// part of Wren in it, and walks down into the Ashen Deep. Last line: "Follow the ash."
 inline const QuestBeatScript kAshwakeVigilBeats[] = {
     {
         20,
         "Vigil Watch",
-        "Dusk settles on Millhollow's green. The Ashen Lantern burns — but thinner each night, as if something drinks the glow from afar. "
-        "Elders point west toward Greyfen Marsh, where an abandoned fen-tower once held a twin ember called the Vigil Flame.",
-        "Act 4 — Ashwake Vigil. Seal the breach was not enough: a second thirst stirs in the marsh. "
-        "Cross Greyfen; recover the Vigil Ember; kindle the Vigil Spire before Millhollow's light fades for good.",
-        "Millhollow's lantern thins at dusk — the party must kindle the Vigil west in Greyfen."
+        "Dusk on Millhollow's green. The Lantern burns thinner every night now, as if something far off "
+        "is drinking it, and Wren's voice is thinner with it. Hesk points west, toward Greyfen and its "
+        "abandoned fen-tower. A Tithe Watcher is already on the green, checking the draw.",
+        "Act 4 — Ashwake Vigil. Something in the west is drinking the Lantern. Cross Greyfen and find out what.",
+        "The Lantern thins at dusk, and Wren with it. Something west in Greyfen is drinking the light.",
+        "I'm getting quieter. Something is drinking me."
     },
     {
         21,
         "Greyfen Marsh",
-        "Greyfen sucks at boots and cloak. Fog hangs low; reed-mats hide black water. "
-        "Ash-grey footprints spiral toward a timber causeway. Something scavenges among the willows — quick and wet.",
-        "The marsh remembers light it was denied. Clear the scavengers and keep to the causeway.",
-        "The party entered Greyfen Marsh on the trail of the Vigil Flame."
+        "Greyfen sucks at boots and cloak. Drowned huts lean in black water, and a lantern-post stands in "
+        "the middle of it all, its glass cold. This was a town. Something quick and wet scavenges among "
+        "the willows.",
+        "This was a town once. Clear the scavengers and keep to the causeway.",
+        "Greyfen Marsh: drowned huts and a cold lantern-post. This was a town.",
+        nullptr,
+        "They had a lantern. It went out. That's all it takes."
     },
     {
         22,
         "Fen Causeway",
-        "A raised timber path crosses deeper fen. Boards groan; pale fungi cling to posts. "
-        "Ahead, stone niches rise from the mist — old watch-crypts that once fed the Vigil Spire.",
-        "Undead cling to the causeway posts. Press through — the Vigil Niche waits beyond.",
-        "The party crossed the Fen Causeway toward the Vigil Spire."
+        "A raised timber path crosses the deeper fen. Watch-crypts rise from the mist beside it. The "
+        "Ashbound on the posts wear ribbons, but not Millhollow's: Greyfen's dead, knotted in a way no "
+        "one alive remembers.",
+        "Greyfen's own dead hold the causeway. Press through — the Vigil Niche waits beyond.",
+        "The Fen Causeway: Ashbound in Greyfen ribbons, a second town's dead.",
+        "I don't know these people. That's worse."
     },
     {
         23,
         "Vigil Niche",
-        "A quiet alcove cut into warm fen-stone beneath the tower. An iron cinder — the Vigil Ember — rests in a soot-black cup, still faintly alive. "
-        "No foes here unless you leave without it and return later.",
-        "Search for the Vigil Ember. Soft open — claim the ember, then press Onward to the Ashwake Threshold.",
-        "The party reached the Vigil Niche beneath the fen-tower."
+        "A quiet alcove under the fen-tower. The Vigil Ember sits in a soot cup, an iron cinder, and it is "
+        "not a flame. It is a mouth. A scrap of Tithe rite in an old, careful hand is tucked behind the "
+        "cup. No foes here unless you leave without it.",
+        "Search for the Vigil Ember — not a light to kindle, but the valve. Recover it to reverse the draw.",
+        "The Vigil Niche: the Vigil Ember is a valve, not a flame.",
+        "This isn't a light. It's a throat."
     },
     {
         24,
         "Ashwake Threshold",
-        "The Vigil Spire's threshold yawns. Ash-mist pours from cracked glass. The Ashwake Herald — a hulking ash-and-bone sentinel wreathed in guttering grey flame — "
-        "bars the stair with a cracked iron bill.",
-        "The Ashwake Herald will not yield. Defeat it, then kindle the Vigil with the Vigil Ember.",
-        "The party faced the Ashwake Herald at the Vigil Spire threshold."
+        "The Vigil Spire's threshold yawns, ash-mist pouring from cracked glass. On the stair the "
+        "Bell-Herald of the Tithe lifts its bell, and each time it rings, the Lantern goes quiet in your hands.",
+        "The Bell-Herald guards the siphon. Silence it, then turn the Vigil Ember in the Spire.",
+        "The Bell-Herald of the Tithe at the Vigil Spire's threshold.",
+        "That bell — I can't hear myself when it —",
+        "It's quiet. Good. I hate that bell."
     },
     {
         25,
         "Vigil Kindled",
-        "The Vigil Ember seats in the Spire's brazier. Twin ash-light answers Millhollow's lantern across the marsh. Fog thins; night-things withdraw. "
-        "You may Rest, return to the menu, or press Onward into deep endgame rooms and Boss Raids.",
-        "Ashwake Vigil is kindled. Story complete — endgame crawl bosses, Legendary gear, and Boss Raids unlock.",
-        "Ashwake Vigil complete — Vigil Ember set; Millhollow's twin lights hold the night."
+        "You seat the Vigil Ember and turn it, and the draw reverses. Light slams back east toward "
+        "Millhollow. In the flare the Chandler's mask fails: Maren Vey, old as the village, burning from "
+        "the inside, stands on the stair. She does not fight. She snaps a shard from the Lantern, and "
+        "Wren cries out inside the glass. Then Maren turns and walks down, into a dark that is the Ashen Deep.",
+        "Follow the ash. Rest, return to the menu, or press Onward: Lamplighter's Rounds, the Ashen Deep, "
+        "the Ember Ring, the Cinder Crucible and the Three Drowned Lanterns are open.",
+        "Ashwake Vigil — the siphon reversed. Maren Vey unmasked, took a shard of the Lantern with part of "
+        "Wren in it, and walked down into the Ashen Deep.",
+        "She's walking down. I can still see her. Follow the ash."
     }
 };
 
@@ -404,10 +455,10 @@ inline const QuestBeatScript* findQuestBeat(int beatId) {
     for (const auto& b : kAshenLanternBeats) {
         if (b.beatId == beatId) return &b;
     }
-    for (const auto& b : kMillhollowDebtBeats) {
+    for (const auto& b : kTitheBeats) {
         if (b.beatId == beatId) return &b;
     }
-    for (const auto& b : kEmberdeepBreachBeats) {
+    for (const auto& b : kEmberdeepBeats) {
         if (b.beatId == beatId) return &b;
     }
     for (const auto& b : kAshwakeVigilBeats) {

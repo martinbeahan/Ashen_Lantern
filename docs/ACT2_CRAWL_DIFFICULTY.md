@@ -17,16 +17,18 @@ Difficulty is **locked for the run** when Story/Crawl starts (shown in Settings)
 
 Same as before. Onward from Ashen Shrine now starts **Act 2** (not immediate procedural).
 
-## Act 2 — Millhollow's Debt (beats 8–13)
+## Act 2 — The Tithe (beats 8–13; was *Millhollow's Debt* until v2.25)
+
+v2.25 rewrote the text to *The Kindling* (see [`KINDLING_ACTS2-4.md`](KINDLING_ACTS2-4.md)); beat ids, foes and rewards are unchanged.
 
 | # | Beat | Notes |
 |---|------|-------|
-| 8 | Millhollow Green | Debt collectors; light fight |
-| 9 | Millrace Weir | River goblins |
-| 10 | Flooded Cellar | Ashbound + Tallow Rat |
-| 11 | Ledger Loft | Soft open — Search → coerced ledger |
-| 12 | Collector's Hall | Bandit-flavored Collector (Fighter) |
-| 13 | Debt Settled | Resolution; Onward → procedural (`POST_QUEST` = 7) |
+| 8 | Millhollow Green | Grey Tithe collectors; light fight (Tithe Enforcer) |
+| 9 | Millrace Weir | River goblins guarding jars of ash in funeral ribbons |
+| 10 | Flooded Cellar | Ashbound + Tallow Rat; Wren names Aunt Lise |
+| 11 | Ledger Loft | Soft open — Search → the soul-ledger (`questAct2LedgerFound`); your name is next |
+| 12 | Collector's Hall | Collector Sallow Venn (Fighter); ends on his knees |
+| 13 | The Tithe Broken (was *Debt Settled*) | Resolution, +40 gold; **Spare him / End it** choice for Venn |
 
 **Saves:** Mid-Act 1 Continue still works. Saves already in legacy post–Act 1 procedural (`questBeat=7`) stay procedural — **start a fresh Story** to play Act 2. New header fields: `questAct2Complete`, `questAct2LedgerFound`, `soloPlayMode`, `difficulty` (backward compatible).
 
@@ -43,8 +45,8 @@ Same as before. Onward from Ashen Shrine now starts **Act 2** (not immediate pro
 
 1. Clean/Rebuild (native + Kotlin changed).
 2. Menu shows Story, Crawl, Difficulty (default Easy).
-3. Story → Millhollow → … → Shrine → Onward → **Millhollow's Debt** green.
-4. Act 2 loft Search → ledger → Collector → Debt Settled → procedural.
+3. Story → Millhollow → … → Shrine → Onward → **The Tithe** on the green.
+4. Act 2 loft Search → soul-ledger → Collector → The Tithe Broken (Venn choice) → Act 3.
 5. Crawl → Room 1 procedural, no quest banner.
 6. Easy wipe → Continue keeps gear, full HP, prior chamber.
 7. Hard wipe → Continue strips gold/gear.

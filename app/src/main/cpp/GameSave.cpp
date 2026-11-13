@@ -91,7 +91,10 @@ std::string Game::serialize() {
        << "," << endlessDepth_ << "," << endlessBestDepthThisRun_
        << "," << (questAct4Complete_ ? 1 : 0) << "," << (questAct4EmberFound_ ? 1 : 0)
        << "," << (roomRestUsed_ ? 1 : 0) << "," << longRestNextAvailableRoom_ << "," << longRestProgress_
-       << "," << savecodec::kEncodedMarker << "|";
+       << "," << savecodec::kEncodedMarker
+       // v2.25: story choices go AFTER the E2 marker (index 34 stays the marker, so v2.23/v2.24
+       // readers still detect encoding and simply ignore the extra fields).
+       << "," << vennChoice_ << "," << wellChoice_ << "|";
     // Section 1: Descriptions
     ss << encode(roomDescription_) << "~" << encode(lastEvent_) << "|";
     // Section 2: Players
@@ -204,6 +207,8 @@ bool Game::deserialize(const std::string& data, std::string* error) {
     questAct4EmberFound_ = tmp.questAct4EmberFound_;
     longRestNextAvailableRoom_ = tmp.longRestNextAvailableRoom_;
     longRestProgress_ = tmp.longRestProgress_;
+    vennChoice_ = tmp.vennChoice_;
+    wellChoice_ = tmp.wellChoice_;
 
     rebuildTurnOrder();
     return true;
@@ -264,6 +269,19 @@ bool Game::parseSave(const std::string& data) {
     longRestNextAvailableRoom_ = std::max(0, num(32, 0, "longRestNext"));
     // Mode-safe Long Rest progress (backward compatible: fall back to roomCount_).
     longRestProgress_ = std::max(0, num(33, roomCount_, "longRestProgress"));
+    // v2.25 story choices (fields 35/36, after the E2 marker). Older saves have none: an act that
+    // is already complete keeps the old script's outcome (Venn ended, ash-dead sealed in) and is
+    // never re-prompted; an act still in progress stays undecided and asks on its resolution beat.
+    if (has(35)) {
+        vennChoice_ = savecodec::clampInt(num(35, VENN_UNDECIDED, "vennChoice"), VENN_UNDECIDED, VENN_ENDED);
+    } else {
+        vennChoice_ = questAct2Complete_ ? VENN_ENDED : VENN_UNDECIDED;
+    }
+    if (has(36)) {
+        wellChoice_ = savecodec::clampInt(num(36, WELL_UNDECIDED, "wellChoice"), WELL_UNDECIDED, WELL_LET_REST);
+    } else {
+        wellChoice_ = questAct3Complete_ ? WELL_SEALED_IN : WELL_UNDECIDED;
+    }
 
     // Section 1: Descriptions
     bool hasDescriptions = false;

@@ -51,9 +51,12 @@ object BeginnerGuide {
         ),
         Page(
             "Playing solo",
-            "Story adventure runs original quests (Ashen Lantern, then Millhollow's Debt):\n\n" +
-                "• Act 1: recover the Ashen Lantern from Hollowbarrow Crypt\n" +
-                "• Act 2: settle Millhollow's coerced grain debt at the mill\n" +
+            "Story adventure runs the original four-act story, The Kindling:\n\n" +
+                "• Act 1 The Kindling: recover the stolen Ashen Lantern from Hollowbarrow Crypt\n" +
+                "• Act 2 The Tithe: find out what Millhollow really owes\n" +
+                "• Act 3 Emberdeep: go down the old well\n" +
+                "• Act 4 Ashwake Vigil: follow the draw west into Greyfen\n" +
+                "• Wren speaks from the Lantern in chat as [Lantern]\n" +
                 "• Dungeon Crawl skips story for procedural rooms from the start\n\n" +
                 "Pick Difficulty on the main menu (default Easy). On a full party wipe:\n" +
                 "Easy/Medium keep gear; Hard strips gold/gear; Nightmare ends the run.\n\n" +

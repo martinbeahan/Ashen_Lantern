@@ -161,6 +161,28 @@ public:
     bool canLongRestByCooldown() const { return getLongRestCooldownRooms() == 0; }
     int getRoomCount() const { return roomCount_; }
     int getQuestBeat() const { return questBeat_; }
+
+    // --- The Kindling story choices (v2.25). Values are saved after the E2 header marker. ---
+    /** Act 2 beat 13: what happens to Sallow Venn. */
+    enum VennChoice : int { VENN_UNDECIDED = 0, VENN_SPARED = 1, VENN_ENDED = 2 };
+    /** Act 3 beat 19: what the Ember Seal does to the ash-dead below the well. */
+    enum WellChoice : int { WELL_UNDECIDED = 0, WELL_SEALED_IN = 1, WELL_LET_REST = 2 };
+    /** Prompt kinds for the UI: 0 none, 1 = Venn (beat 13), 2 = the well (beat 19). */
+    enum StoryPrompt : int { PROMPT_NONE = 0, PROMPT_VENN = 1, PROMPT_WELL = 2 };
+    int getVennChoice() const { return vennChoice_; }
+    int getWellChoice() const { return wellChoice_; }
+    /** The choice the UI should ask for right now (solo story, on the beat, not yet decided). */
+    int pendingStoryChoice() const;
+    /** Apply a choice from the UI. kind = StoryPrompt, option = 1 or 2. False if not pending. */
+    bool chooseStoryOption(int kind, int option);
+    /** "venn,well" — for the UI / the Memory Ledger PR. */
+    std::string getStoryChoices() const;
+    /**
+     * After a solo Continue: re-read the current scripted beat's room text from QuestScript.h so
+     * pre-v2.25 saves stop showing the old Act 2–4 copy. Journal, chat and lastEvent are history
+     * and are left alone. Returns true if the description changed.
+     */
+    bool refreshStoryRoomAfterLoad();
     bool isQuestLanternRecovered() const { return questLanternRecovered_; }
     bool isQuestComplete() const { return questComplete_; }
     /** Solo scripted Act 1–4; false for crawl / raid / Host-as-DM / online. */
@@ -327,12 +349,15 @@ private:
     bool questLanternRecovered_ = false;
     bool questComplete_ = false;       // Act 1 (Ashen Lantern) finished
     bool questCryptKeyFound_ = false;
-    bool questAct2Complete_ = false;   // Act 2 (Millhollow's Debt) finished
+    bool questAct2Complete_ = false;   // Act 2 (The Tithe; was Millhollow's Debt) finished
     bool questAct2LedgerFound_ = false;
-    bool questAct3Complete_ = false;   // Act 3 (Emberdeep Breach) finished
+    bool questAct3Complete_ = false;   // Act 3 (Emberdeep; was Emberdeep Breach) finished
     bool questAct3SealFound_ = false;
     bool questAct4Complete_ = false;   // Act 4 (Ashwake Vigil) finished — story-complete / endgame gate
     bool questAct4EmberFound_ = false;
+    int vennChoice_ = VENN_UNDECIDED;  // header field 35 (after the E2 marker)
+    int wellChoice_ = WELL_UNDECIDED;  // header field 36
+    int heraldTolls_ = 0;              // flavour counter for the Bell-Herald (not saved)
     int soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
     int difficulty_ = static_cast<int>(Difficulty::EASY);
     /** Snapshot when entering raid/challenge from a loaded adventure (-1 = none). */
@@ -374,6 +399,11 @@ private:
     void deliverItemToAlly(Character* ally, std::shared_ptr<Item> item);
     void partyPreferClasses(int& outA, int& outB) const;
     void dmSay(const std::string& line);
+    /** Wren, from inside the Lantern (chat tag [Lantern]) — only once she is in the glass. */
+    void wrenSay(const std::string& line);
+    void onStoryRoomCleared();
+    void applyVennChoice(int option, bool silent);
+    void applyWellChoice(int option, bool silent);
     void resetSoloQuestState();
     void applySoloQuestRoom();
     void spawnSoloQuestEnemies();

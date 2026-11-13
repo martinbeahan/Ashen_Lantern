@@ -13,11 +13,11 @@
 | Hollow Crown / Ember Hydra / Nightfang Matriarch | Same endgame gate + deep crawl room (~18–22+) |
 | Early crawl GK / SK / Drake | Unchanged — may appear before story complete |
 
-## 1) Act 3 — Emberdeep Breach
+## 1) Act 3 — Emberdeep (was *Emberdeep Breach* until v2.25)
 
-Beats 14–19 (scripted, Continue mid-act via save):
+Beats 14–19 (scripted, Continue mid-act via save). v2.25 rewrote the text to *The Kindling* — see [`KINDLING_ACTS2-4.md`](KINDLING_ACTS2-4.md):
 
-1. Wellside Rumor → 2. Old Well Descent → 3. Root Labyrinth → 4. Ember Seal Niche (Search) → 5. Breach Threshold (**Breach Warden**) → 6. Breach Sealed
+1. Wellside Rumor → 2. Old Well Descent → 3. Root Labyrinth → 4. Ember Seal Niche (Search) → 5. Breach Threshold (**The First Lamplighter**) → 6. Breach Sealed (**Seal them in / Let them rest** choice; flavour and epilogue only)
 
 Acts 1+2 unchanged; after Act 2 Settled, Onward starts Act 3 (not procedural). After Act 3 Sealed, Onward → post-story endgame rooms.
 

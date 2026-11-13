@@ -468,6 +468,9 @@ void Game::resetSoloQuestState() {
     questAct3SealFound_ = false;
     questAct4Complete_ = false;
     questAct4EmberFound_ = false;
+    vennChoice_ = VENN_UNDECIDED;
+    wellChoice_ = WELL_UNDECIDED;
+    heraldTolls_ = 0;
     pendingRaidKeyDrop_ = false;
     soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
 }
@@ -490,6 +493,8 @@ void Game::applySoloQuestRoom() {
     dmSay(std::string("[") + beat->title + "] " + beat->dmEnter);
     dmSay(roomDescription_);
     addJournalEntry(beat->journalOnEnter);
+    if (beat->wrenOnEnter) wrenSay(beat->wrenOnEnter);
+    heraldTolls_ = 0;
 
     spawnSoloQuestEnemies();
     maybeFinishQuestOnResolutionEnter();
@@ -609,7 +614,8 @@ void Game::spawnSoloQuestEnemies() {
             {
                 Character* ally = findNpcCompanion();
                 std::string who = ally ? ally->name : "your companion";
-                dmSay("Sallow Venn, the Collector, wears a false mill seal. Keep a Potion ready — " + who + " will help.");
+                dmSay("Sallow Venn speaks before he draws: \"I don't enjoy this. I was ten when they chose my father. "
+                      "Ask Hesk who held the quill.\" Keep a Potion ready — " + who + " will help.");
             }
             break;
         case SoloQuestBeat::ACT2_SETTLED:
@@ -633,7 +639,8 @@ void Game::spawnSoloQuestEnemies() {
             {
                 Character* ally = findNpcCompanion();
                 std::string who = ally ? ally->name : "your companion";
-                dmSay("The Breach Warden — the First Lamplighter, bound as a gate — bars the ember wound. Keep potions ready — " + who + " will help.");
+                dmSay("The First Lamplighter, bound as a gate, bars the ember wound. He fights because he cannot do "
+                      "otherwise. Keep potions ready — " + who + " will help.");
             }
             break;
         case SoloQuestBeat::ACT3_SEALED:
@@ -657,7 +664,8 @@ void Game::spawnSoloQuestEnemies() {
             {
                 Character* ally = findNpcCompanion();
                 std::string who = ally ? ally->name : "your companion";
-                dmSay("The Bell-Herald of the Tithe bars the Vigil Spire. Keep potions ready — " + who + " will help.");
+                dmSay("The Bell-Herald of the Tithe bars the Vigil Spire. Every toll of its bell hushes the Lantern. "
+                      "Keep potions ready — " + who + " will help.");
             }
             break;
         case SoloQuestBeat::ACT4_KINDLED:
@@ -695,9 +703,11 @@ void Game::maybeFinishQuestOnResolutionEnter() {
     }
     if (!questComplete_) {
         questComplete_ = true;
-        dmSay("From inside the glass, Wren's voice: \"I'm still here. Don't you dare cry.\" Night-things withdraw from Millhollow.");
+        dmSay("The Lantern flares. Night-things withdraw from Millhollow.");
+        wrenSay("I'm still here. Don't you dare cry.");
         dmSay("In the crypt dark, a figure in a grey mask watches. It writes something in a ledger, and is gone.");
-        dmSay("Act 1 complete: The Kindling. Rest if you need, then Onward — Millhollow's Debt waits on the green.");
+        wrenSay("Did you see that? Someone was counting us.");
+        dmSay("Act 1 complete: The Kindling. Rest if you need, then Onward — Act 2, The Tithe, waits on the green.");
         addJournalEntry("Act 1 complete — Wren relit the Ashen Lantern with her own soul. A masked watcher saw it.");
         addChatMessage("Quest", "Act 1 done — The Kindling. Act 2 awaits.");
     }
@@ -707,14 +717,15 @@ void Game::maybeFinishAct2OnSettledEnter() {
     if (static_cast<SoloQuestBeat>(questBeat_) != SoloQuestBeat::ACT2_SETTLED) return;
     if (!questAct2LedgerFound_) {
         questAct2LedgerFound_ = true;
-        addJournalEntry("Safety: coerced ledger counted as recovered at Debt Settled.");
+        addJournalEntry("Safety: the soul-ledger counted as recovered at The Tithe Broken.");
     }
     if (!questAct2Complete_) {
         questAct2Complete_ = true;
-        dmSay("The coerced ledger burns. The false mill seal cracks. Collectors melt into the mist.");
-        dmSay("Millhollow's Debt is settled. Rest if you need — then Onward for Act 3: Emberdeep Breach.");
-        addJournalEntry("Millhollow's Debt complete — ledger destroyed; false seal broken.");
-        addChatMessage("Quest", "Act 2 done — Millhollow's Debt. Act 3 awaits.");
+        dmSay("The soul-ledger burns in a clay bowl. The local contract breaks. The grey coats melt into the mist.");
+        dmSay("Hesk, finally looking at you: \"We chose. Every generation, we chose who went into the light.\"");
+        dmSay("Sallow Venn is on his knees in the wet grass. Spare him, or end it.");
+        addJournalEntry("The Tithe Broken — the soul-ledger burned; Hesk confessed the elders chose who was kindled.");
+        addChatMessage("Quest", "Act 2 done — The Tithe. Act 3 awaits.");
         if (players_.empty() == false && players_[0]) {
             players_[0]->gold += 40;
         }
@@ -725,16 +736,18 @@ void Game::maybeFinishAct3OnSealedEnter() {
     if (static_cast<SoloQuestBeat>(questBeat_) != SoloQuestBeat::ACT3_SEALED) return;
     if (!questAct3SealFound_) {
         questAct3SealFound_ = true;
-        addJournalEntry("Safety: Ember Seal counted as recovered at Breach Sealed.");
+        addJournalEntry("Safety: the Ember Seal counted as recovered at Breach Sealed.");
     }
     if (!questAct3Complete_) {
         questAct3Complete_ = true;
         questAct2Complete_ = true;
         questComplete_ = true;
-        dmSay("The Ember Seal locks. Ember-light dies. Cool air returns up the well to Millhollow.");
-        dmSay("Act 3 complete. Rest if you need — then Onward for Act 4: Ashwake Vigil.");
-        addJournalEntry("Emberdeep Breach complete — Act 4 Ashwake Vigil awaits.");
-        addChatMessage("Quest", "Act 3 done — Emberdeep Breach. Act 4 awaits.");
+        dmSay("Before he goes still, the First Lamplighter speaks: \"I am your blood. The founder of Millhollow is "
+              "Abbess Maren Vey. She bargained with the Gloam, and she drinks from lanterns to stay alive. The well "
+              "is where the drunk-dry go.\"");
+        dmSay("The Ember Seal will close the well. The ash-dead are still down there. Seal them in, or let them rest.");
+        addJournalEntry("Emberdeep complete — the First Lamplighter named Abbess Maren Vey, founder of Millhollow.");
+        addChatMessage("Quest", "Act 3 done — Emberdeep. Act 4 awaits.");
         if (!players_.empty() && players_[0]) {
             players_[0]->gold += 60;
         }
@@ -752,14 +765,126 @@ void Game::maybeFinishAct4OnKindledEnter() {
         questAct3Complete_ = true;
         questAct2Complete_ = true;
         questComplete_ = true;
-        dmSay("The Vigil Ember seats. Twin ash-light answers Millhollow across Greyfen. The Ashwake thins.");
-        dmSay("Story complete (Acts 1–4). Endgame crawl bosses, Legendary gear, and Boss Raids unlock.");
-        addJournalEntry("Ashwake Vigil complete — story finished; endgame unlocked.");
+        dmSay("The draw reverses and the light comes home. Maren Vey stands unmasked on the stair, takes a shard of "
+              "the Lantern, and walks down into the Ashen Deep.");
+        // Epilogue colour from the Act 3 (and Act 2) choices — flavour only.
+        if (wellChoice_ == WELL_LET_REST) {
+            dmSay("The Lantern is dimmer than it was before the well, and it is lighter to carry. The ash-dead below "
+                  "Millhollow are resting.");
+        } else {
+            dmSay("The Lantern burns bright over Millhollow, and under the well the ash-dead are still sealed in.");
+        }
+        if (vennChoice_ == VENN_SPARED) {
+            dmSay("Far off in Greyfen, an old ringmaster hears that you spared her son.");
+        }
+        dmSay("Follow the ash. Lamplighter's Rounds, the Ashen Deep, the Ember Ring, the Cinder Crucible and the "
+              "Three Drowned Lanterns are open.");
+        addJournalEntry("Ashwake Vigil complete — Maren Vey took a shard of Wren and descended. Follow the ash.");
         addChatMessage("Quest", "Act 4 done — Story complete! Endgame unlocked.");
         if (!players_.empty() && players_[0]) {
             players_[0]->gold += 80;
         }
     }
+}
+
+// --- The Kindling story choices + Wren's clear lines (v2.25) -----------------------------------
+
+namespace {
+const char* const kClearedSuffix = " The foes lie still. You may Search, take a Short Rest, or press Onward.";
+}
+
+int Game::pendingStoryChoice() const {
+    if (dmOnlyTable_ || gameOver_ || !enemies_.empty()) return PROMPT_NONE;
+    if (soloPlayMode_ != static_cast<int>(SoloPlayMode::STORY)) return PROMPT_NONE;
+    const auto beat = static_cast<SoloQuestBeat>(questBeat_);
+    if (beat == SoloQuestBeat::ACT2_SETTLED && questAct2Complete_ && vennChoice_ == VENN_UNDECIDED)
+        return PROMPT_VENN;
+    if (beat == SoloQuestBeat::ACT3_SEALED && questAct3Complete_ && wellChoice_ == WELL_UNDECIDED)
+        return PROMPT_WELL;
+    return PROMPT_NONE;
+}
+
+bool Game::chooseStoryOption(int kind, int option) {
+    if (kind != pendingStoryChoice() || kind == PROMPT_NONE) return false;
+    if (option != 1 && option != 2) return false;
+    if (kind == PROMPT_VENN) applyVennChoice(option, false);
+    else applyWellChoice(option, false);
+    return true;
+}
+
+std::string Game::getStoryChoices() const {
+    return std::to_string(vennChoice_) + "," + std::to_string(wellChoice_);
+}
+
+void Game::applyVennChoice(int option, bool silent) {
+    vennChoice_ = (option == VENN_SPARED) ? VENN_SPARED : VENN_ENDED;
+    if (silent) return;
+    if (vennChoice_ == VENN_SPARED) {
+        dmSay("You step back. Sallow Venn gets up slowly and walks out of Millhollow without looking back. "
+              "\"The Lantern was never yours,\" he says over his shoulder. \"Ask what's under the well.\"");
+        wrenSay("Good. I think. Ask me again when I've stopped shaking.");
+        addJournalEntry("Spared Sallow Venn. Somewhere, Old Sallow will hear of it.");
+        lastEvent_ = "You spared Sallow Venn. Rest if you need — then Onward for Act 3: Emberdeep.";
+    } else {
+        dmSay("It is over quickly. Sallow Venn's last words: \"The Lantern was never yours. Ask what's under the well.\"");
+        dmSay("Wren is quiet for a long moment.");
+        addJournalEntry("Ended Sallow Venn on the green. The Ember Ring will remember.");
+        lastEvent_ = "Sallow Venn is gone. Rest if you need — then Onward for Act 3: Emberdeep.";
+    }
+    addChatMessage("Quest", lastEvent_);
+}
+
+void Game::applyWellChoice(int option, bool silent) {
+    wellChoice_ = (option == WELL_LET_REST) ? WELL_LET_REST : WELL_SEALED_IN;
+    if (silent) return;
+    if (wellChoice_ == WELL_LET_REST) {
+        dmSay("You turn the Ember Seal gently. Below, the Ashbound go still at last, and the well breathes out. "
+              "The Lantern dims, and stays dimmer.");
+        wrenSay("Thank you. They were so tired.");
+        addJournalEntry("Let the ash-dead rest. The Lantern burns dimmer for it.");
+        lastEvent_ = "The ash-dead rest. Rest if you need — then Onward for Act 4: Ashwake Vigil.";
+    } else {
+        dmSay("The Ember Seal locks hard. The well goes cold and quiet, and the ash-dead stay below. "
+              "The Lantern burns bright.");
+        wrenSay("The village is safe. I know that's what I'm supposed to want.");
+        addJournalEntry("Sealed the ash-dead in. The Lantern stays bright.");
+        lastEvent_ = "The well is sealed. Rest if you need — then Onward for Act 4: Ashwake Vigil.";
+    }
+    addChatMessage("Quest", lastEvent_);
+}
+
+void Game::onStoryRoomCleared() {
+    if (!isSoloQuestScripted() || dmOnlyTable_) return;
+    const QuestBeatScript* beat = findQuestBeat(questBeat_);
+    if (beat && beat->wrenOnClear) wrenSay(beat->wrenOnClear);
+    switch (static_cast<SoloQuestBeat>(questBeat_)) {
+        case SoloQuestBeat::ACT2_HALL:
+            dmSay("Sallow Venn is on his knees, not dead. Onward to the green — the village should see this.");
+            break;
+        case SoloQuestBeat::ACT3_WARDEN:
+            dmSay("The First Lamplighter kneels, and the gate he made of himself loosens. Onward — he has something to say.");
+            break;
+        case SoloQuestBeat::ACT4_HERALD:
+            dmSay("The bell cracks on the stair. The glass is not quiet any more. Onward — turn the Vigil Ember.");
+            break;
+        default:
+            break;
+    }
+}
+
+bool Game::refreshStoryRoomAfterLoad() {
+    if (dmOnlyTable_ || soloPlayMode_ != static_cast<int>(SoloPlayMode::STORY)) return false;
+    if (!isSoloQuestScripted()) return false;
+    const QuestBeatScript* beat = findQuestBeat(questBeat_);
+    if (!beat) return false;
+    const std::string suffix(kClearedSuffix);
+    const bool cleared = roomDescription_.size() >= suffix.size()
+        && roomDescription_.compare(roomDescription_.size() - suffix.size(), suffix.size(), suffix) == 0;
+    std::string fresh = beat->roomDescription;
+    if (cleared) fresh += suffix;
+    if (fresh == roomDescription_) return false;
+    roomDescription_ = fresh;
+    return true;
 }
 
 bool Game::endgameContentAllowed() const {
@@ -799,7 +924,7 @@ bool Game::trySoloQuestSearch(Character* hero) {
     }
     if (beat == SoloQuestBeat::RESOLUTION) {
         lastEvent_ = hero->name + " finds a grey wax seal on the floor where the masked watcher stood.";
-        dmSay("Someone was keeping count tonight. Onward leads to Millhollow's Debt.");
+        dmSay("Someone was keeping count tonight. Onward leads to the green, and the Tithe.");
         addJournalEntry("Searched the Ashen Shrine — Act 1 is won.");
         addChatMessage("Search", lastEvent_);
         return true;
@@ -807,46 +932,48 @@ bool Game::trySoloQuestSearch(Character* hero) {
     if (beat == SoloQuestBeat::ACT2_GREEN) {
         hero->gold += 10;
         lastEvent_ = hero->name + " overhears a collector mutter: \"The loft ledger above the weir seals every name.\"";
-        dmSay("A clue: the coerced debt ledger is kept in the mill loft above the weir.");
-        addJournalEntry("Clue: coerced ledger is in the mill loft above the weir.");
+        dmSay("A clue: the Tithe keeps its book in the mill loft above the weir. Every name is in it.");
+        addJournalEntry("Clue: the Tithe's ledger is in the mill loft above the weir.");
         addChatMessage("Search", lastEvent_);
         return true;
     }
     if (beat == SoloQuestBeat::ACT2_LOFT) {
         questAct2LedgerFound_ = true;
         hero->gold += 15;
-        lastEvent_ = hero->name + " pulls the coerced debt ledger from the shelf — fresh ink, false mill seal stamped on every page.";
-        dmSay("You have the ledger. Onward to Collector's Hall — confront the shakedown.");
-        addJournalEntry("Recovered the coerced debt ledger (questAct2LedgerFound).");
+        lastEvent_ = hero->name + " takes the soul-ledger from the shelf. Your name is the next entry, the ink still wet.";
+        dmSay("You have the ledger. Onward to the Collector's Hall — Sallow Venn holds the ledger-seal.");
+        wrenSay("Surplus. They wrote surplus.");
+        addJournalEntry("Recovered the soul-ledger (questAct2LedgerFound). Your name was next.");
         addChatMessage("Search", lastEvent_);
         return true;
     }
     if (beat == SoloQuestBeat::ACT2_SETTLED) {
-        lastEvent_ = hero->name + " finds only ash in the clay bowl — the debt is already settled.";
-        dmSay("Nothing more to take. Onward leads to the old well — Emberdeep Breach.");
-        addJournalEntry("Searched after Debt Settled — Act 2 already won.");
+        lastEvent_ = hero->name + " finds only ash in the clay bowl — the soul-ledger is gone.";
+        dmSay("Nothing more to take. Onward leads to the old well — Emberdeep.");
+        addJournalEntry("Searched after The Tithe Broken — Act 2 already won.");
         addChatMessage("Search", lastEvent_);
         return true;
     }
     if (beat == SoloQuestBeat::ACT3_RUMOR) {
         hero->gold += 12;
-        lastEvent_ = hero->name + " hears: \"The Ember Seal sleeps in a niche past the root maze — only it can close the wound.\"";
-        dmSay("Clue: recover the Ember Seal, then face whatever guards the breach.");
-        addJournalEntry("Clue: Ember Seal lies past the Root Labyrinth.");
+        lastEvent_ = hero->name + " hears: \"Past the roots there's a seal — the First Lamplighter's signet. It's the only key that shuts the well kindly.\"";
+        dmSay("Clue: the Ember Seal lies past the Root Labyrinth. Recover it, then face what guards the wound.");
+        addJournalEntry("Clue: the First Lamplighter's Ember Seal lies past the Root Labyrinth.");
         addChatMessage("Search", lastEvent_);
         return true;
     }
     if (beat == SoloQuestBeat::ACT3_RELIC) {
         questAct3SealFound_ = true;
         hero->gold += 20;
-        lastEvent_ = hero->name + " lifts the Ember Seal — iron disc, still warm, etched with ash-runes.";
-        dmSay("You have the Ember Seal. Onward to the Breach Threshold — the Warden waits.");
-        addJournalEntry("Recovered the Ember Seal (questAct3SealFound).");
+        lastEvent_ = hero->name + " lifts the Ember Seal. Around the rim: \"Maren Vey bound me here. Do not let her drink again.\"";
+        dmSay("You have the Ember Seal. Onward to the Breach Threshold — the First Lamplighter waits.");
+        wrenSay("She has a name. The watcher from the crypt has a name.");
+        addJournalEntry("Recovered the Ember Seal (questAct3SealFound): \"Maren Vey bound me here.\"");
         addChatMessage("Search", lastEvent_);
         return true;
     }
     if (beat == SoloQuestBeat::ACT3_SEALED) {
-        lastEvent_ = hero->name + " finds cooling ash where the breach once roared — the seal holds.";
+        lastEvent_ = hero->name + " finds cooling ash where the wound once roared — the seal holds.";
         dmSay("Nothing more to take. Onward leads west — Act 4: Ashwake Vigil.");
         addJournalEntry("Searched after Breach Sealed — Act 3 already won.");
         addChatMessage("Search", lastEvent_);
@@ -854,24 +981,25 @@ bool Game::trySoloQuestSearch(Character* hero) {
     }
     if (beat == SoloQuestBeat::ACT4_WATCH) {
         hero->gold += 14;
-        lastEvent_ = hero->name + " hears an elder whisper: \"The Vigil Ember sleeps in a niche under the fen-tower — only it can kindle the Spire.\"";
-        dmSay("Clue: recover the Vigil Ember past Greyfen, then face whatever guards the Ashwake Threshold.");
-        addJournalEntry("Clue: Vigil Ember lies beneath the Vigil Spire in Greyfen.");
+        lastEvent_ = hero->name + " hears an elder whisper: \"Under the fen-tower there's an ember. It isn't a flame to light. It's the valve.\"";
+        dmSay("Clue: the Vigil Ember is the siphon's valve. Recover it past Greyfen and reverse the draw.");
+        addJournalEntry("Clue: the Vigil Ember under the fen-tower is the valve of the siphon.");
         addChatMessage("Search", lastEvent_);
         return true;
     }
     if (beat == SoloQuestBeat::ACT4_EMBER) {
         questAct4EmberFound_ = true;
         hero->gold += 25;
-        lastEvent_ = hero->name + " lifts the Vigil Ember — iron cinder, still warm, etched with twin ash-runes.";
-        dmSay("You have the Vigil Ember. Onward to the Ashwake Threshold — the Herald waits.");
-        addJournalEntry("Recovered the Vigil Ember (questAct4EmberFound).");
+        lastEvent_ = hero->name + " lifts the Vigil Ember, and a scrap of Tithe rite in an old, careful hand.";
+        dmSay("You have the Vigil Ember. Onward to the Ashwake Threshold — the Bell-Herald waits.");
+        wrenSay("This isn't a light. It's a throat.");
+        addJournalEntry("Recovered the Vigil Ember (questAct4EmberFound) and a siphon prayer in Maren's hand.");
         addChatMessage("Search", lastEvent_);
         return true;
     }
     if (beat == SoloQuestBeat::ACT4_KINDLED) {
-        lastEvent_ = hero->name + " finds twin ash-light steady in the brazier — the Vigil holds.";
-        dmSay("Nothing more to take. Story is complete — Onward opens endgame rooms.");
+        lastEvent_ = hero->name + " finds only ash on the stair where Maren Vey stood.";
+        dmSay("Nothing more to take. Follow the ash — Onward opens endgame rooms.");
         addJournalEntry("Searched after Vigil Kindled — Act 4 already won.");
         addChatMessage("Search", lastEvent_);
         return true;
@@ -2550,7 +2678,7 @@ void Game::enterClearedRoom(Character* actor) {
     turnOrder_.clear();
     currentTurnIndex_ = 0;
     roomSearchUsed_ = false; roomRestUsed_ = false;
-    roomDescription_ += " The foes lie still. You may Search, take a Short Rest, or press Onward.";
+    roomDescription_ += kClearedSuffix;
     if (!rareLootNote.empty()) {
         // Prefer Rare+ loot beat so UI can toast a restrained accent.
         lastEvent_ = rareLootNote;
@@ -2584,6 +2712,7 @@ void Game::enterClearedRoom(Character* actor) {
     } else {
         dmSay("The chamber is clear. Search for loot, take a Short Rest, or press Onward.");
     }
+    onStoryRoomCleared();
 }
 
 void Game::purgeDownedEnemies() {
@@ -2790,6 +2919,12 @@ void Game::tryFightShield(Character* defender, int& incomingDamage) {
 
 void Game::dmSay(const std::string& line) {
     addChatMessage("Keeper", line); // narrator = the Lanternkeeper
+}
+
+void Game::wrenSay(const std::string& line) {
+    // Wren has spoken from inside the Lantern since the Ashen Shrine (beat 6). Never online / DM.
+    if (dmOnlyTable_) return;
+    addChatMessage("Lantern", line);
 }
 
 int Game::proficiencyBonus() const {
@@ -3319,15 +3454,15 @@ void Game::playerAdvanceFromCleared() {
             addJournalEntry("Forced Hollowbarrow's doors without the Ashen Rune-Key.");
         }
         if (static_cast<SoloQuestBeat>(questBeat_) == SoloQuestBeat::ACT2_LOFT && !questAct2LedgerFound_) {
-            dmSay("You leave without the ledger — the Collector will still have copies. Steel yourselves.");
-            addJournalEntry("Left Ledger Loft without recovering the coerced ledger.");
+            dmSay("You leave without the ledger — the Tithe will still have copies. Steel yourselves.");
+            addJournalEntry("Left the Ledger Loft without the soul-ledger.");
         }
         if (static_cast<SoloQuestBeat>(questBeat_) == SoloQuestBeat::ACT3_RELIC && !questAct3SealFound_) {
-            dmSay("You leave without the Ember Seal — the breach will not close cleanly.");
+            dmSay("You leave without the Ember Seal — the well will not close kindly.");
             addJournalEntry("Left Ember Seal Niche without the seal.");
         }
         if (static_cast<SoloQuestBeat>(questBeat_) == SoloQuestBeat::ACT4_EMBER && !questAct4EmberFound_) {
-            dmSay("You leave without the Vigil Ember — the Spire will not kindle cleanly.");
+            dmSay("You leave without the Vigil Ember — the siphon will not turn cleanly.");
             addJournalEntry("Left Vigil Niche without the Vigil Ember.");
         }
 
@@ -3352,9 +3487,9 @@ void Game::playerAdvanceFromCleared() {
             roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
-            lastEvent_ = "Onward — Act 2: Millhollow's Debt begins.";
+            lastEvent_ = "Onward — Act 2: The Tithe begins.";
             addChatMessage("Quest", lastEvent_);
-            addJournalEntry("Act 2 begins — Millhollow's Debt on the green.");
+            addJournalEntry("Act 2 begins — The Tithe, on the green.");
             return;
         }
         if (questBeat_ >= static_cast<int>(SoloQuestBeat::ACT2_GREEN)
@@ -3371,6 +3506,7 @@ void Game::playerAdvanceFromCleared() {
             return;
         }
         if (questBeat_ == static_cast<int>(SoloQuestBeat::ACT2_SETTLED)) {
+            if (vennChoice_ == VENN_UNDECIDED) applyVennChoice(VENN_ENDED, false); // no answer: old ending
             questAct2Complete_ = true;
             questComplete_ = true;
             questBeat_ = static_cast<int>(SoloQuestBeat::ACT3_RUMOR);
@@ -3379,9 +3515,9 @@ void Game::playerAdvanceFromCleared() {
             roomSearchUsed_ = false; roomRestUsed_ = false;
             applySoloQuestRoom();
             if (!enemies_.empty()) rollInitiative();
-            lastEvent_ = "Onward — Act 3: Emberdeep Breach begins.";
+            lastEvent_ = "Onward — Act 3: Emberdeep begins.";
             addChatMessage("Quest", lastEvent_);
-            addJournalEntry("Act 3 begins — Emberdeep Breach at the old well.");
+            addJournalEntry("Act 3 begins — Emberdeep, at the old well.");
             return;
         }
         if (questBeat_ >= static_cast<int>(SoloQuestBeat::ACT3_RUMOR)
@@ -3398,6 +3534,7 @@ void Game::playerAdvanceFromCleared() {
             return;
         }
         if (questBeat_ == static_cast<int>(SoloQuestBeat::ACT3_SEALED)) {
+            if (wellChoice_ == WELL_UNDECIDED) applyWellChoice(WELL_SEALED_IN, false); // no answer: old ending
             questAct3Complete_ = true;
             questAct2Complete_ = true;
             questComplete_ = true;
@@ -3451,7 +3588,7 @@ void Game::playerAdvanceFromCleared() {
         } else {
             lastEvent_ = "Story complete — endgame rooms await. Room " + std::to_string(roomCount_) + ".";
             addChatMessage("Quest", "Acts 1–4 complete — endgame unlocked.");
-            dmSay("Millhollow's twin lights hold. Endgame crawl bosses, Legendary gear, and Boss Raids await the brave.");
+            dmSay("Follow the ash. Lamplighter's Rounds, the Ashen Deep, the Ember Ring, the Cinder Crucible and the Three Drowned Lanterns await.");
         }
         addJournalEntry("Post-story endgame exploration begins (Acts 1–4 done).");
         return;
@@ -3467,7 +3604,7 @@ void Game::playerAdvanceFromCleared() {
         roomSearchUsed_ = false; roomRestUsed_ = false;
         applySoloQuestRoom();
         if (!enemies_.empty()) rollInitiative();
-        lastEvent_ = "Onward — Act 3: Emberdeep Breach begins (story continues).";
+        lastEvent_ = "Onward — Act 3: Emberdeep begins (story continues).";
         addChatMessage("Quest", lastEvent_);
         addJournalEntry("Act 3 begins from post–Act 2 save.");
         return;
@@ -3651,6 +3788,11 @@ void Game::enemyTurn() {
         checkPartyDefeat();
         return;
     }
+    // Bell-Herald (story beat 24): flavour only — the toll hushes Wren; no mechanical effect.
+    if (enemy->enemyId == "boss_herald" && static_cast<SoloQuestBeat>(questBeat_) == SoloQuestBeat::ACT4_HERALD
+        && (heraldTolls_++ % 2) == 0) {
+        addChatMessage("Combat", "The bell tolls. The glass goes quiet.");
+    }
 
     Character& hero = *players_[static_cast<size_t>(targetIdx)];
     // Light DM color when the AI focuses a wounded or dying target.
@@ -3725,7 +3867,7 @@ void Game::enemyTurn() {
 }
 
 void Game::addChatMessage(const std::string& sender, const std::string& message) {
-    if (sender == "System" || sender == "Combat") {
+    if (sender == "System" || sender == "Combat" || sender == "Lantern") {
         chatHistory_.push_back("[" + sender + "]: " + message);
     } else {
         chatHistory_.push_back(message);
@@ -3767,9 +3909,9 @@ std::string Game::getPartyStatus() const {
     else if (questAct4Complete_) ss << "Story complete: Acts 1–4 (endgame unlocked)\n";
     else if (isAct4Beat(questBeat_)) ss << "Quest: Ashwake Vigil — " << soloQuestBeatName(questBeat_) << "\n";
     else if (questAct3Complete_ && !isSoloQuestScripted()) ss << "Acts 1–3 done — Act 4 pending or onward\n";
-    else if (isAct3Beat(questBeat_)) ss << "Quest: Emberdeep Breach — " << soloQuestBeatName(questBeat_) << "\n";
+    else if (isAct3Beat(questBeat_)) ss << "Quest: " << soloQuestActTitle(questBeat_) << " — " << soloQuestBeatName(questBeat_) << "\n";
     else if (questAct2Complete_ && !isSoloQuestScripted()) ss << "Acts 1–2 done — Act 3 pending or onward\n";
-    else if (isAct2Beat(questBeat_)) ss << "Quest: Millhollow's Debt — " << soloQuestBeatName(questBeat_) << "\n";
+    else if (isAct2Beat(questBeat_)) ss << "Quest: " << soloQuestActTitle(questBeat_) << " — " << soloQuestBeatName(questBeat_) << "\n";
     else if (questComplete_ && !isSoloQuestScripted()) ss << "Quest complete: Ashen Lantern recovered\n";
     else if (isAct1Beat(questBeat_)) ss << "Quest: The Kindling — " << soloQuestBeatName(questBeat_) << "\n";
     ss << "Difficulty: " << difficultyName(difficulty_) << "\n";
