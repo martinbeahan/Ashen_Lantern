@@ -57,6 +57,7 @@ object BeginnerGuide {
                 "• Act 3 Emberdeep: go down the old well\n" +
                 "• Act 4 Ashwake Vigil: follow the draw west into Greyfen\n" +
                 "• Wren speaks from the Lantern in chat as [Lantern]\n" +
+                "• Souls you free settle in the glass: read them in the Memory Ledger (menu or Settings)\n" +
                 "• Dungeon Crawl skips story for procedural rooms from the start\n\n" +
                 "Pick Difficulty on the main menu (default Easy). On a full party wipe:\n" +
                 "Easy/Medium keep gear; Hard strips gold/gear; Nightmare ends the run.\n\n" +

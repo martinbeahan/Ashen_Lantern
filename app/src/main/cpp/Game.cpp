@@ -2,6 +2,7 @@
 #include "EncounterAuthorship.h"
 #include "AndroidOut.h"
 #include "SaveCodec.h"
+#include "MemoryCatalog.h"
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
@@ -34,6 +35,7 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
     chatHistory_.clear();
     journalEntries_.clear();
     shopInventory_.clear();
+    resetMemoryRuntime();
     pendingBossXpBonus_ = 0;
     pendingBossLootLuck_ = 0;
     pendingBossAllowLegendary_ = false;
@@ -192,6 +194,7 @@ void Game::setDifficulty(int d) {
 }
 
 void Game::startDmSession(const std::string& dmName) {
+    resetMemoryRuntime(); // Host tables never grant memories
     turnOrder_.clear();
     players_.clear();
     enemies_.clear();
@@ -278,6 +281,7 @@ void Game::dmNarrate(const std::string& line) {
 
 
 void Game::prepareClientJoin() {
+    resetMemoryRuntime(); // Join never grants memories
     turnOrder_.clear();
     players_.clear();
     enemies_.clear();
@@ -501,6 +505,7 @@ void Game::applySoloQuestRoom() {
     maybeFinishAct2OnSettledEnter();
     maybeFinishAct3OnSealedEnter();
     maybeFinishAct4OnKindledEnter();
+    memoryOnBeatEnter();
 
     if (enemies_.empty()) {
         // Soft-open story beats: Search / Rest / Onward available immediately.
@@ -836,6 +841,7 @@ void Game::applyVennChoice(int option, bool silent) {
 
 void Game::applyWellChoice(int option, bool silent) {
     wellChoice_ = (option == WELL_LET_REST) ? WELL_LET_REST : WELL_SEALED_IN;
+    grantMemory("mem_well_judgment", false); // body follows the choice
     if (silent) return;
     if (wellChoice_ == WELL_LET_REST) {
         dmSay("You turn the Ember Seal gently. Below, the Ashbound go still at last, and the well breathes out. "
@@ -885,6 +891,189 @@ bool Game::refreshStoryRoomAfterLoad() {
     if (fresh == roomDescription_) return false;
     roomDescription_ = fresh;
     return true;
+}
+
+// --- The Memory Ledger (v2.26) ----------------------------------------------------------------
+// Native decides *what* is earned; Kotlin (MemoryLedger.kt) owns the per-hero store in meta prefs
+// (keyed by save slot) and drains the queue only for solo play. Host / Join tables never grant.
+
+void Game::resetMemoryRuntime() {
+    pendingMemories_.clear();
+    memoryOwned_.clear();
+    memoryContextKnown_ = false;
+    memoryCrawlDry_ = 0;
+}
+
+void Game::setMemoryLedgerContext(const std::string& ownedCsv, int crawlDryRooms) {
+    memoryOwned_.clear();
+    std::string cur;
+    for (char c : ownedCsv + ",") {
+        if (c == ',') { if (!cur.empty() && memory::findMemory(cur)) memoryOwned_.insert(cur); cur.clear(); }
+        else cur.push_back(c);
+    }
+    memoryCrawlDry_ = std::max(0, std::min(crawlDryRooms, 1000));
+    memoryContextKnown_ = true;
+}
+
+std::string Game::drainMemoryGrants() {
+    std::string out = std::to_string(memoryCrawlDry_) + "|";
+    for (size_t i = 0; i < pendingMemories_.size(); ++i) {
+        if (i) out += ",";
+        out += pendingMemories_[i];
+    }
+    pendingMemories_.clear();
+    return out;
+}
+
+bool Game::grantMemory(const char* id, bool voice) {
+    if (dmOnlyTable_ || !id) return false;
+    const memory::MemoryDef* m = memory::findMemory(id);
+    if (!m || memoryOwned_.count(id)) return false;
+    memoryOwned_.insert(id);
+    if (pendingMemories_.size() < 64) pendingMemories_.push_back(id);
+    addChatMessage("System", std::string("A soul settles in the glass — ") + m->title + ".");
+    if (voice && m->wren && questComplete_) wrenSay(m->wren);
+    return true;
+}
+
+void Game::memoryOnBeatEnter() {
+    if (!isSoloQuestScripted() || dmOnlyTable_) return;
+    for (const auto& m : memory::kMemories) {
+        if (m.source != memory::SRC_STORY || m.beat != questBeat_) continue;
+        if (m.trigger == memory::T_ENTER) grantMemory(m.id, false);
+    }
+    // Act-resolution safety: Search memories whose item flag the resolution just forced.
+    switch (static_cast<SoloQuestBeat>(questBeat_)) {
+        case SoloQuestBeat::ACT2_SETTLED: if (questAct2LedgerFound_) grantMemory("mem_your_name", false); break;
+        case SoloQuestBeat::ACT3_SEALED:
+            if (questAct3SealFound_) grantMemory("mem_first_oath", false);
+            grantMemory("mem_maren_named", false); // "on defeat / entering beat 19"
+            if (wellChoice_ != WELL_UNDECIDED) grantMemory("mem_well_judgment", false);
+            break;
+        case SoloQuestBeat::ACT4_KINDLED: if (questAct4EmberFound_) grantMemory("mem_siphon_prayer", false); break;
+        default: break;
+    }
+}
+
+void Game::memoryOnStoryClear() {
+    if (!isSoloQuestScripted() || dmOnlyTable_) return;
+    for (const auto& m : memory::kMemories) {
+        if (m.source != memory::SRC_STORY || m.beat != questBeat_) continue;
+        if (m.trigger == memory::T_CLEAR || m.trigger == memory::T_CLEAR_OR_SEARCH) grantMemory(m.id, false);
+    }
+}
+
+void Game::memoryOnStorySearch() {
+    if (!isSoloQuestScripted() || dmOnlyTable_) return;
+    for (const auto& m : memory::kMemories) {
+        if (m.source != memory::SRC_STORY || m.beat != questBeat_) continue;
+        if (m.trigger == memory::T_SEARCH_FLAG || m.trigger == memory::T_SEARCH_ONLY
+            || m.trigger == memory::T_CLEAR_OR_SEARCH) {
+            grantMemory(m.id, false);
+        }
+    }
+}
+
+bool Game::memoryCrawlEligible() const {
+    // Lamplighter's Rounds: procedural chambers once Wren is in the glass (Act 1 done).
+    if (dmOnlyTable_ || gameOver_ || isMerchantRoom_ || !questComplete_) return false;
+    if (isSoloQuestScripted() || isFocusedEndgameRun()) return false;
+    return soloPlayMode_ == static_cast<int>(SoloPlayMode::STORY) || soloPlayMode_ == static_cast<int>(SoloPlayMode::CRAWL);
+}
+
+void Game::memoryOnCrawlEvent(bool search) {
+    if (!memoryCrawlEligible() || !memoryContextKnown_) return;
+    std::vector<const char*> pool;
+    for (const auto& m : memory::kMemories)
+        if (m.source == memory::SRC_CRAWL && !memoryOwned_.count(m.id)) pool.push_back(m.id);
+    if (pool.empty()) {
+        if (search && getRandomInt(1, 100) <= 18) dmSay("Ash in the corner, but no voice in it.");
+        return;
+    }
+    // ~18% on Search, ~8% on a clear; pity after 8 cleared Rounds chambers with no new voice.
+    const bool pity = memoryCrawlDry_ >= 8;
+    const bool hit = pity || getRandomInt(1, 100) <= (search ? 18 : 8);
+    if (!hit) {
+        if (!search) memoryCrawlDry_++;
+        return;
+    }
+    const char* id = pool[static_cast<size_t>(getRandomInt(0, static_cast<int>(pool.size()) - 1))];
+    if (grantMemory(id, true)) memoryCrawlDry_ = 0;
+}
+
+void Game::memoryOnDeepDepth(int depth) {
+    if (dmOnlyTable_ || !isEndlessDeep()) return;
+    for (const auto& m : memory::kMemories)
+        if (m.source == memory::SRC_DEEP && m.beat == depth) grantMemory(m.id, true);
+}
+
+void Game::memoryOnArenaApex() {
+    if (dmOnlyTable_ || !isArena() || !memoryContextKnown_) return;
+    std::vector<const char*> pool;
+    for (const auto& m : memory::kMemories)
+        if (m.source == memory::SRC_ARENA && !memoryOwned_.count(m.id)) pool.push_back(m.id);
+    if (pool.empty()) return;
+    grantMemory(pool[static_cast<size_t>(getRandomInt(0, static_cast<int>(pool.size()) - 1))], true);
+}
+
+void Game::memoryOnRaidBoss(const std::string& foeId) {
+    if (dmOnlyTable_) return;
+    const char* ids[3];
+    memory::raidLoreFor(foeId, ids);
+    for (const char* id : ids) if (id) grantMemory(id, id == ids[2]);
+}
+
+std::string Game::progressStoryMemories() const {
+    const int b = questBeat_;
+    const bool scripted = isScriptedSoloBeat(b);
+    auto actDone = [&](int beat) {
+        if (beat <= 6) return questComplete_;
+        if (beat <= 13) return questAct2Complete_;
+        if (beat <= 19) return questAct3Complete_;
+        return questAct4Complete_;
+    };
+    auto itemFlag = [&](int beat) {
+        switch (beat) {
+            case 3: return questCryptKeyFound_;
+            case 11: return questAct2LedgerFound_;
+            case 17: return questAct3SealFound_;
+            case 23: return questAct4EmberFound_;
+            default: return false;
+        }
+    };
+    const bool clearedHere = !gameOver_ && enemies_.empty();
+    std::string ids;
+    for (const auto& m : memory::kMemories) {
+        if (m.source != memory::SRC_STORY) continue;
+        const bool passed = actDone(m.beat) || (scripted && m.beat < b);
+        const bool here = scripted && m.beat == b;
+        bool got = false;
+        switch (m.trigger) {
+            case memory::T_ENTER: got = passed || here; break;
+            case memory::T_CLEAR: got = passed || (here && clearedHere); break;
+            case memory::T_CLEAR_OR_SEARCH: got = passed || (here && (clearedHere || roomSearchUsed_)); break;
+            // Act 1's knife counts once Act 1 is done (approved: all six Act 1 memories).
+            case memory::T_SEARCH_FLAG: got = itemFlag(m.beat) || actDone(m.beat); break;
+            case memory::T_SEARCH_ONLY: got = here && roomSearchUsed_; break;
+            case memory::T_WELL_CHOICE: got = wellChoice_ != WELL_UNDECIDED; break;
+            default: break;
+        }
+        if (m.beat == 18 && !got) got = scripted && b > 18; // maren_named also on entering 19
+        if (!got) continue;
+        if (!ids.empty()) ids += ",";
+        ids += m.id;
+    }
+    return getStoryChoices() + "|" + ids;
+}
+
+std::string Game::previewStoryMemories(const std::string& save) {
+    try {
+        Game tmp{LoadOnlyTag{}};
+        tmp.parseSave(save);
+        return tmp.progressStoryMemories();
+    } catch (...) {
+        return "";
+    }
 }
 
 bool Game::endgameContentAllowed() const {
@@ -1809,6 +1998,7 @@ void Game::noteBossDefeat(const std::string& foeName, const std::string& foeId) 
     pendingBossGoldBonus_ += gold;
     dmSay("Boss fallen: " + foeName + "! Greater rewards await.");
     maybeGrantRaidKeyFromBoss(foeName, foeId);
+    if (isBossRaid()) memoryOnRaidBoss(foeId);
 }
 
 void Game::maybeGrantRaidKeyFromBoss(const std::string& foeName, const std::string& foeId) {
@@ -2274,6 +2464,7 @@ void Game::finishArenaKeepParty() {
 }
 
 void Game::spawnEndlessDepth(int depth) {
+    memoryOnDeepDepth(depth);
     enemies_.clear();
     shopInventory_.clear();
     isMerchantRoom_ = false;
@@ -2713,6 +2904,9 @@ void Game::enterClearedRoom(Character* actor) {
         dmSay("The chamber is clear. Search for loot, take a Short Rest, or press Onward.");
     }
     onStoryRoomCleared();
+    memoryOnStoryClear();
+    if (isArena() && arenaWave_ >= ARENA_MAX_WAVES) memoryOnArenaApex();
+    memoryOnCrawlEvent(false);
 }
 
 void Game::purgeDownedEnemies() {
@@ -3358,8 +3552,10 @@ void Game::playerInteract(const std::string& playerName) {
     roomSearchUsed_ = true;
     dqSearches_++;
 
-    if (trySoloQuestSearch(hero)) {
+    const bool storySearch = trySoloQuestSearch(hero);
+    if (storySearch) {
         // Story Search handled (clue / rune-key / shrine).
+        memoryOnStorySearch();
     } else if (hero->performSavingThrow(hero->attributes.intelligence, 12)) {
         int found = 15 + roomCount_ * 2 + getRandomInt(0, 10);
         hero->gold += found;
@@ -3381,6 +3577,7 @@ void Game::playerInteract(const std::string& playerName) {
             return;
         }
     }
+    if (!storySearch) memoryOnCrawlEvent(true);
     // Interact spends your turn like Attack/Heal when initiative is active.
     if (!turnOrder_.empty()) {
         advanceTurn();
