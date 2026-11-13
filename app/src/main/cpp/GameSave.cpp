@@ -135,6 +135,40 @@ std::string Game::serialize() {
 }
 
 
+bool Game::describeSave(const std::string& data, SaveSummary* out, std::string* error) {
+    if (data.empty() || data.find('|') == std::string::npos) {
+        if (error) *error = "empty save";
+        return false;
+    }
+    Game tmp{LoadOnlyTag{}};
+    try {
+        tmp.parseSave(data);
+    } catch (const std::exception& ex) {
+        if (error) *error = ex.what();
+        return false;
+    } catch (...) {
+        if (error) *error = "unknown parse error";
+        return false;
+    }
+    if (tmp.players_.empty() || !tmp.players_.front()) {
+        if (error) *error = "no hero in save";
+        return false;
+    }
+    if (out) {
+        const Character& hero = *tmp.players_.front();
+        out->heroName = hero.name;
+        out->classId = static_cast<int>(hero.characterClass);
+        out->level = hero.level;
+        out->questBeat = tmp.questBeat_;
+        out->soloPlayMode = tmp.soloPlayMode_;
+        out->difficulty = tmp.difficulty_;
+        out->gameOver = tmp.gameOver_;
+        out->roomCount = tmp.roomCount_;
+        out->storyComplete = tmp.questAct4Complete_;
+    }
+    return true;
+}
+
 bool Game::deserialize(const std::string& data, std::string* error) {
     if (data.empty()) {
         if (error) *error = "empty save";

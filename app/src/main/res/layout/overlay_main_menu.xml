@@ -132,6 +132,16 @@
                 android:paddingBottom="4dp" />
 
             <Button
+                android:id="@+id/btnMenuAdventures"
+                style="@style/Widget.DnD.ActionButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:layout_marginBottom="6dp"
+                android:text="Adventures"
+                android:textSize="14sp" />
+
+            <Button
                 android:id="@+id/btnMenuSolo"
                 style="@style/Widget.DnD.ActionButton"
                 android:layout_width="match_parent"

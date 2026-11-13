@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v2.28 Adventures: hollow (unlit) lantern in ash for an empty slot. Original art. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    <path android:pathData="M20,2 A18,18 0 1,0 20,38 A18,18 0 1,0 20,2 Z M20,3.5 A16.5,16.5 0 1,1 20,36.5 A16.5,16.5 0 1,1 20,3.5 Z"
+        android:fillColor="#FF4A4650" android:fillType="evenOdd"/>
+    <path android:pathData="M17,8 A3,3 0 1,1 23,8 L21.6,8 A1.6,1.6 0 1,0 18.4,8 Z" android:fillColor="#FF6E6872"/>
+    <path android:pathData="M13,11 L27,11 L26,13.5 L14,13.5 Z" android:fillColor="#FF6E6872"/>
+    <path android:pathData="M14.5,13.5 L25.5,13.5 L24.5,28 L15.5,28 Z M16.3,15.3 L23.7,15.3 L22.9,26.2 L17.1,26.2 Z"
+        android:fillColor="#FF6E6872" android:fillType="evenOdd"/>
+    <path android:pathData="M19.3,15.3 L20.7,15.3 L20.7,26.2 L19.3,26.2 Z" android:fillColor="#FF4A4650"/>
+    <path android:pathData="M14,28 L26,28 L27,31 L13,31 Z" android:fillColor="#FF6E6872"/>
+</vector>

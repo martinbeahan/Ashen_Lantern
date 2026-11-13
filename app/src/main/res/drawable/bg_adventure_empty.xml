@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v2.28 Adventures: unlit slot — dashed ash border on far soot. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/ae_far_soot"/>
+    <stroke android:width="1dp" android:color="@color/ae_ash" android:dashWidth="6dp" android:dashGap="4dp"/>
+    <corners android:radius="2dp"/>
+</shape>
