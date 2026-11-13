@@ -6,7 +6,14 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.20 / 59) — Ash & Ember, phase 1
+## What's new (v2.21 / 60) — Ash & Ember, phase 2
+
+- **Every foe has its own art** — 24 new hand-authored *Ash & Ember* silhouettes complete the bestiary: all six Wickthief variants, Bonebound Ashbound, Gloamhound, Tallow Rat, Millstone Brute, the Grey Tithe (Enforcer, Scavenger, Watcher), both Criers, every story boss (Lantern Sexton, Collector Sallow Venn, First Lamplighter, Bell-Herald, Ossuary Prior), Ashen Drake and the Three Drowned Lanterns (Hollow Crown, Ember Hydra, Nightfang Matriarch). All 27 enemy IDs now resolve to 27 distinct drawables — nothing borrows another foe's sprite, and the old CC0 wolf/ogre/skeleton placeholders are gone
+- **Renamed foes** (names only — saves and IDs unchanged): Giant Rat → **Tallow Rat**, Ogre → **Millstone Brute** (set-piece: *Millstone Roadblock*), Debt Enforcer → **Tithe Enforcer**, Ashwake Scout → **Tithe Watcher**, Bone Herald → **Bone Crier**. Old saves (both pre-v2.20 and v2.20) pick up the new names automatically
+- **Reduce flashing covers the new bosses** — with *Reduce flashing* on, Ember Hydra's furnace door, the First Lamplighter's chest arch, the Ossuary Prior's censer and the Nightfang Matriarch's caged soul switch to calmer art (amber glow halos at 30%, solid amber at 55%); toggling the setting mid-fight swaps them immediately
+- Unchanged: Long Rest every 5 rooms, Short Rest once per clear, duplicate foes selectable by slot (`#2`), Host/Join never touches the solo save
+
+## Previous (v2.20 / 59) — Ash & Ember, phase 1
 
 - **Act 1 rewritten: *The Kindling*** — opens on your mother's funeral ("In Millhollow, we do not bury our dead. We burn them into the light."). Wickthieves steal the Lantern mid-ceremony, the shadows stand up, and your sister **Wren** gives chase; first fight within a minute. Act 1 ends with Wren relighting the Lantern with her own soul, and a masked watcher writing in a ledger
 - **New original enemy art** — hand-authored *Ash & Ember* silhouettes (VectorDrawables) for the **Wickthief** (was goblins), **Ashbound** (was skeletons) and **The Wick King** (was Goblin King), animated in code: idle bob/sway, lunge on attack, ash-dissolve on death (Reduce flashing keeps them still and uses a plain fade)
@@ -54,7 +61,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 ## Features
 
 - **Story adventure** — original scripted acts (Act 1 *The Kindling*, Act 2 *Millhollow's Debt*, Act 3 *Emberdeep Breach*, Act 4 *Ashwake Vigil*), with Continue mid-quest. You are the Lamplighter's child; your sister Wren and the Ashen Lantern are at the heart of it
-- **Ash & Ember art (in progress)** — original hand-authored enemy silhouettes (Wickthief, Ashbound, The Wick King) with code-driven idle / attack / ash-dissolve animation; remaining foes use placeholders until their art lands
+- **Ash & Ember art** — original hand-authored silhouettes for all 27 foes (one per stable enemy ID) with code-driven idle sway / attack lunge / ash-dissolve animation; *Reduce flashing* stills them and calms the bright amber boss glows
 - **Dungeon Crawl** — procedural rooms from the start (skip the scripted quest)
 - **Difficulty** — Easy / Medium / Hard / Nightmare (locked for the run; wipe rules differ by tier)
 - **Classes** — Fighter, Wizard, Rogue, Cleric, and **Bard** (CHA-based; Cutting Quip special)
@@ -149,7 +156,8 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | Document | Purpose |
 |----------|---------|
 | [`ATTRIBUTION.md`](ATTRIBUTION.md) | Trademarks notice, SRD credit, art & audio licenses |
-| [`docs/art/ash_ember/`](docs/art/ash_ember/) | Ash & Ember style sheet + original enemy SVG sources (`tools/svg2vd.py` converts them to VectorDrawables) |
+| [`docs/art/ash_ember/`](docs/art/ash_ember/) | Ash & Ember style sheet + original enemy SVG sources, one per enemy ID (`tools/svg2vd.py` converts them to VectorDrawables; `--calm` makes the Reduce-flashing variants) |
+| [`docs/ASH_EMBER_PHASE2.md`](docs/ASH_EMBER_PHASE2.md) | Phase 2: art import, renames + save migration, Reduce-flashing variants, checks (`tools/check_enemy_sprites.py`, `tools/migration_test/run.sh`) |
 | [`LICENSE`](LICENSE) | MIT (source code & original adventure text) |
 | [`docs/STORE_LISTING_LEGAL.md`](docs/STORE_LISTING_LEGAL.md) | Paste-ready Play Store legal blurb |
 | [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md) | **3D v2 plan** (Unreal Engine) — desktop slice; 2D app remains production/tester track |

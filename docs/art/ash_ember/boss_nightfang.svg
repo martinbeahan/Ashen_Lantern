@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- NIGHTFANG MATRIARCH — Ashen Lantern original (Ash & Ember). Faces left, feet ~y478. VectorDrawable-safe: paths/circles, flat fills + fill-opacity, evenodd, simple strokes. -->
+<path fill="none" stroke="#D9D2C3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.16" d="M512 0 L60 0 M512 0 L120 140 M512 0 L150 300 M512 0 L260 478 M512 0 L420 478 M512 0 L512 380 "/>
+<path fill="none" stroke="#D9D2C3" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.12" d="M392 0 Q404.0 108.0 512 120 M312 0 Q332.0 180.0 512 200 M222 0 Q251.0 261.0 512 290 M132 0 Q170.0 342.0 512 380 "/>
+<path fill="#141216" d="M204.6 315.7 L151.8 176.8 L94.1 283.1 L77.5 473.8 L82.5 474.2 L101.9 284.9 L148.2 187.2 L191.4 320.3 Z"/><circle cx="150" cy="182" r="7.7" fill="#141216"/><circle cx="98" cy="284" r="7.7" fill="#141216"/><path fill="#141216" d="M146 182 L150 164 L155 182 Z"/>
+<path fill="#141216" d="M220.9 321 L195.2 190.6 L158.1 329.3 L147.5 473.8 L152.5 474.2 L165.9 330.7 L196.8 201.4 L207.1 323 Z"/><circle cx="196" cy="196" r="7.7" fill="#141216"/><circle cx="162" cy="330" r="7.7" fill="#141216"/><path fill="#141216" d="M192 196 L196 178 L201 196 Z"/>
+<path fill="#141216" d="M247.9 325.8 L335.7 181.5 L400.2 331.1 L419.5 474.3 L424.5 473.7 L407.8 328.9 L336.3 170.5 L236.1 318.2 Z"/><circle cx="336" cy="176" r="7.7" fill="#141216"/><circle cx="404" cy="330" r="7.7" fill="#141216"/><path fill="#141216" d="M332 176 L336 158 L341 176 Z"/>
+<path fill="#141216" d="M260.6 335.3 L404 205.5 L474.2 331.3 L495.5 474.3 L500.5 473.7 L481.8 328.7 L404 194.5 L251.4 324.7 Z"/><circle cx="404" cy="200" r="7.7" fill="#141216"/><circle cx="478" cy="330" r="7.7" fill="#141216"/><path fill="#141216" d="M400 200 L404 182 L409 200 Z"/>
+<path fill="none" stroke="#D9D2C3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.3" d="M390 320 L390 478"/>
+<circle cx="352" cy="252" r="40" fill="#F2A541" fill-opacity="0.35"/><circle cx="352" cy="252" r="18" fill="#FFD27A"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M268 252 a84,70 0 1,0 168,0 a84,70 0 1,0 -168,0 Z M298 211.1 L310 211.1 L310 292.9 L298 292.9 Z M322 202.6 L334 202.6 L334 301.4 L322 301.4 Z M346 200 L358 200 L358 304 L346 304 Z M370 202.6 L382 202.6 L382 301.4 L370 301.4 Z M394 211.1 L406 211.1 L406 292.9 L394 292.9 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M268 252 a84,70 0 0,1 84,-70"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M338 172 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0 Z M343 172 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z"/>
+<circle cx="352" cy="252" r="90" fill="#F2A541" fill-opacity="0.05"/>
+<path fill="#1C1A1E" d="M160 320 a54,40 0 1,0 108,0 a54,40 0 1,0 -108,0 Z"/>
+<path fill="#1C1A1E" d="M199.9 317.7 L128.3 199 L63.2 314.6 L47 475.7 L53 476.3 L72.8 317.4 L127.7 213 L184.1 326.3 Z"/><circle cx="128" cy="206" r="9.9" fill="#1C1A1E"/><circle cx="68" cy="316" r="9.9" fill="#1C1A1E"/><path fill="#1C1A1E" d="M124 206 L128 188 L133 206 Z"/>
+<path fill="#1C1A1E" d="M211.7 327.3 L146 233.3 L103.1 359 L97 475.8 L103 476.2 L112.9 361 L150 246.7 L196.3 336.7 Z"/><circle cx="148" cy="240" r="9.9" fill="#1C1A1E"/><circle cx="108" cy="360" r="9.9" fill="#1C1A1E"/><path fill="#1C1A1E" d="M144 240 L148 222 L153 240 Z"/>
+<path fill="#1C1A1E" d="M243.9 344.2 L298.4 226.8 L355.2 371.5 L377.1 476.6 L382.9 475.4 L364.8 368.5 L301.6 213.2 L228.1 335.8 Z"/><circle cx="300" cy="220" r="9.9" fill="#1C1A1E"/><circle cx="360" cy="370" r="9.9" fill="#1C1A1E"/><path fill="#1C1A1E" d="M296 220 L300 202 L305 220 Z"/>
+<path fill="#1C1A1E" d="M255.9 352.8 L360.7 256.9 L435.5 384.2 L467.1 476.9 L472.9 475.1 L444.5 379.8 L363.3 243.1 L244.1 339.2 Z"/><circle cx="362" cy="250" r="9.9" fill="#1C1A1E"/><circle cx="440" cy="382" r="9.9" fill="#1C1A1E"/><path fill="#1C1A1E" d="M358 250 L362 232 L367 250 Z"/>
+<path fill="#1C1A1E" d="M140 322 a30,26 0 1,0 60,0 a30,26 0 1,0 -60,0 Z"/>
+<path fill="#1C1A1E" d="M150 338 Q132 360 146 388 Q150 376 160 368 Q156 354 164 342 Z M176 342 Q170 366 186 390 Q186 374 194 364 Q186 352 190 340 Z"/>
+<circle cx="152" cy="310" r="9.4" fill="#5FD3C6" fill-opacity="0.13"/><circle cx="152" cy="310" r="3.6" fill="#5FD3C6"/>
+<circle cx="166" cy="304" r="10.9" fill="#5FD3C6" fill-opacity="0.13"/><circle cx="166" cy="304" r="4.2" fill="#5FD3C6"/>
+<circle cx="182" cy="306" r="9.4" fill="#5FD3C6" fill-opacity="0.13"/><circle cx="182" cy="306" r="3.6" fill="#5FD3C6"/>
+<circle cx="146" cy="322" r="6.8" fill="#5FD3C6" fill-opacity="0.13"/><circle cx="146" cy="322" r="2.6" fill="#5FD3C6"/>
+<circle cx="160" cy="320" r="7.8" fill="#5FD3C6" fill-opacity="0.13"/><circle cx="160" cy="320" r="3" fill="#5FD3C6"/>
+<circle cx="176" cy="320" r="6.8" fill="#5FD3C6" fill-opacity="0.13"/><circle cx="176" cy="320" r="2.6" fill="#5FD3C6"/>
+<circle cx="190" cy="316" r="5.7" fill="#5FD3C6" fill-opacity="0.13"/><circle cx="190" cy="316" r="2.2" fill="#5FD3C6"/>
+<circle cx="170" cy="334" r="5.2" fill="#5FD3C6" fill-opacity="0.13"/><circle cx="170" cy="334" r="2" fill="#5FD3C6"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M140 322 a30,26 0 0,1 30,-26"/><path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M192 322 L128 206 L68 316"/>
+</svg>

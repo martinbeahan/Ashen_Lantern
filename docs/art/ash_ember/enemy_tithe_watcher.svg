@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- TITHE WATCHER — Ashen Lantern original (Ash & Ember). Faces left, feet ~y478. VectorDrawable-safe: paths/circles, flat fills + fill-opacity, evenodd, simple strokes. -->
+<path fill="#5FD3C6" fill-opacity="0.08" d="M100 260 L0 300 L0 430 L108 280 Z"/>
+<path fill="#5FD3C6" fill-opacity="0.08" d="M100 264 L0 330 L0 390 L106 276 Z"/>
+<path fill="#1C1A1E" d="M204 196 L254 196 Q276 240 282 320 Q288 400 304 466 L292 460 L286 476 L272 462 L262 478 L250 462 L238 478 L226 462 L214 478 L204 462 L192 474 L180 466 Q190 400 194 320 Q196 240 204 196 Z"/>
+<path fill="#0B0A0C" fill-opacity="0.6" d="M226 210 L232 210 L236 466 L226 466 Z"/>
+<path fill="#1C1A1E" d="M198 200 L186 168 L212 190 Z M258 200 L272 166 L250 192 Z"/>
+<path fill="#1C1A1E" d="M200 152 L246 60 L254 150 Q258 180 244 198 L214 200 Q198 182 200 152 Z"/>
+<path fill="#0B0A0C" d="M208 160 Q214 140 232 136 Q246 140 246 162 Q242 184 226 188 Q212 184 208 160 Z"/>
+<circle cx="222" cy="158" r="13" fill="#5FD3C6" fill-opacity="0.16"/><circle cx="222" cy="158" r="4.4" fill="#5FD3C6"/>
+<path fill="#5FD3C6" fill-opacity="0.8" d="M232 160 L242 158 L242 161 L232 163 Z"/>
+<path fill="#2A262C" fill-rule="evenodd" d="M236 244 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0 Z M239 244 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z"/><circle cx="244" cy="244" r="2.5" fill="#2A262C"/>
+<path fill="#2A262C" d="M246 300 L286 292 L288 302 L248 310 Z"/>
+<path fill="#1C1A1E" d="M212 220 Q190 252 180 290 L170 300 L186 308 Q206 270 228 240 Z"/>
+<path fill="#1C1A1E" d="M174 312 L182 308 L96 202 L90 206 Z"/>
+<path fill="#1C1A1E" d="M90 206 L94 206 L94 222 L90 222 Z"/>
+<path fill="#1C1A1E" d="M84 224 L118 224 L118 230 L84 230 Z"/>
+<path fill="#5FD3C6" fill-opacity="0.9" d="M88 232 L114 232 L116 276 L86 276 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M84 230 L118 230 L120 280 L82 280 Z M88 250 L114 250 L114 258 L88 258 Z"/>
+<path fill="#1C1A1E" d="M80 280 L122 280 L114 290 L88 290 Z"/>
+<circle cx="100" cy="254" r="20" fill="#5FD3C6" fill-opacity="0.12"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M246 60 L200 152"/><path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M194 320 Q190 400 180 466"/>
+</svg>

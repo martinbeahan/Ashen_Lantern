@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- THE LANTERN SEXTON — Ashen Lantern original (Ash & Ember). Faces left, feet ~y478. VectorDrawable-safe: paths/circles, flat fills + fill-opacity, evenodd, simple strokes. -->
+<path fill="#141216" d="M330 210 L364 262 L378 330 L372 392 L360 396 L356 340 L338 272 Z"/>
+<path fill="#1C1A1E" d="M176 180 Q240 164 304 182 Q344 198 356 244 L364 320 Q372 400 400 466 L400 480 L382 464 L364 480 L346 464 L328 480 L310 464 L292 480 L274 464 L256 480 L238 464 L220 480 L202 464 L184 480 L166 464 L148 480 L132 464 Q156 400 160 320 L158 244 Q164 196 176 180 Z"/>
+<path fill="#2A262C" d="M214 190 L232 190 L230 402 L222 416 L212 402 Z M250 190 L268 190 L270 402 L260 416 L252 402 Z"/>
+<path fill="#D9D2C3" fill-opacity="0.5" d="M210 300 L236 300 L240 308 L230 318 L222 306 L214 318 L206 308 Z M248 340 L274 340 L278 348 L268 358 L260 346 L252 358 L244 348 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M372 418 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0 Z M377 418 a15,15 0 1,0 30,0 a15,15 0 1,0 -30,0 Z"/>
+<path fill="#1C1A1E" d="M374 436 L378 436 L378 470 L374 470 Z"/>
+<path fill="#1C1A1E" d="M378 460 L385 460 L385 465 L378 465 Z M378 467 L383 467 L383 470 L378 470 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M371 438 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z M373 438 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z"/>
+<path fill="#1C1A1E" d="M386 440 L390 440 L390 484 L386 484 Z"/>
+<path fill="#1C1A1E" d="M390 474 L397 474 L397 479 L390 479 Z M390 481 L395 481 L395 484 L390 484 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M383 442 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z M385 442 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z"/>
+<path fill="#1C1A1E" d="M398 438 L402 438 L402 468 L398 468 Z"/>
+<path fill="#1C1A1E" d="M402 458 L409 458 L409 463 L402 463 Z M402 465 L407 465 L407 468 L402 468 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M395 440 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z M397 440 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z"/>
+<path fill="#1C1A1E" d="M408 432 L412 432 L412 472 L408 472 Z"/>
+<path fill="#1C1A1E" d="M412 462 L419 462 L419 467 L412 467 Z M412 469 L417 469 L417 472 L412 472 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M405 434 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z M407 434 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z"/>
+<path fill="#141216" d="M362 384 L380 396 L384 410 L372 412 L360 400 Z"/>
+<path fill="#141216" d="M186 192 Q182 120 214 88 L268 88 Q304 120 298 192 Z"/>
+<path fill="#0B0A0C" d="M204 92 L276 92 L278 154 L202 154 Z"/>
+<circle cx="226" cy="124" r="11" fill="#5FD3C6" fill-opacity="0.14"/><circle cx="226" cy="124" r="4" fill="#5FD3C6"/><circle cx="254" cy="122" r="12" fill="#5FD3C6" fill-opacity="0.14"/><circle cx="254" cy="122" r="4.4" fill="#5FD3C6"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M206 84 L274 84 L282 96 L282 150 L272 162 L208 162 L198 150 L198 96 Z M210 98 L228 98 L228 150 L210 150 Z M233 98 L247 98 L247 150 L233 150 Z M252 98 L270 98 L270 150 L252 150 Z"/>
+<path fill="#1C1A1E" d="M210 70 L270 70 L280 84 L200 84 Z M214 162 L266 162 L258 178 L222 178 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M227 56 a13,13 0 1,0 26,0 a13,13 0 1,0 -26,0 Z M231.5 56 a8.5,8.5 0 1,0 17,0 a8.5,8.5 0 1,0 -17,0 Z"/>
+<path fill="#1C1A1E" d="M224 70 L230 60 L236 70 Z M244 70 L250 60 L256 70 Z"/>
+<path fill="#1C1A1E" d="M140 158 L152 158 L146 398 L134 398 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M128 130 L166 130 L166 160 L128 160 Z M136 138 L158 138 L158 152 L136 152 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M106 394 L172 394 L170 452 Q140 482 108 452 Z M140 404 L146 404 L136 430 L146 446 L140 448 L130 430 Z"/>
+<path fill="#1C1A1E" d="M178 196 L200 216 L166 238 L150 228 L138 216 L146 204 Z"/>
+<circle cx="146" cy="214" r="12" fill="#1C1A1E"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M158 244 L160 320 Q156 400 132 466"/><path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M152 158 L146 398"/><path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M198 96 L198 150 L208 162"/>
+<path fill="#141216" d="M300 40 L305 38.5 L305.5 44 L300.5 45 Z"/><path fill="#141216" d="M318 60 L323 58.5 L323.5 64 L318.5 65 Z"/><path fill="#141216" d="M290 24 L295 22.5 L295.5 28 L290.5 29 Z"/>
+</svg>

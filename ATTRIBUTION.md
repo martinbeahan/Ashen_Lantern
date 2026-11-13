@@ -59,9 +59,12 @@ We intentionally avoid Mixkit Music, FreePD, and any D&D / Wizards of the Coast 
 
 All bundled battle art ships under **Creative Commons Zero (CC0 / public domain)** or is original UI chrome (XML shapes). No Wizards of the Coast / D&D product art is used.
 
-### Character & monster sprites (LuizMelo — itch.io, CC0)
+### Character sprites (LuizMelo — itch.io, CC0)
 
-Idle frames extracted from free CC0 packs, padded to 256×256 PNGs for Android drawables.
+Idle frames extracted from free CC0 packs, padded to 256×256 PNGs for Android drawables. The
+former CC0 monster bitmaps (`sprite_skeleton`, `sprite_wolf`, `sprite_ogre` and their `_atk`
+frames — LuizMelo Monsters Creatures Fantasy / Pet Dogs Pack, Clint Bellanger Tiny Creatures)
+were removed in v2.21: every enemy now uses original Ash & Ember art (below).
 
 | Asset in app | Source pack | Author | License | Link |
 |---|---|---|---|---|
@@ -69,9 +72,6 @@ Idle frames extracted from free CC0 packs, padded to 256×256 PNGs for Android d
 | `sprite_wizard.png` | Wizard Pack (Idle) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/wizard-pack |
 | `sprite_rogue.png` | Huntress (Idle) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/huntress |
 | `sprite_cleric.png` | Medieval King Pack (Idle) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/medieval-king-pack |
-| `sprite_skeleton.png` | Monsters Creatures Fantasy — Skeleton (Idle) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/monsters-creatures-fantasy |
-| `sprite_wolf.png` | Pet Dogs Pack — Akita Idle (recolored cooler gray for wolf read) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/pet-dogs-pack |
-| `sprite_ogre.png` | Tiny Creatures (tile upscaled; large humanoid) | Clint Bellanger | CC0 1.0 | https://opengameart.org/content/tiny-creatures |
 
 ### Battle backgrounds
 
@@ -113,17 +113,43 @@ Visual-only pass — same CC0 sources, higher encode quality and cleaner chrome.
 | `sprite_*.png` / `*_atk.png` | Re-extracted LuizMelo / Tiny Creatures / Pet Dogs frames with readability outline | CC0 (packs above) |
 | HUD / panels / HP / XP / selection / damage float XML | Original UI chrome (double-frame stages, turn banner, crit float) | Original |
 
-### Ash & Ember enemy art (v2.20) — original
+### Ash & Ember enemy art (v2.20, completed v2.21) — original
 
 Hand-authored for Ashen Lantern (Ash & Ember style sheet v0.1). **Original work, owned by the
-project** — not CC0 third-party art. Sources live in `docs/art/ash_ember/` (SVG + style sheet);
-`tools/svg2vd.py` converts them to Android VectorDrawables.
+project** — not CC0 third-party art. Sources live in `docs/art/ash_ember/` (SVG + style sheet +
+`previews/` contact sheets); `tools/svg2vd.py` converts them to Android VectorDrawables. As of
+v2.21 all 27 enemy IDs have their own silhouette (`res/drawable/<enemyId>.xml`).
 
 | Asset in app | Source | Author | License |
 |---|---|---|---|
 | `enemy_wickthief.xml` | `docs/art/ash_ember/wickthief.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
 | `enemy_ashbound.xml` | `docs/art/ash_ember/ashbound.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
 | `boss_wick_king.xml` | `docs/art/ash_ember/wick_king.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_wickthief_scout.xml` | `docs/art/ash_ember/enemy_wickthief_scout.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_wickthief_cutpurse.xml` | `docs/art/ash_ember/enemy_wickthief_cutpurse.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_wickthief_cache.xml` | `docs/art/ash_ember/enemy_wickthief_cache.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_wickthief_river.xml` | `docs/art/ash_ember/enemy_wickthief_river.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_wickthief_root.xml` | `docs/art/ash_ember/enemy_wickthief_root.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_wickthief_fen.xml` | `docs/art/ash_ember/enemy_wickthief_fen.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_ashbound_bonebound.xml` | `docs/art/ash_ember/enemy_ashbound_bonebound.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_gloamhound.xml` | `docs/art/ash_ember/enemy_gloamhound.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_crier_bone.xml` | `docs/art/ash_ember/enemy_crier_bone.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_crier_wick.xml` | `docs/art/ash_ember/enemy_crier_wick.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_tallow_rat.xml` | `docs/art/ash_ember/enemy_tallow_rat.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_brute.xml` | `docs/art/ash_ember/enemy_brute.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_tithe_enforcer.xml` | `docs/art/ash_ember/enemy_tithe_enforcer.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_tithe_scavenger.xml` | `docs/art/ash_ember/enemy_tithe_scavenger.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_tithe_watcher.xml` | `docs/art/ash_ember/enemy_tithe_watcher.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `boss_sexton.xml` | `docs/art/ash_ember/boss_sexton.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `boss_collector.xml` | `docs/art/ash_ember/boss_collector.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `boss_warden.xml` | `docs/art/ash_ember/boss_warden.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `boss_herald.xml` | `docs/art/ash_ember/boss_herald.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `boss_prior.xml` | `docs/art/ash_ember/boss_prior.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `boss_drake.xml` | `docs/art/ash_ember/boss_drake.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `boss_hollow_crown.xml` | `docs/art/ash_ember/boss_hollow_crown.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `boss_ember_hydra.xml` | `docs/art/ash_ember/boss_ember_hydra.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `boss_nightfang.xml` | `docs/art/ash_ember/boss_nightfang.svg` (v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `boss_ember_hydra_calm.xml`, `boss_warden_calm.xml`, `boss_prior_calm.xml`, `boss_nightfang_calm.xml` | Same SVGs via `tools/svg2vd.py --calm` (Reduce flashing variants, v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
 | `enemy_unknown.xml` | Hand-written VectorDrawable (neutral shadow) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
 
 The LuizMelo goblin sprite (`sprite_goblin*.png`) was removed from the Android UI in v2.20; the
@@ -150,21 +176,21 @@ any Wizards of the Coast adventure module.
 
 Bosses use **original names and flavor text** (Goblin King, Skeleton King, Ashen Drake). No published adventure text.
 
-Sprites reuse existing LuizMelo CC0 frames already shipped in the app (no new downloads):
+Originally these reused LuizMelo CC0 frames; since v2.21 each boss has its own original Ash & Ember silhouette:
 
-| Boss | Reuses |
+| Boss | Sprite |
 |---|---|
 | The Wick King (was Goblin King) | `boss_wick_king.xml` — original Ash & Ember art (v2.20) |
-| The Ossuary Prior (was Skeleton King) | `enemy_ashbound.xml` placeholder (v2.20) |
-| Ashen Drake | `sprite_ogre.png` / `_atk` (large creature stand-in) |
+| The Ossuary Prior (was Skeleton King) | `boss_prior.xml` — original Ash & Ember art (v2.21) |
+| Ashen Drake | `boss_drake.xml` — original Ash & Ember art (v2.21) |
 
 
 
 ## Endgame / Act 3 / Boss Raids (v2.6)
 
-No new third-party art or audio. Act 3 / endgame / raid encounters reuse existing CC0 battle stages and monster sprites listed above (boss stage, cave, dungeon). Original names and flavor text only — not from any WotC module.
+No new third-party art or audio. Act 3 / endgame / raid encounters reuse existing CC0 battle stages listed above (monster sprites: original Ash & Ember art since v2.21) (boss stage, cave, dungeon). Original names and flavor text only — not from any WotC module.
 
 ## Temporary sprite mapping
 
 - **Bard (v2.7):** UI battle portrait and GL player model temporarily reuse the Wizard sprite/model until dedicated Bard CC0 art is added.
-- **Placeholder enemy sprites (v2.20):** every enemy ID has its own sprite entry (`MainActivity.enemySprites`). Foes without Ash & Ember art yet (Gloamhound, Giant Rat, Ogre, Grey Tithe humans, Collector, First Lamplighter, Bell-Herald, Ashen Drake, endgame bosses) temporarily point at existing CC0 wolf/ogre/skeleton bitmaps or an original silhouette until Phase 2 art lands.
+- **Placeholder enemy sprites (v2.20) — retired in v2.21:** every one of the 27 enemy IDs now maps to its own same-named Ash & Ember drawable (`MainActivity.enemySprites`; checked by `tools/check_enemy_sprites.py`). No enemy borrows another's art; `enemy_unknown.xml` is only for IDs from a newer host.

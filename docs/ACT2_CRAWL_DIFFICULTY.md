@@ -23,7 +23,7 @@ Same as before. Onward from Ashen Shrine now starts **Act 2** (not immediate pro
 |---|------|-------|
 | 8 | Millhollow Green | Debt collectors; light fight |
 | 9 | Millrace Weir | River goblins |
-| 10 | Flooded Cellar | Skeleton + giant rat |
+| 10 | Flooded Cellar | Ashbound + Tallow Rat |
 | 11 | Ledger Loft | Soft open — Search → coerced ledger |
 | 12 | Collector's Hall | Bandit-flavored Collector (Fighter) |
 | 13 | Debt Settled | Resolution; Onward → procedural (`POST_QUEST` = 7) |

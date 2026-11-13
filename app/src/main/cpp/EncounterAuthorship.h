@@ -66,10 +66,10 @@ inline const TemplateInfo* table(size_t& outCount) {
           "Howl Corridor survived! Pack trophies and a better haul.",
           4, 38, 20, false },
 
-        { TemplateId::OGRE_ROADBLOCK, "ogre_roadblock", "Ogre Roadblock",
-          "SET-PIECE — Ogre Roadblock: a hulking ogre bars the arch. One hard fight, clear reward.",
+        { TemplateId::OGRE_ROADBLOCK, "ogre_roadblock", "Millstone Roadblock", // key unchanged (save/telemetry); display renamed Phase 2
+          "SET-PIECE — Millstone Roadblock: a hulking Millstone Brute bars the arch. One hard fight, clear reward.",
           "A massive figure blocks the archway, club scraping stone.",
-          "Ogre Roadblock cleared! The bruiser's pouch and a solid Common/Uncommon.",
+          "Millstone Roadblock cleared! The bruiser's pouch and a solid Common/Uncommon.",
           7, 55, 30, true },
     };
     outCount = sizeof(kTable) / sizeof(kTable[0]);

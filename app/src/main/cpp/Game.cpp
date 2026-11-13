@@ -573,7 +573,7 @@ void Game::spawnSoloQuestEnemies() {
             // Shrine: no fight — resolution beat.
             break;
         case SoloQuestBeat::ACT2_GREEN:
-            // Soft open fight: one debt enforcer (bandit-flavored fighter), toned down.
+            // Soft open fight: one Tithe Enforcer (bandit-flavored fighter), toned down.
             makeFoe("enemy_tithe_enforcer", CharacterClass::FIGHTER, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
             break;
         case SoloQuestBeat::ACT2_WEIR:
@@ -2031,7 +2031,7 @@ void Game::spawnArenaWave(int wave) {
             break;
         case 3:
             pushFoe("enemy_brute", CharacterClass::FIGHTER, 14 + roomCount_ / 2, 1, 0);
-            roomDescription_ = "Ember Ring — Wave 3. An ogre stomps into the ash.";
+            roomDescription_ = "Ember Ring — Wave 3. A Millstone Brute stomps into the ash.";
             break;
         case 4:
             pushFoe("enemy_brute", CharacterClass::FIGHTER, 16 + roomCount_ / 2, 2, 0);

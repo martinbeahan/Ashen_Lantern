@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- HOLLOW CROWN — Ashen Lantern original (Ash & Ember). Faces left, feet ~y478. VectorDrawable-safe: paths/circles, flat fills + fill-opacity, evenodd, simple strokes. -->
+<path fill="#141216" fill-rule="evenodd" d="M126 478 L126 214 L168 188 L198 206 L256 166 L314 206 L344 188 L386 214 L386 478 Z M356 230 L362 236 L346 258 L340 252 Z"/>
+<path fill="#141216" d="M126 214 L108 176 L136 206 Z M168 188 L160 150 L180 184 Z M344 188 L352 150 L332 184 Z M386 214 L404 176 L376 206 Z"/>
+<path fill="#2A262C" fill-rule="evenodd" d="M128 240 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0 Z M136 240 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0 Z"/><path fill="#2A262C" fill-rule="evenodd" d="M344 290 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0 Z M351 290 a11,11 0 1,0 22,0 a11,11 0 1,0 -22,0 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M148 252 Q256 222 364 252 Q394 302 402 380 Q410 440 444 466 L444 480 L426 466 L408 480 L390 466 L372 480 L354 466 L336 480 L318 466 L300 480 L282 466 L264 480 L246 466 L228 480 L210 466 L192 480 L174 466 L156 480 L138 466 L120 480 L102 466 L84 480 L68 466 Q102 440 110 380 Q118 302 148 252 Z M236 272 L276 272 L304 478 L208 478 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M148 252 Q118 302 110 380 Q102 440 68 466"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M194 262 Q196 188 256 176 Q316 188 318 262 Z M214 256 Q214 206 256 196 Q298 206 298 256 Z"/>
+<circle cx="238" cy="222" r="12" fill="#5FD3C6" fill-opacity="0.18"/><circle cx="238" cy="222" r="3.6" fill="#5FD3C6"/><circle cx="274" cy="222" r="12" fill="#5FD3C6" fill-opacity="0.18"/><circle cx="274" cy="222" r="3.6" fill="#5FD3C6"/>
+<path fill="#1C1A1E" d="M168 262 Q126 282 106 316 L150 322 Q170 300 198 288 Z"/>
+<path fill="#1C1A1E" d="M344 262 Q386 282 406 316 L362 322 Q342 300 314 288 Z"/>
+<path fill="#1C1A1E" d="M92 346 L134 340 L144 356 L136 366 L96 372 L86 360 Z M96 346 L98 330 L106 344 Z M110 342 L112 326 L118 342 Z M124 340 L128 326 L132 340 Z"/>
+<path fill="#2A262C" fill-rule="evenodd" d="M100 330 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0 Z M108 330 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0 Z"/>
+<path fill="#1C1A1E" d="M378 340 L420 346 L426 360 L416 372 L376 366 L368 356 Z M384 340 L380 322 L392 340 Z M398 342 L400 322 L406 344 Z M412 346 L418 328 L420 348 Z"/>
+<circle cx="120" cy="344" r="22" fill="#5FD3C6" fill-opacity="0.08"/><circle cx="398" cy="352" r="22" fill="#5FD3C6" fill-opacity="0.08"/>
+<circle cx="256" cy="140" r="60" fill="#5FD3C6" fill-opacity="0.06"/>
+<path fill="#1C1A1E" d="M194 112 L318 112 L322 126 L190 126 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="M196 112 L204 52 L222 94 L238 32 L256 84 L274 32 L290 94 L308 52 L316 112 Z M204 96 L210 76 L214 96 Z M234 92 L238 62 L244 92 Z M268 92 L274 62 L278 92 Z M298 96 L302 76 L308 96 Z"/>
+<circle cx="256" cy="119" r="12" fill="#F2A541" fill-opacity="0.15"/><circle cx="256" cy="119" r="4" fill="#F2A541"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M196 112 L204 52 L222 94 L238 32"/>
+<path fill="#1C1A1E" d="M160 70 L164 68.8 L164.4 73.2 L160.4 74 Z"/><path fill="#1C1A1E" d="M350 60 L354 58.8 L354.4 63.2 L350.4 64 Z"/><path fill="#1C1A1E" d="M380 100 L384 98.8 L384.4 103.2 L380.4 104 Z"/><path fill="#1C1A1E" d="M140 110 L144 108.8 L144.4 113.2 L140.4 114 Z"/>
+</svg>

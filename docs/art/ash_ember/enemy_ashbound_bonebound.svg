@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- BONEBOUND ASHBOUND — Ashen Lantern original (Ash & Ember). Faces left, feet ~y478. VectorDrawable-safe: paths/circles, flat fills + fill-opacity, evenodd, simple strokes. -->
+<path fill="#141216" fill-rule="evenodd" d="M239 172 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z M241.6 172 a4.4,4.4 0 1,0 8.8,0 a4.4,4.4 0 1,0 -8.8,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M261.7 168.8 a5.2,7.7 0 1,0 10.5,0 a5.2,7.7 0 1,0 -10.5,0 Z M264.3 168.8 a2.6,5.1 0 1,0 5.3,0 a2.6,5.1 0 1,0 -5.3,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M281.3 167 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z M283.9 167 a4.4,4.4 0 1,0 8.8,0 a4.4,4.4 0 1,0 -8.8,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M304.9 166.8 a5.2,7.7 0 1,0 10.5,0 a5.2,7.7 0 1,0 -10.5,0 Z M307.5 166.8 a2.6,5.1 0 1,0 5.3,0 a2.6,5.1 0 1,0 -5.3,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M325.3 168.2 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z M327.9 168.2 a4.4,4.4 0 1,0 8.8,0 a4.4,4.4 0 1,0 -8.8,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M349.8 171 a5.2,7.7 0 1,0 10.5,0 a5.2,7.7 0 1,0 -10.5,0 Z M352.4 171 a2.6,5.1 0 1,0 5.3,0 a2.6,5.1 0 1,0 -5.3,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M371.1 175.4 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z M373.7 175.4 a4.4,4.4 0 1,0 8.8,0 a4.4,4.4 0 1,0 -8.8,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M396.4 181.3 a5.2,7.7 0 1,0 10.5,0 a5.2,7.7 0 1,0 -10.5,0 Z M399 181.3 a2.6,5.1 0 1,0 5.3,0 a2.6,5.1 0 1,0 -5.3,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M418.6 188.7 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z M421.2 188.7 a4.4,4.4 0 1,0 8.8,0 a4.4,4.4 0 1,0 -8.8,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M444.7 197.6 a5.2,7.7 0 1,0 10.5,0 a5.2,7.7 0 1,0 -10.5,0 Z M447.3 197.6 a2.6,5.1 0 1,0 5.3,0 a2.6,5.1 0 1,0 -5.3,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M467.8 208 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z M470.4 208 a4.4,4.4 0 1,0 8.8,0 a4.4,4.4 0 1,0 -8.8,0 Z"/><path fill="#141216" fill-rule="evenodd" d="M494.8 220 a5.2,7.7 0 1,0 10.5,0 a5.2,7.7 0 1,0 -10.5,0 Z M497.4 220 a2.6,5.1 0 1,0 5.3,0 a2.6,5.1 0 1,0 -5.3,0 Z"/>
+<path fill="#141216" d="
+    M246 150 Q290 150 318 186 Q350 228 362 282
+    L384 300 L360 304 L380 336 L352 322 L356 360 L334 330 L326 366 L312 326 L300 344 L296 300
+    Q290 240 262 200 Z"/>
+  <g fill="#141216">
+    <path d="M392 288 L402 284 L404 294 L394 296 Z"/>
+    <path d="M396 322 L408 316 L412 326 L400 330 Z"/>
+    <path d="M412 300 L418 298 L420 304 L414 306 Z"/>
+    <path d="M370 372 L380 368 L382 378 L372 380 Z"/>
+    <path d="M424 276 L430 274 L432 280 L426 282 Z"/>
+    <path d="M244 52 L250 50 L252 56 L246 58 Z"/>
+    <path d="M262 40 L270 38 L270 46 L264 46 Z"/>
+    <path d="M252 72 L256 70 L258 75 L254 76 Z"/>
+  </g>
+<path fill="#141216" d="M266 318 L282 318 L304 390 L298 464 L326 472 L328 480 L284 480 L286 466 L286 394 Z"/>
+<path fill="#141216" d="M282 188 L296 190 L314 272 L306 346 L314 382 L308 384 L302 356 L300 388 L294 388 L296 354 L288 384 L282 382 L294 344 L300 274 Z"/>
+<circle cx="256" cy="236" r="22" fill="#F2A541" fill-opacity="0.55"/>
+  <circle cx="256" cy="236" r="10" fill="#FFD27A"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="
+    M214 178 Q248 168 290 182 L284 220 Q278 262 270 300 L276 324 L232 324 L238 300 Q226 262 222 220 Z
+    M234 200 Q256 194 276 202 L274 208 Q256 201 235 206 Z
+    M236 218 Q256 212 274 220 L272 226 Q256 219 237 224 Z
+    M238 236 Q256 230 272 238 L270 244 Q256 237 239 242 Z
+    M240 254 Q256 249 268 256 L266 261 Q256 255 241 259 Z"/>
+<path fill="#1C1A1E" d="M252 196 L260 196 L258 270 L254 270 Z"/>
+<path fill="#1C1A1E" d="M238 318 L258 318 L232 392 L238 462 L250 470 L248 480 L200 480 L198 474 L212 470 L208 464 L216 470 L222 462 L212 390 Z"/>
+<path fill="#1C1A1E" d="M222 146 L240 146 L250 184 L230 184 Z"/>
+<path fill="#1C1A1E" fill-rule="evenodd" d="
+    M168 92 L176 74 L184 82 L192 62 L202 74 L212 56 L222 70 L232 62 L238 86
+    L240 138 L224 164 L210 160 L202 194 L194 194 L194 158 L178 146 L170 118 Z
+    M214 66 L210 90 L218 104 L218 82 Z"/>
+<path fill="#0B0A0C" d="M180 106 L196 100 L198 113 L184 117 Z"/>
+  <path fill="#0B0A0C" d="M206 98 L224 96 L222 108 L208 111 Z"/>
+<circle cx="190" cy="109" r="8" fill="#5FD3C6" fill-opacity="0.14"/>
+  <circle cx="215" cy="104" r="8" fill="#5FD3C6" fill-opacity="0.14"/>
+  <circle cx="190" cy="109" r="3.4" fill="#5FD3C6"/>
+  <circle cx="215" cy="104" r="2.6" fill="#5FD3C6"/>
+<path fill="#0B0A0C" d="M192 130 L204 128 L206 150 L200 160 L194 152 Z"/>
+<path fill="#D9D2C3" fill-opacity="0.6" d="M232 166 Q262 154 292 140 Q320 126 344 136 Q368 146 396 128 L398 134 Q370 154 344 143 Q320 134 296 148 Q266 164 236 174 Z"/>
+  <path fill="#D9D2C3" fill-opacity="0.42" d="M240 172 Q270 172 298 178 Q320 182 338 198 L334 202 Q316 188 296 185 Q268 180 242 178 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M168 92 L170 118 L178 146"/>
+  <path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M258 318 L232 392 L238 462"/>
+  <path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" d="M214 178 Q218 200 222 220"/>
+<circle cx="256" cy="236" r="40" fill="#F2A541" fill-opacity="0.05"/>
+<path fill="#2A262C" fill-rule="evenodd" d="M96 262 Q96 212 140 212 Q184 212 184 262 L184 426 L96 426 Z M136 250 L146 262 L136 296 L126 262 Z M120 316 L152 316 L152 322 L120 322 Z"/>
+<path fill="#2A262C" d="M184 300 L178 312 L196 298 Z"/>
+<path fill="#1C1A1E" d="M222 184 L232 196 L200 270 L186 300 L174 296 L190 262 Z"/>
+<path fill="#1C1A1E" d="M170 284 L192 280 L194 300 L172 304 Z"/>
+<path fill="#4A4650" fill-rule="evenodd" d="M189 268 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z M193 268 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z"/>
+<path fill="#4A4650" fill-rule="evenodd" d="M224 174 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0 Z M229 174 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M96 262 Q96 212 140 212"/>
+</svg>
