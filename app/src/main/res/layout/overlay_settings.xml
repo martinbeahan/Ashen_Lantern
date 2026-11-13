@@ -303,6 +303,16 @@
                 android:visibility="gone" />
 
             <Button
+                android:id="@+id/btnSettingsAdventures"
+                style="@style/Widget.DnD.ActionButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="44dp"
+                android:layout_marginBottom="6dp"
+                android:text="Adventures"
+                android:textSize="13sp" />
+
+            <Button
                 android:id="@+id/btnSettingsLedger"
                 style="@style/Widget.DnD.ActionButton"
                 android:layout_width="match_parent"

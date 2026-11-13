@@ -134,6 +134,23 @@ public:
      * untouched, false is returned and *error (if given) says why.
      */
     bool deserialize(const std::string& data, std::string* error = nullptr);
+    /**
+     * v2.28 save slots: parse a save blob into a scratch Game WITHOUT adopting it (the live game
+     * is never touched) and summarise it for an Adventures card / crash-recovery check.
+     * Returns false (and leaves *out alone) when the blob would not load.
+     */
+    struct SaveSummary {
+        std::string heroName;
+        int classId = 0;
+        int level = 1;
+        int questBeat = 0;
+        int soloPlayMode = 0;
+        int difficulty = 0;
+        bool gameOver = false;
+        int roomCount = 0;
+        bool storyComplete = false;
+    };
+    static bool describeSave(const std::string& data, SaveSummary* out, std::string* error = nullptr);
 
     std::string getLastEvent() const { return lastEvent_; }
     std::string getRoomDescription() const { return roomDescription_; }

@@ -6,7 +6,17 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.27 / 66) — Gear icons
+## What's new (v2.28 / 67) — Save slots
+
+- **Three adventures** — keep up to three heroes at once, each in its own *lantern*. The new **Adventures** screen (main menu, or Settings) shows each hero's class, level, where they are in the story or crawl, when you last played and total playtime. The last one you played is marked **LAST**
+- **Continue** on the main menu still loads the last hero you played. **New Story** and **Dungeon Crawl** now open Adventures and start in an empty lantern. They **never overwrite** a hero; if all three are lit you're asked to delete one first
+- **Delete / Abandon** names the hero and asks first ("This will end Mira's adventure…"). It clears only that hero: save, gear, gold, memories, keys and records. Your other heroes and your settings stay
+- **Per hero:** held Raid Keys, Cinder Crucible Legendary chance, Ember Ring / Ashen Deep bests, the Memory Ledger and the story-complete unlock. A new hero no longer inherits another hero's finished story. **Shared:** settings, the daily Raid Key grant cap (3 a day across all heroes) and Daily Quests. Daily spoils go to the hero you claimed them on
+- **Safer saves** — if the game closes unexpectedly, the save is checked instead of wiped. A broken mid-raid (or Crucible / Ring / Deep) run falls back to the hero from before the run. A save that won't load is kept and marked, with **Retry** or **Delete**; nothing is deleted without asking, and the other heroes are never touched
+- **Your current hero moves into lantern 1** automatically on first launch, with gear, gold, journal, keys, records and Ledger intact. Playtime starts at 0. The old single save is kept as a backup for one release
+- Host / Join are unchanged and never read, write or delete any lantern. No change to the save format
+
+## Previous (v2.27 / 66) — Gear icons
 
 - **Every item has an icon** — inventory and shop rows now show a hand-drawn *Ash & Ember* glyph for the item in a larger 40dp socket (was 26dp). 18 glyphs cover every item in the game: sword, short blade, rapier, staff, wand, mace, warhammer, maul, leathers, robes/cloaks, mail, plate, coat, healing draught, tonic, Raid Key, gold, and unique art for the **Ashen Lantern**
 - **Rarity at a glance** — the socket frame takes the rarity colour (Common ash, Uncommon, Rare, Epic, Legendary amber) and the row keeps its rarity pip (hollow dot, 1–3 diamonds, flame), so colour isn't the only cue. Legendary gear adds an amber inlay on the item and a soft static glow; with *Reduce flashing* on, the glow is dropped and the inlay stays
@@ -131,6 +141,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Ash & Ember art** — original hand-authored silhouettes for all 27 foes (one per stable enemy ID) and all five hero classes, with code-driven idle sway / attack lunge / ash-dissolve animation; 16 original stage backgrounds chosen by mode and story beat; *Reduce flashing* stills them and calms the bright amber boss and hero glows
 - **Ash & Ember UI** — soot-and-amber panels, buttons and dialogs, Cinzel / Cormorant Garamond type, a candle-wick HP bar, a 10-ember XP row and rarity pips on loot
 - **Gear icons** — 18 original item glyphs (one per kind of gear, unique art for the Ashen Lantern) in rarity-framed 40dp sockets across inventory and shop, plus the Potion button, Raid Key hints and a gold coin. Legendary gear carries an amber inlay; *Reduce flashing* drops its glow
+- **Save slots** — three adventures (lanterns) side by side on an *Adventures* screen; Continue loads the last one played, New Story / Crawl never overwrite a hero, and Delete / Abandon clear only that hero. Keys, Crucible pity, Ring / Deep bests, the Ledger and the story unlock are per hero; settings, Daily Quests and the daily Raid Key cap are shared
 - **Dungeon Crawl** — procedural rooms from the start (skip the scripted quest)
 - **Difficulty** — Easy / Medium / Hard / Nightmare (locked for the run; wipe rules differ by tier)
 - **Classes** — Fighter, Wizard, Rogue, Cleric, and **Bard** (CHA-based; Cutting Quip special)
@@ -142,12 +153,12 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Arena (Ember Ring)** — see Endgame modes below
 - **Endless Deep (Ashen Deep)** — see Endgame modes below
 - **Online multiplayer** — **Host online (Lanternkeeper)** / **Join session** via Firebase Realtime Database (the host narrates as the Lanternkeeper)
-- **Settings** — music on/off, sound effects on/off, reduce flashing (photosensitive-friendly), tutorial, return to main menu, About
+- **Settings** — music on/off, sound effects on/off, reduce flashing (photosensitive-friendly), tutorial, Adventures (save slots), return to main menu, About
 - **Audio beds** — biome / combat / boss loops (CC0); optional Lanternkeeper (narrator) voice via Android Text-to-Speech
 
 ## Endgame modes (story-complete)
 
-Unlocked after Acts 1–4 with a livable **Continue** save. Same hero, gear, and gold — Host/Join never overwrite the solo save. **No D&D / WotC module text**; SRD-safe monsters only.
+Unlocked per hero after that hero finishes Acts 1–4, with a livable **Continue** save (the last-used lantern). Same hero, gear, and gold — Host/Join never overwrite any save slot. **No D&D / WotC module text**; SRD-safe monsters only.
 
 | Mode | Venue | Shape | Key cost | Legendary |
 |------|-------|-------|----------|-----------|

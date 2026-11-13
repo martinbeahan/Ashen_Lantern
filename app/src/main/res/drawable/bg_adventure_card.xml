@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v2.28 Adventures: lit lantern card (soot, rim stroke, wax hairline). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/ae_soot"/>
+            <stroke android:width="1dp" android:color="@color/ae_rim"/>
+            <corners android:radius="2dp"/>
+        </shape>
+    </item>
+    <item android:left="3dp" android:top="3dp" android:right="3dp" android:bottom="3dp">
+        <shape android:shape="rectangle">
+            <stroke android:width="1dp" android:color="@color/ae_wax"/>
+            <corners android:radius="1dp"/>
+        </shape>
+    </item>
+</layer-list>

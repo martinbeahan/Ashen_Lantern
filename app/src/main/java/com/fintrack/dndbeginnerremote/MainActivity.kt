@@ -1,5 +1,7 @@
 package com.fintrack.dndbeginnerremote
 
+import android.content.SharedPreferences
+
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Bundle
@@ -203,6 +205,8 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val NATIVE_LIB = "dndbeginnerremote"
+        /** versionCode that introduced save slots (recorded with the legacy backup). */
+        private const val SLOTS_VERSION_CODE = 67
         /** False if the C++ library failed to load (common when NDK/CMake build failed). */
         @JvmStatic var nativeReady: Boolean = false
             private set
@@ -220,6 +224,8 @@ class MainActivity : AppCompatActivity() {
 
     // JNI Methods
     external fun getPlayerStatus(): String
+    /** v2.28: non-adopting summary of a save blob ("" = would not load). Tab-separated. */
+    external fun describeSaveState(data: String): String
     external fun getBattleRoster(): String
     external fun getDetailedSheet(playerName: String): String
     /** "xp,threshold,level,pending" for one hero; empty if missing. */
@@ -526,19 +532,10 @@ class MainActivity : AppCompatActivity() {
             it.start(musicEnabled, sfxEnabled, dmVoiceEnabled)
         }
 
-        // Only wipe when a prior *active* session exited uncleanly (crash_guard left true).
-        // Do NOT arm crash_guard merely because the start dialog is shown.
-        if (prefs().getBoolean("crash_guard", false)) {
-            Log.w(TAG, "Previous session did not exit cleanly — clearing save_state")
-            prefs().edit()
-                .remove("save_state")
-                .putBoolean("crash_guard", false)
-                .remove("was_online_host")
-                .remove("was_online_client")
-                .remove("online_session_id")
-                .apply()
-            Toast.makeText(this, "Cleared a broken save from a previous crash.", Toast.LENGTH_LONG).show()
-        }
+        // v2.28: move the single legacy save into slot 1 (idempotent; legacy keys kept as backup).
+        runSlotMigration(showDialogs = true)
+        // v2.28 softer crash guard: only the guarded slot; keep / restore snapshot / mark broken.
+        recoverSlotAfterCrash()
 
         showStartDialog()
         startUiUpdateLoop()
@@ -563,16 +560,11 @@ class MainActivity : AppCompatActivity() {
         if (isOnlineHost || isOnlineClient) return
         try {
             val data = saveGameState()
+            flushPlaytime()
             if (data.isNotBlank() && data.contains("|") && !saveIsGameOver(data)) {
-                prefs().edit()
-                    .putString("save_state", data)
-                    .putString("hero_name", localPlayerName)
-                    .putInt("hero_class", localClassId)
-                    .putBoolean("crash_guard", false) // good save written — not an unclean exit
-                    .putBoolean("was_online_host", false)
-                    .putBoolean("was_online_client", false)
-                    .remove("online_session_id")
-                    .commit()
+                // Good save written to the active slot — not an unclean exit.
+                SaveSlots.writeSoloSave(rawPrefs(), isOnline(), data, localPlayerName, localClassId,
+                    System.currentTimeMillis(), commit = true)
             }
         } catch (e: Exception) {
             Log.e(TAG, "onPause save failed", e)
@@ -582,6 +574,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         gameAudio?.onResume()
+        if (sessionActive && !isOnline()) playClockStartMs = android.os.SystemClock.elapsedRealtime()
     }
 
     /** Detach Firebase listeners and clear online flags before mode switches / start menu. */
@@ -626,12 +619,9 @@ class MainActivity : AppCompatActivity() {
         sessionActive = true
         hideMainMenu()
         hideSettingsOverlay()
-        if (armCrashGuard) {
-            // Arm crash guard only while a real solo session is running.
-            prefs().edit().putBoolean("crash_guard", true).apply()
-        } else {
-            prefs().edit().putBoolean("crash_guard", false).apply()
-        }
+        // Arm crash guard (for the active slot) only while a real solo session is running.
+        SaveSlots.armCrashGuard(rawPrefs(), online = !armCrashGuard)
+        playClockStartMs = if (armCrashGuard) android.os.SystemClock.elapsedRealtime() else 0L
         // Seed pending snapshot so Continue with unspent points highlights Sheet
         // without re-firing the level-up dialog.
         seedPendingSnapshot(notifyHighlightOnly = true)
@@ -1062,26 +1052,12 @@ class MainActivity : AppCompatActivity() {
                     clearSave("nightmare defeat during sync")
                 } else {
                     // Keep Game Over save so Easy/Med/Hard Continue can recover.
-                    prefs().edit()
-                        .putString("save_state", data)
-                        .putString("hero_name", localPlayerName)
-                        .putInt("hero_class", localClassId)
-                        .putBoolean("crash_guard", false)
-                        .putBoolean("was_online_host", false)
-                        .putBoolean("was_online_client", false)
-                        .remove("online_session_id")
-                        .apply()
+                    flushPlaytime()
+                    SaveSlots.writeSoloSave(rawPrefs(), online, data, localPlayerName, localClassId, System.currentTimeMillis())
                 }
             } else {
-                prefs().edit()
-                    .putString("save_state", data)
-                    .putString("hero_name", localPlayerName)
-                    .putInt("hero_class", localClassId)
-                    .putBoolean("crash_guard", false)
-                    .putBoolean("was_online_host", false)
-                    .putBoolean("was_online_client", false)
-                    .remove("online_session_id")
-                    .apply()
+                flushPlaytime()
+                SaveSlots.writeSoloSave(rawPrefs(), online, data, localPlayerName, localClassId, System.currentTimeMillis())
             }
             // Only the DM/host publishes authoritative state
             if (!isUpdatingFromRemote && isOnlineHost) {
@@ -1091,6 +1067,8 @@ class MainActivity : AppCompatActivity() {
             }
             lastBattleRoster = ""
             refreshBattleArena()
+            // v2.28: online tables never touch any slot's endgame flags, records or pity.
+            if (online) return
             // Raid victory / finishBossRaidKeepParty leaves soloPlayMode != RAID.
             if (prefs().getBoolean("raid_active", false)) {
                 val mode = try { getSoloPlayMode() } catch (_: Exception) { 2 }
@@ -1209,9 +1187,8 @@ class MainActivity : AppCompatActivity() {
             loadGameState(data)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load save", e)
-            Toast.makeText(this, "Save looked broken — start a new game.", Toast.LENGTH_LONG).show()
-            prefs().edit().remove("save_state").apply()
-            showStartDialog()
+            // v2.28: never delete on a failed load — keep it, mark this slot, offer Retry / Delete.
+            markSlotBrokenAndOffer(activeSlot())
             return
         }
         // v2.25: a mid-Act 2–4 save picks up the rewritten room text (journal / chat stay as history).
@@ -1224,9 +1201,7 @@ class MainActivity : AppCompatActivity() {
         lastCoachTurnKey = ""
         val status = try { getPlayerStatus() } catch (_: Exception) { "" }
         if (!status.contains(localPlayerName) && !status.contains("| HP:") && !status.contains("Lanternkeeper:") && !status.contains("DM:")) {
-            Toast.makeText(this, "Save looked empty — starting fresh is safer.", Toast.LENGTH_LONG).show()
-            prefs().edit().remove("save_state").apply()
-            showStartDialog()
+            markSlotBrokenAndOffer(activeSlot())
             return
         }
         if (status.contains("Game Over", ignoreCase = true) || saveIsGameOver(data)) {
@@ -1389,7 +1364,12 @@ class MainActivity : AppCompatActivity() {
             val keys = raidKeysHeld()
             btnMenuRaid.isEnabled = storyDone
             btnMenuRaid.alpha = if (storyDone) 1f else 0.45f
-            btnMenuRaid.text = if (storyDone) "Boss Raid ($keys/3 keys)" else "Boss Raid (locked)"
+            val raidHero = livableSavedState()?.let { heroNameFromSave(it) }
+            btnMenuRaid.text = when {
+                !storyDone -> "Boss Raid (locked)"
+                raidHero != null -> "Boss Raid — $raidHero ($keys/3 keys)"
+                else -> "Boss Raid ($keys/3 keys)"
+            }
             if (::mainMenuRaidHint.isInitialized) {
                 setRaidHint(mainMenuRaidHint, storyDone, keys, forMainMenu = true)
             }
@@ -1542,18 +1522,10 @@ class MainActivity : AppCompatActivity() {
             // failure paths re-show via showStartDialog().
             continueSavedGame()
         }
-        btnMenuSolo.setOnClickListener {
-            askHeroName { name ->
-                localPlayerName = name
-                showClassSelection(mode = "solo")
-            }
-        }
-        btnMenuCrawl.setOnClickListener {
-            askHeroName { name ->
-                localPlayerName = name
-                showClassSelection(mode = "crawl")
-            }
-        }
+        // v2.28: New Story / Crawl go through the Adventures picker (empty lanterns only).
+        btnMenuSolo.setOnClickListener { showAdventures(beginMode = "solo") }
+        btnMenuCrawl.setOnClickListener { showAdventures(beginMode = "crawl") }
+        findViewById<Button?>(R.id.btnMenuAdventures)?.setOnClickListener { showAdventures() }
         btnMenuRaid.setOnClickListener {
             promptBossRaidEntry(fromInAdventure = false)
         }
@@ -1667,6 +1639,19 @@ class MainActivity : AppCompatActivity() {
         btnSettingsClaimDaily.setOnClickListener { claimDailyQuestsRewards() }
         btnMenuLedger.setOnClickListener { openMemoryLedger() }
         btnSettingsLedger.setOnClickListener { openMemoryLedger() }
+        findViewById<Button?>(R.id.btnSettingsAdventures)?.setOnClickListener {
+            if (isOnline()) {
+                Toast.makeText(this, "Online tables don't use your local adventures.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (sessionActive) {
+                // Save this lantern first (same as Return to Menu), then open the picker.
+                returnToMainMenuSaving(confirm = false)
+            } else {
+                hideSettingsOverlay()
+            }
+            showAdventures()
+        }
     }
 
     private fun showSettingsOverlay() {
@@ -1723,6 +1708,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         btnSettingsAbandon.visibility = if (sessionActive) View.VISIBLE else View.GONE
+        findViewById<View?>(R.id.btnSettingsAdventures)?.visibility = if (isOnline()) View.GONE else View.VISIBLE
         btnSettingsReturnMenu.visibility = if (sessionActive) View.VISIBLE else View.GONE
         refreshSettingsRaidEntry()
         refreshDailyQuestsUi()
@@ -1770,52 +1756,294 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun confirmAbandonAdventure() {
-        val online = isOnlineHost || isOnlineClient
+        val online = isOnline()
+        if (!online) {
+            // v2.28: Abandon = Delete for the active lantern, with the named confirmation.
+            confirmDeleteSlot(activeSlot(), fromAbandon = true)
+            return
+        }
         AlertDialog.Builder(this)
-            .setTitle(if (online) "Leave online session?" else "Leave adventure?")
-            .setMessage(
-                if (online) {
-                    "Leaves the Host/Join table and returns to the main menu. Your local story Continue save is kept."
-                } else {
-                    "This clears your current session flags and save, then returns to the main menu."
-                }
-            )
-            .setPositiveButton(if (online) "Leave" else "Abandon") { _, _ -> abandonAdventure() }
+            .setTitle("Leave online session?")
+            .setMessage("Leaves the Host/Join table and returns to the main menu. Your local adventures are kept.")
+            .setPositiveButton("Leave") { _, _ -> abandonAdventure() }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
     private fun abandonAdventure() {
         hideSettingsOverlay()
-        val leavingOnline = isOnlineHost || isOnlineClient
+        val leavingOnline = isOnline()
+        val slot = activeSlot()
+        if (!leavingOnline) flushPlaytime()
         sessionActive = false
         detachOnlineSession()
-        val ed = prefs().edit()
+        rawPrefs().edit()
             .putBoolean("crash_guard", false)
+            .remove(SaveSlots.KEY_CRASH_GUARD_SLOT)
             .remove("was_online_host")
             .remove("was_online_client")
             .remove("online_session_id")
-        // Abandoning an online table must not wipe the solo/story Continue save.
-        if (!leavingOnline) {
-            ed.remove("save_state")
-        }
-        ed.apply()
-        // Abandon clears this slot's Ledger with the save; leaving Host / Join touches neither.
-        if (!leavingOnline) ledgerStore().clear()
+            .apply()
         runDifficulty = -1
         wipeDialogShowing = false
         storyCompleteRoutesShown = false
-        clearRaidSessionFlags()
-        clearChallengeSessionFlags()
-        clearArenaSessionFlags()
-        clearEndlessSessionFlags()
+        if (!leavingOnline) {
+            // Clear this slot's run flags first, then delete the slot (blob, Ledger, keys, pity,
+            // records). Leaving Host / Join touches no slot at all.
+            clearRaidSessionFlags()
+            clearChallengeSessionFlags()
+            clearArenaSessionFlags()
+            clearEndlessSessionFlags()
+            SaveSlots.deleteSlot(rawPrefs(), slot)
+            ledgerStoreCache = null
+        }
         Toast.makeText(
             this,
-            if (leavingOnline) "Left online session. Local story save kept."
+            if (leavingOnline) "Left online session. Local adventures kept."
             else "Adventure abandoned.",
             Toast.LENGTH_SHORT
         ).show()
         showStartDialog()
+    }
+
+    // --- v2.28 save slots --------------------------------------------------------------------------
+
+    /** Slot chosen on an empty card (Begin); consumed by beginSoloOrCrawl. */
+    private var pendingBeginSlot: Int? = null
+    private var playClockStartMs = 0L
+    private var adventuresDialog: android.app.Dialog? = null
+
+    private fun nativeSaveLoads(blob: String): Boolean =
+        try { describeSaveState(blob).isNotBlank() } catch (_: Throwable) { false }
+
+    private fun slotSummary(slot: Int): SaveSlots.Summary? {
+        val blob = SaveSlots.blob(rawPrefs(), slot) ?: return null
+        if (!nativeReady) return null
+        return try { SaveSlots.Summary.parse(describeSaveState(blob)) } catch (_: Throwable) { null }
+    }
+
+    /** Copy the legacy single save into slot 1 (idempotent). Unreadable saves are kept, never dropped. */
+    private fun runSlotMigration(showDialogs: Boolean) {
+        val result = try {
+            SaveSlots.migrate(
+                rawPrefs(), System.currentTimeMillis(), SLOTS_VERSION_CODE,
+                readable = if (nativeReady) { b -> nativeSaveLoads(b) } else null,
+                storyCompleteFromSave = if (nativeReady) { b ->
+                    SaveSlots.Summary.parse(try { describeSaveState(b) } catch (_: Throwable) { "" })?.storyComplete
+                        ?: SaveSlots.storyCompleteFromHeader(b)
+                } else null,
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "slot migration failed", e)
+            return
+        }
+        Log.i(TAG, "Save slots migration: $result")
+        ledgerStoreCache = null
+        if (!showDialogs) return
+        val msg = when (result) {
+            SaveSlots.Migration.PENDING_UNREADABLE ->
+                "Your previous adventure could not be read. It has not been deleted."
+            SaveSlots.Migration.PENDING_NO_EMPTY_SLOT ->
+                "Your previous adventure is waiting for an empty lantern. Delete one to bring it back. It has not been deleted."
+            else -> return
+        }
+        handler.post {
+            AlertDialog.Builder(this)
+                .setTitle("Adventures")
+                .setMessage(msg)
+                .setPositiveButton("Retry") { _, _ -> runSlotMigration(showDialogs = true); refreshMainMenuButtons() }
+                .setNegativeButton("Later", null)
+                .show()
+        }
+    }
+
+    /** Softer crash guard: only the guarded slot; keep it, restore its snapshot, or mark it broken. */
+    private fun recoverSlotAfterCrash() {
+        val (outcome, slot) = try {
+            SaveSlots.recoverFromCrash(rawPrefs(), if (nativeReady) { b -> nativeSaveLoads(b) } else null)
+        } catch (e: Exception) {
+            Log.e(TAG, "crash recovery failed", e)
+            return
+        }
+        val text = when (outcome) {
+            SaveSlots.CrashOutcome.NONE -> return
+            SaveSlots.CrashOutcome.KEPT -> "The game closed unexpectedly. Your adventure was kept."
+            SaveSlots.CrashOutcome.RESTORED_SNAPSHOT -> "The game closed unexpectedly. Your hero was restored from before the run."
+            SaveSlots.CrashOutcome.MARKED_BROKEN -> "Lantern $slot could not be read after a crash. It has not been deleted."
+        }
+        Log.w(TAG, "crash_guard on slot $slot: $outcome")
+        Toast.makeText(this, text, Toast.LENGTH_LONG).show()
+    }
+
+    private fun flushPlaytime() {
+        val start = playClockStartMs
+        if (start <= 0L || !sessionActive || isOnline()) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        playClockStartMs = now
+        SaveSlots.addPlaytime(rawPrefs(), activeSlot(), (now - start).coerceIn(0L, 6L * 3_600_000L))
+    }
+
+    /** A failed / empty load: keep the save, mark this slot, offer Retry or Delete (never auto-delete). */
+    private fun markSlotBrokenAndOffer(slot: Int) {
+        rawPrefs().edit().putBoolean(SaveSlots.slotKey(slot, SaveSlots.BROKEN), true)
+            .putBoolean("crash_guard", false).remove(SaveSlots.KEY_CRASH_GUARD_SLOT).commit()
+        sessionActive = false
+        showStartDialog()
+        AlertDialog.Builder(this)
+            .setTitle("Save could not be read")
+            .setMessage("Lantern $slot didn't load. It has not been deleted. You can try again, or delete it.")
+            .setPositiveButton("Retry") { _, _ -> continueSavedGame() }
+            .setNeutralButton("Delete…") { _, _ -> confirmDeleteSlot(slot, fromAbandon = false) }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun slotHeroName(slot: Int): String {
+        val stored = rawPrefs().getString(SaveSlots.slotKey(slot, "hero_name"), null)?.trim().orEmpty()
+        if (stored.isNotEmpty()) return stored
+        return slotSummary(slot)?.name ?: "this hero"
+    }
+
+    /** Delete / Abandon confirmation that names the hero. Only that slot is cleared. */
+    private fun confirmDeleteSlot(slot: Int, fromAbandon: Boolean) {
+        val name = slotHeroName(slot)
+        AlertDialog.Builder(this)
+            .setTitle(if (fromAbandon) "Abandon $name's adventure?" else "Delete $name's adventure?")
+            .setMessage("This will end $name's adventure — gear, gold, memories, and endgame progress. This cannot be undone.")
+            .setPositiveButton(if (fromAbandon) "Abandon" else "Delete") { _, _ ->
+                if (fromAbandon) {
+                    abandonAdventure()
+                } else {
+                    SaveSlots.deleteSlot(rawPrefs(), slot)
+                    ledgerStoreCache = null
+                    Toast.makeText(this, "$name's lantern is out.", Toast.LENGTH_SHORT).show()
+                    refreshMainMenuButtons()
+                    if (adventuresDialog?.isShowing == true) renderAdventures(adventuresBeginMode)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showAllLanternsLitDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("All three lanterns are lit")
+            .setMessage("Delete one to begin again. Nothing is overwritten.")
+            .setPositiveButton("Adventures") { _, _ -> showAdventures() }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private var adventuresBeginMode: String? = null
+    private var adventuresRoot: View? = null
+
+    /**
+     * The Adventures picker. beginMode = "solo" / "crawl" when opened from New Story / Dungeon
+     * Crawl: empty cards then start that mode directly.
+     */
+    private fun showAdventures(beginMode: String? = null) {
+        if (isOnline()) return
+        adventuresDialog?.dismiss()
+        val dialog = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+        val root = layoutInflater.inflate(R.layout.dialog_adventures, null)
+        dialog.setContentView(root)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        root.findViewById<Button>(R.id.adventuresClose).setOnClickListener { dialog.dismiss() }
+        dialog.setOnDismissListener { if (adventuresDialog === dialog) { adventuresDialog = null; adventuresRoot = null }; refreshMainMenuButtons() }
+        adventuresDialog = dialog
+        adventuresRoot = root
+        renderAdventures(beginMode)
+        dialog.show()
+        if (beginMode != null && SaveSlots.allFull(rawPrefs())) {
+            Toast.makeText(this, "All three lanterns are lit. Delete one to begin again.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun renderAdventures(beginMode: String?) {
+        adventuresBeginMode = beginMode
+        val root = adventuresRoot ?: return
+        val raw = rawPrefs()
+        root.findViewById<TextView>(R.id.adventuresSubtitle).text = when (beginMode) {
+            "solo" -> "Choose an unlit lantern for a new story."
+            "crawl" -> "Choose an unlit lantern for a new crawl."
+            else -> "Three lanterns. Three lives."
+        }
+        val list = root.findViewById<LinearLayout>(R.id.adventuresList)
+        list.removeAllViews()
+        val active = SaveSlots.activeSlot(raw)
+        val now = System.currentTimeMillis()
+        val dayIndex: (Long) -> Long = { ms ->
+            val c = java.util.Calendar.getInstance().apply { timeInMillis = ms }
+            c.get(java.util.Calendar.YEAR) * 400L + c.get(java.util.Calendar.DAY_OF_YEAR)
+        }
+        for (slot in 1..SaveSlots.COUNT) {
+            if (!SaveSlots.isFilled(raw, slot)) {
+                val v = layoutInflater.inflate(R.layout.item_adventure_empty, list, false)
+                v.findViewById<TextView>(R.id.emptyHint).text = when (beginMode) {
+                    "solo" -> "Begin a new story here."
+                    "crawl" -> "Begin a new crawl here."
+                    else -> "Begin a new story or crawl."
+                }
+                v.findViewById<Button>(R.id.emptyBegin).setOnClickListener { beginInSlot(slot, beginMode) }
+                list.addView(v)
+                continue
+            }
+            val v = layoutInflater.inflate(R.layout.item_adventure_slot, list, false)
+            val summary = slotSummary(slot)
+            val broken = summary == null || SaveSlots.isBroken(raw, slot)
+            val classId = summary?.classId ?: raw.getInt(SaveSlots.slotKey(slot, "hero_class"), 0)
+            v.findViewById<ImageView>(R.id.slotPortrait).setImageResource(SpriteTables.heroSprite(classId))
+            v.findViewById<TextView>(R.id.slotName).text = slotHeroName(slot)
+            v.findViewById<TextView>(R.id.slotLevel).text =
+                if (summary != null) "Lv ${summary.level} · ${SaveSlots.className(summary.classId)}" else SaveSlots.className(classId)
+            v.findViewById<TextView>(R.id.slotProgress).text = when {
+                summary == null -> "This save could not be read. It has not been deleted."
+                broken -> "${SaveSlots.progressLine(summary)} · last load failed"
+                else -> SaveSlots.progressLine(summary)
+            }
+            val last = raw.getLong(SaveSlots.slotKey(slot, SaveSlots.LAST_PLAYED_MS), 0L)
+            val play = raw.getLong(SaveSlots.slotKey(slot, SaveSlots.PLAYTIME_MS), 0L)
+            v.findViewById<TextView>(R.id.slotPlayed).text =
+                "Last played ${SaveSlots.lastPlayedLabel(last, now, dayIndex)} · ${SaveSlots.playtimeLabel(play)}"
+            if (slot == active) {
+                v.findViewById<View>(R.id.slotCard).setBackgroundResource(R.drawable.bg_adventure_card_last)
+                v.findViewById<View>(R.id.slotLast).visibility = View.VISIBLE
+            }
+            val cont = v.findViewById<Button>(R.id.slotContinue)
+            cont.text = if (summary == null) "Retry" else "Continue"
+            cont.setOnClickListener {
+                SaveSlots.setActive(raw, slot)
+                ledgerStoreCache = null
+                adventuresDialog?.dismiss()
+                continueSavedGame()
+            }
+            v.findViewById<Button>(R.id.slotDelete).setOnClickListener { confirmDeleteSlot(slot, fromAbandon = false) }
+            list.addView(v)
+        }
+    }
+
+    /** Begin on an empty card: Story / Crawl (asked if the picker was opened plainly), then the usual flow. */
+    private fun beginInSlot(slot: Int, beginMode: String?) {
+        val start = { mode: String ->
+            adventuresDialog?.dismiss()
+            pendingBeginSlot = slot
+            askHeroName { name ->
+                localPlayerName = name
+                showClassSelection(mode = mode)
+            }
+        }
+        if (beginMode == "solo" || beginMode == "crawl") {
+            start(beginMode)
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Light lantern $slot")
+            .setItems(arrayOf("New Story — The Kindling", "Dungeon Crawl")) { _, which ->
+                start(if (which == 1) "crawl" else "solo")
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     /**
@@ -2709,6 +2937,17 @@ class MainActivity : AppCompatActivity() {
         companionAutoAi: Boolean
     ) {
         detachOnlineSession()
+        // v2.28: a new Story / Crawl always takes an empty lantern; never overwrite a filled one.
+        val target = SaveSlots.slotForNewRun(rawPrefs(), pendingBeginSlot)
+        pendingBeginSlot = null
+        if (target == null) {
+            showAllLanternsLitDialog()
+            return
+        }
+        SaveSlots.deleteSlot(rawPrefs(), target) // leftovers of a Nightmare-wiped hero stay behind
+        SaveSlots.setActive(rawPrefs(), target)
+        ledgerStoreCache = null
+        rawPrefs().edit().putLong(SaveSlots.slotKey(target, SaveSlots.PLAYTIME_MS), 0L).apply()
         val playMode = when (mode) {
             "crawl" -> 1
             "raid" -> 2
@@ -3099,7 +3338,7 @@ class MainActivity : AppCompatActivity() {
                         AlertDialog.Builder(this).setTitle("Companion class").setItems(classes) { _, cl ->
                             val ok = try { setCompanionClass(cl) } catch (_: Exception) { false }
                             if (ok) {
-                                prefs().edit().putInt("companion_class", cl).apply()
+                                if (!isOnline()) prefs().edit().putInt("companion_class", cl).apply()
                                 syncAndSave()
                                 updateUi()
                                 showCharacterSheet(try { getCompanionName() } catch (_: Exception) { name })
@@ -3525,12 +3764,16 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+    /** v2.28: per slot. The live native flag only counts while this slot's hero is loaded solo. */
     private fun isMetaStoryComplete(): Boolean {
         if (prefs().getBoolean("story_fully_complete", false)) return true
+        if (!sessionActive || isOnline()) return false
         return try { isStoryFullyComplete() } catch (_: Exception) { false }
     }
 
     private fun markMetaStoryCompleteIfNeeded() {
+        // Only the loaded solo hero can finish its own slot's story (never online / stale menu state).
+        if (!sessionActive || isOnline()) return
         try {
             if (isStoryFullyComplete()) {
                 val wasComplete = prefs().getBoolean("story_fully_complete", false)
@@ -3591,9 +3834,12 @@ class MainActivity : AppCompatActivity() {
     // --- v2.26 Memory Ledger ----------------------------------------------------------------------
 
     private var ledgerStoreCache: MemoryLedger.Store? = null
-    /** The Continue save is slot 1 until save slots land; keys are ledger_slot_1_… in meta prefs. */
-    private fun ledgerStore(): MemoryLedger.Store =
-        ledgerStoreCache ?: MemoryLedger.Store(prefs(), MemoryLedger.SLOT_1).also { ledgerStoreCache = it }
+    /** The active lantern's Ledger (ledger_slot_N_… in meta prefs; v2.26 already wrote slot 1). */
+    private fun ledgerStore(): MemoryLedger.Store {
+        val slot = activeSlot()
+        ledgerStoreCache?.let { if (it.slot == slot) return it }
+        return MemoryLedger.Store(rawPrefs(), slot).also { ledgerStoreCache = it }
+    }
 
     /** Solo play on the Continue hero only. Host / Join never read or write the Ledger. */
     private fun ledgerSoloSession(): Boolean {
@@ -3720,6 +3966,8 @@ class MainActivity : AppCompatActivity() {
     private fun pollRaidKeyDrop() {
         try {
             if (consumePendingRaidKeyDrop()) {
+                // Host / Join never grant keys into a slot.
+                if (isOnline() || !sessionActive) return
                 tryGrantRaidKeyFromDrop()
                 refreshMainMenuButtons()
             }
@@ -5857,7 +6105,19 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun prefs() = getPreferences(MODE_PRIVATE)
+    /** Raw activity prefs (account-wide keys and explicit slot_N_ keys). */
+    private fun rawPrefs(): SharedPreferences = getPreferences(MODE_PRIVATE)
+
+    private var slotPrefsCache: SlotPrefs? = null
+    /**
+     * v2.28: per-slot keys (save_state, hero prefs, snapshots, held keys, pity, bests, story flag,
+     * pending daily spoils) resolve to the ACTIVE slot; everything else is account-wide.
+     */
+    private fun prefs(): SharedPreferences =
+        slotPrefsCache ?: rawPrefs().let { raw -> SlotPrefs(raw) { SaveSlots.activeSlot(raw) } }.also { slotPrefsCache = it }
+
+    private fun activeSlot(): Int = SaveSlots.activeSlot(rawPrefs())
+    private fun isOnline(): Boolean = isOnlineHost || isOnlineClient
 
     private fun maybeOfferTutorialThenCoach() {
         maybeShowLegalDisclaimer {

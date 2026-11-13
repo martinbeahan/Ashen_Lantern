@@ -983,6 +983,27 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_loadGameState([[maybe_unused]] 
     }
 }
 
+/** v2.28 save slots: summarise a slot's save without loading it ("" when it would not load).
+ *  Tab-separated: name, classId, level, questBeat, actTitle, beatName, mode, difficulty,
+ *  gameOver, roomCount, storyComplete. Never touches the live game. */
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_describeSaveState([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring data) {
+    std::string out = jniGuard("describeSaveState", std::string(), [&]() -> std::string {
+        JUtf nativeDataUtf(env, data);
+        dnd::Game::SaveSummary s;
+        if (!dnd::Game::describeSave(nativeDataUtf.str(), &s)) return std::string();
+        std::string name = s.heroName;
+        for (char& ch : name) { if (ch == '\t' || ch == '\n') ch = ' '; }
+        std::ostringstream ss;
+        ss << name << '\t' << s.classId << '\t' << s.level << '\t' << s.questBeat << '\t'
+           << dnd::soloQuestActTitle(s.questBeat) << '\t' << dnd::soloQuestBeatName(s.questBeat) << '\t'
+           << s.soloPlayMode << '\t' << s.difficulty << '\t' << (s.gameOver ? 1 : 0) << '\t'
+           << s.roomCount << '\t' << (s.storyComplete ? 1 : 0);
+        return ss.str();
+    });
+    return env->NewStringUTF(out.c_str());
+}
+
 JNIEXPORT void JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_sendChatMessage([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring sender, jstring message) {
     jniGuardVoid("sendChatMessage", [&]() {
