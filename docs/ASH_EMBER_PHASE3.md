@@ -18,10 +18,10 @@ value from `QuestScript.h`, read under the game lock.
 | ENDLESS (5) | `ashen_deep` |
 | RAID (2) | `boss_ember_hydra` → `raid_kilnmouth`, `boss_nightfang` → `raid_weftholme`, `boss_hollow_crown` or anything else → `raid_corrans_rest` |
 | CRAWL (1), online / Lanternkeeper (beat 0), post-quest (beat 7) | `catacombs`, or `millhollow_green` in a merchant room |
-| STORY beats 1, 6 | `kindling_pyre` |
+| STORY beats 1, 6, 25 (25 since v2.25) | `kindling_pyre` |
 | 2 | `thornpath_woods` |
 | 3–5 | `ossuary` |
-| 8, 13, 14, 20, 25 | `millhollow_green` |
+| 8, 13, 14, 20 | `millhollow_green` |
 | 9, 10 | `mill_weir` |
 | 11, 12 | `mill_hall` |
 | 15–19 | `emberdeep` |
@@ -94,7 +94,7 @@ Run each item on a **small phone** (≤ 360dp wide, e.g. 720×1280), a **tablet*
 ### Backgrounds
 - [ ] Main menu shows the new backdrop, centre-cropped (no stretching) with the scrim; tablet uses `_hd`
 - [ ] Story: Millhollow Road / Ashen Shrine → Kindling Pyre; Thornpath Woods; Crypt Doors / Bone Gallery / Lantern Vault → Ossuary
-- [ ] Story: Millhollow Green, Debt Settled, Wellside Rumor, Vigil Watch, Vigil Kindled → Millhollow Green
+- [ ] Story: Millhollow Green, The Tithe Broken, Wellside Rumor, Vigil Watch → Millhollow Green (v2.25: Vigil Kindled → Kindling Pyre)
 - [ ] Story: Millrace Weir / Flooded Cellar → Mill Weir; Ledger Loft / Collector's Hall → Mill Hall
 - [ ] Story: Old Well Descent … Breach Sealed → Emberdeep; Greyfen Marsh … Ashwake Threshold → Greyfen Marsh
 - [ ] Post-quest procedural rooms and Dungeon Crawl → Catacombs; a merchant room → Millhollow Green

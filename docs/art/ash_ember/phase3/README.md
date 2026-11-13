@@ -23,7 +23,8 @@ The mode comes from `getSoloPlayMode()`, which already exists. The story beat ne
 | STORY beat 1 Millhollow Road (kindling), 6 Ashen Shrine | kindling_pyre |
 | 2 Thornpath Woods | thornpath_woods |
 | 3–5 Crypt Doors, Bone Gallery, Lantern Vault | ossuary |
-| 8 Millhollow Green, 13 Debt Settled, 14 Wellside Rumor, 20 Vigil Watch, 25 Vigil Kindled | millhollow_green |
+| 8 Millhollow Green, 13 The Tithe Broken, 14 Wellside Rumor, 20 Vigil Watch | millhollow_green |
+| 25 Vigil Kindled (v2.25+) | kindling_pyre |
 | 9 Millrace Weir, 10 Flooded Cellar | mill_weir |
 | 11 Ledger Loft, 12 Collector's Hall | mill_hall |
 | 15–19 Old Well Descent → Breach Sealed | emberdeep |

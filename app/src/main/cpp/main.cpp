@@ -623,6 +623,42 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getQuestBeat([[maybe_unused]] J
     });
 }
 
+/** v2.25: story choice the UI should ask for now (0 none, 1 Sallow Venn, 2 the well). */
+JNIEXPORT jint JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getPendingStoryChoice([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuard("getPendingStoryChoice", static_cast<jint>(0), [&]() -> jint {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return static_cast<jint>(g_Game.pendingStoryChoice());
+    });
+}
+
+/** v2.25: apply a story choice (kind 1/2, option 1/2). False if that choice is not pending. */
+JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_chooseStoryOption([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint kind, jint option) {
+    return jniGuard("chooseStoryOption", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return g_Game.chooseStoryOption(static_cast<int>(kind), static_cast<int>(option)) ? JNI_TRUE : JNI_FALSE;
+    });
+}
+
+/** v2.25: "venn,well" choice values (0 undecided; Venn 1 spared / 2 ended; well 1 sealed in / 2 let rest). */
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getStoryChoices([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuardStr(env, "getStoryChoices", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return env->NewStringUTF(g_Game.getStoryChoices().c_str());
+    });
+}
+
+/** v2.25: after a solo Continue, refresh the scripted room text (journal / chat untouched). */
+JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_refreshStoryRoomAfterLoad([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuard("refreshStoryRoomAfterLoad", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return g_Game.refreshStoryRoomAfterLoad() ? JNI_TRUE : JNI_FALSE;
+    });
+}
+
 JNIEXPORT jboolean JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_isStoryFullyComplete([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("isStoryFullyComplete", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {

@@ -278,6 +278,12 @@ class MainActivity : AppCompatActivity() {
     external fun getSoloPlayMode(): Int
     /** SoloQuestBeat value (QuestScript.h) — drives the stage background. */
     external fun getQuestBeat(): Int
+    /** v2.25 Kindling choices: 0 none, 1 Sallow Venn (beat 13), 2 the well (beat 19). */
+    external fun getPendingStoryChoice(): Int
+    external fun chooseStoryOption(kind: Int, option: Int): Boolean
+    /** "venn,well": 0 undecided; Venn 1 spared / 2 ended; well 1 sealed in / 2 let rest. */
+    external fun getStoryChoices(): String
+    external fun refreshStoryRoomAfterLoad(): Boolean
     external fun isStoryFullyComplete(): Boolean
     external fun consumePendingRaidKeyDrop(): Boolean
     external fun beginBossRaidFromCurrent(): Boolean
@@ -1197,6 +1203,8 @@ class MainActivity : AppCompatActivity() {
             showStartDialog()
             return
         }
+        // v2.25: a mid-Act 2–4 save picks up the rewritten room text (journal / chat stay as history).
+        try { refreshStoryRoomAfterLoad() } catch (_: Exception) {}
         lastBattleRoster = ""
         lastRoomDesc = ""
         lastChatHistory = ""
@@ -3481,6 +3489,50 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) { }
     }
 
+    private var storyChoiceDialog: AlertDialog? = null
+
+    /**
+     * v2.25 Kindling choices: Sallow Venn on the green (beat 13) and the Ember Seal over the well
+     * (beat 19). Native decides when a choice is pending (solo story, on the beat, undecided); this
+     * only asks. Not cancelable, so Return to Menu + Continue re-asks. Never on an online client.
+     */
+    private fun pollStoryChoice() {
+        if (isOnlineClient || storyChoiceDialog?.isShowing == true) return
+        val kind = try { getPendingStoryChoice() } catch (_: Exception) { 0 }
+        if (kind != 1 && kind != 2) return
+        val (title, message, first, second) = if (kind == 1) {
+            listOf(
+                "Sallow Venn",
+                "Sallow Venn is on his knees in the wet grass. He was ten when they chose his father.",
+                "Spare him",
+                "End it"
+            )
+        } else {
+            listOf(
+                "The Well's Judgment",
+                "The First Lamplighter's seal will close the well. The ash-dead are still down there.\n\n" +
+                    "Seal them in, and the Lantern stays bright. Let them rest, and it burns dimmer.",
+                "Seal them in",
+                "Let them rest"
+            )
+        }
+        val choose = { option: Int ->
+            storyChoiceDialog = null
+            val ok = try { chooseStoryOption(kind, option) } catch (_: Exception) { false }
+            if (ok) {
+                syncAndSave()
+                updateUi()
+            }
+        }
+        storyChoiceDialog = AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(first) { _, _ -> choose(1) }
+            .setNegativeButton(second) { _, _ -> choose(2) }
+            .setCancelable(false)
+            .show()
+    }
+
     private fun pollRaidKeyDrop() {
         try {
             if (consumePendingRaidKeyDrop()) {
@@ -4099,6 +4151,7 @@ class MainActivity : AppCompatActivity() {
         if (!nativeReady) return
         val status = getPlayerStatus()
         markMetaStoryCompleteIfNeeded()
+        pollStoryChoice()
         pollRaidKeyDrop()
         pollDailyQuestProgress()
         val isShop = isMerchantRoom()
@@ -4136,7 +4189,7 @@ class MainActivity : AppCompatActivity() {
                 "Act 3 · clear — Search, Rest, or Onward"
             status.contains("Quest: Emberdeep", ignoreCase = true) ->
                 status.lineSequence().firstOrNull { it.startsWith("Quest:") }?.removePrefix("Quest:")?.trim()
-                    ?.let { "Quest · $it" } ?: "Act 3 — Emberdeep Breach"
+                    ?.let { "Quest · $it" } ?: "Act 3 — Emberdeep"
             status.contains("Quest complete", ignoreCase = true) &&
                 try { isRoomCleared() } catch (_: Exception) { false } ->
                 "Main quest done — Ashen Lantern · Search, Rest, or Onward"
@@ -4144,6 +4197,7 @@ class MainActivity : AppCompatActivity() {
             (status.contains("Quest: The Kindling", ignoreCase = true) ||
                 status.contains("Quest: Ashen Lantern", ignoreCase = true) ||
                 status.contains("Quest: Millhollow", ignoreCase = true) ||
+                status.contains("Quest: The Tithe", ignoreCase = true) ||
                 status.contains("Quest: Emberdeep", ignoreCase = true) ||
                 status.contains("Quest: Ashwake", ignoreCase = true)) &&
                 try { isRoomCleared() } catch (_: Exception) { false } ->
@@ -4382,36 +4436,9 @@ class MainActivity : AppCompatActivity() {
         return resources.configuration.smallestScreenWidthDp >= 600 || dm.widthPixels > 900
     }
 
-    /**
-     * Stage art by play mode + story beat (Phase 3 mapping, docs/ASH_EMBER_PHASE3.md) — replaces the
-     * old room-text keyword matching. Raids pick by the boss enemyId in the roster; any boss fight
-     * adds bg_stage_boss_overlay. Pure function so the mapping is easy to audit.
-     */
-    internal fun stageForContext(mode: Int, beat: Int, merchant: Boolean, rosterIds: List<String>): String {
-        return when (mode) {
-            4 -> "ember_ring"        // ARENA
-            3 -> "cinder_crucible"   // CHALLENGE
-            5 -> "ashen_deep"        // ENDLESS
-            2 -> when {              // RAID
-                "boss_ember_hydra" in rosterIds -> "raid_kilnmouth"
-                "boss_nightfang" in rosterIds -> "raid_weftholme"
-                else -> "raid_corrans_rest" // boss_hollow_crown + default
-            }
-            1 -> if (merchant) "millhollow_green" else "catacombs" // CRAWL
-            else -> when (beat) {    // STORY (0) and anything else
-                1, 6 -> "kindling_pyre"
-                2 -> "thornpath_woods"
-                3, 4, 5 -> "ossuary"
-                8, 13, 14, 20, 25 -> "millhollow_green"
-                9, 10 -> "mill_weir"
-                11, 12 -> "mill_hall"
-                in 15..19 -> "emberdeep"
-                in 21..24 -> "greyfen_marsh"
-                // 0 = online / Lanternkeeper table, 7 = post-quest procedural
-                else -> if (merchant) "millhollow_green" else "catacombs"
-            }
-        }
-    }
+    /** Stage art by play mode + story beat — see [StageMap.stageForContext]. */
+    internal fun stageForContext(mode: Int, beat: Int, merchant: Boolean, rosterIds: List<String>): String =
+        StageMap.stageForContext(mode, beat, merchant, rosterIds)
 
     private fun stageDrawable(stage: String, hd: Boolean): Int = when (stage) {
         "ember_ring" -> if (hd) R.drawable.bg_stage_ember_ring_hd else R.drawable.bg_stage_ember_ring
