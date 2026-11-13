@@ -69,7 +69,6 @@ Idle frames extracted from free CC0 packs, padded to 256×256 PNGs for Android d
 | `sprite_wizard.png` | Wizard Pack (Idle) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/wizard-pack |
 | `sprite_rogue.png` | Huntress (Idle) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/huntress |
 | `sprite_cleric.png` | Medieval King Pack (Idle) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/medieval-king-pack |
-| `sprite_goblin.png` | Monsters Creatures Fantasy — Goblin (Idle) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/monsters-creatures-fantasy |
 | `sprite_skeleton.png` | Monsters Creatures Fantasy — Skeleton (Idle) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/monsters-creatures-fantasy |
 | `sprite_wolf.png` | Pet Dogs Pack — Akita Idle (recolored cooler gray for wolf read) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/pet-dogs-pack |
 | `sprite_ogre.png` | Tiny Creatures (tile upscaled; large humanoid) | Clint Bellanger | CC0 1.0 | https://opengameart.org/content/tiny-creatures |
@@ -114,6 +113,23 @@ Visual-only pass — same CC0 sources, higher encode quality and cleaner chrome.
 | `sprite_*.png` / `*_atk.png` | Re-extracted LuizMelo / Tiny Creatures / Pet Dogs frames with readability outline | CC0 (packs above) |
 | HUD / panels / HP / XP / selection / damage float XML | Original UI chrome (double-frame stages, turn banner, crit float) | Original |
 
+### Ash & Ember enemy art (v2.20) — original
+
+Hand-authored for Ashen Lantern (Ash & Ember style sheet v0.1). **Original work, owned by the
+project** — not CC0 third-party art. Sources live in `docs/art/ash_ember/` (SVG + style sheet);
+`tools/svg2vd.py` converts them to Android VectorDrawables.
+
+| Asset in app | Source | Author | License |
+|---|---|---|---|
+| `enemy_wickthief.xml` | `docs/art/ash_ember/wickthief.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_ashbound.xml` | `docs/art/ash_ember/ashbound.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `boss_wick_king.xml` | `docs/art/ash_ember/wick_king.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `enemy_unknown.xml` | Hand-written VectorDrawable (neutral shadow) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+
+The LuizMelo goblin sprite (`sprite_goblin*.png`) was removed from the Android UI in v2.20; the
+GL layer's legacy `assets/goblin.png` / `skeleton.png` remain. `assets/android_robot.png`
+(Android template texture) was removed.
+
 ### Not used
 
 No scraped D&D / WotC official art, Critical Role stills, or commercial game sprites.
@@ -138,8 +154,8 @@ Sprites reuse existing LuizMelo CC0 frames already shipped in the app (no new do
 
 | Boss | Reuses |
 |---|---|
-| Goblin King | `sprite_goblin.png` / `_atk` |
-| Skeleton King | `sprite_skeleton.png` / `_atk` |
+| The Wick King (was Goblin King) | `boss_wick_king.xml` — original Ash & Ember art (v2.20) |
+| The Ossuary Prior (was Skeleton King) | `enemy_ashbound.xml` placeholder (v2.20) |
 | Ashen Drake | `sprite_ogre.png` / `_atk` (large creature stand-in) |
 
 
@@ -151,3 +167,4 @@ No new third-party art or audio. Act 3 / endgame / raid encounters reuse existin
 ## Temporary sprite mapping
 
 - **Bard (v2.7):** UI battle portrait and GL player model temporarily reuse the Wizard sprite/model until dedicated Bard CC0 art is added.
+- **Placeholder enemy sprites (v2.20):** every enemy ID has its own sprite entry (`MainActivity.enemySprites`). Foes without Ash & Ember art yet (Gloamhound, Giant Rat, Ogre, Grey Tithe humans, Collector, First Lamplighter, Bell-Herald, Ashen Drake, endgame bosses) temporarily point at existing CC0 wolf/ogre/skeleton bitmaps or an original silhouette until Phase 2 art lands.

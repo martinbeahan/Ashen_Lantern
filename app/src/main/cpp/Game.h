@@ -346,16 +346,19 @@ private:
     void advanceTurn();
     void purgeDownedEnemies();
     void enterClearedRoom(Character* actor);
-    void grantKillLoot(Character* actor, const std::string& foeName);
+    void grantKillLoot(Character* actor, const std::string& foeName, const std::string& foeId);
     void restockShop();
     void maybeSpawnBossEncounter();
     /** Try an authored set-piece instead of pure-random trash (crawl / post-quest). */
     bool trySpawnAuthoredEncounter();
     void clearSetPiecePending();
-    void spawnNamedBoss(const std::string& name, int tier);
-    void markBossSeen(const std::string& name);
+    /** Spawn a boss by stable enemy ID (Bestiary.h); tier comes from the bestiary table. */
+    void spawnNamedBoss(const std::string& enemyId);
+    void markBossSeen(const std::string& enemyId);
+    /** New foe for a bestiary ID: display name from the table, enemyId set, unique uid. */
+    std::unique_ptr<Character> newEnemy(const std::string& enemyId, CharacterClass cl, const std::string& uidTag = "");
     bool hasLivingBossEnemy() const;
-    void noteBossDefeat(const std::string& foeName);
+    void noteBossDefeat(const std::string& foeName, const std::string& foeId);
     Character* findTransferAlly(const Character* from) const;
     void deliverItemToAlly(Character* ally, std::shared_ptr<Item> item);
     void partyPreferClasses(int& outA, int& outB) const;
@@ -370,7 +373,7 @@ private:
     void maybeFinishAct4OnKindledEnter();
     bool trySoloQuestSearch(Character* hero);
     bool endgameContentAllowed() const;
-    void maybeGrantRaidKeyFromBoss(const std::string& foeName);
+    void maybeGrantRaidKeyFromBoss(const std::string& foeName, const std::string& foeId);
     void spawnArenaWave(int wave);
     void spawnEndlessDepth(int depth);
     void applyLegendaryOnHit(Character* actor, int damageDealt);

@@ -116,9 +116,9 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
         roomSearchUsed_ = false; roomRestUsed_ = false;
         {
             int pick = getRandomInt(0, 2);
-            if (pick == 0) spawnNamedBoss("Hollow Crown", 4);
-            else if (pick == 1) spawnNamedBoss("Ember Hydra", 5);
-            else spawnNamedBoss("Nightfang Matriarch", 4);
+            if (pick == 0) spawnNamedBoss("boss_hollow_crown");
+            else if (pick == 1) spawnNamedBoss("boss_ember_hydra");
+            else spawnNamedBoss("boss_nightfang");
             roomDescription_ = "Raid arena — a sealed endgame vault. One Raid Key spent. Defeat the raid boss for rich spoils.";
             lastEvent_ = "BOSS RAID! Stand ready!";
             dmSay("Boss Raid begins. Spend was paid in keys — earn gold, XP, and a chance at Legendary gear and another key.");
@@ -143,7 +143,7 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
         }
         lastEvent_ = "Dungeon Crawl — Room 1. No story script; clear chambers and press Onward.";
         addChatMessage("System", "Dungeon Crawl begins (difficulty: " + std::string(difficultyName(difficulty_)) + ").");
-        dmSay("Welcome, adventurers. I am your Dungeon Master.");
+        dmSay("Welcome, Lamplighter. I am the Lanternkeeper, and I will tell this tale.");
         dmSay("Crawl mode: procedural rooms only — finish the story (Acts 1–3) to unlock endgame bosses and Legendary loot.");
         dmSay("Use Attack, Special, Potion, Search once per clear chamber, Short Rest, and Onward.");
         return;
@@ -152,13 +152,15 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
     // Story Solo: Act 1 → Act 2 → Act 3 → Act 4, then endgame procedural.
     questBeat_ = static_cast<int>(SoloQuestBeat::MILLHOLLOW);
     applyStarterPaddingForStory();
+    // Act 1 "The Kindling" title card — first line the player reads.
+    dmSay(kKindlingTitleCard);
     applySoloQuestRoom();
     rollInitiative();
 
-    lastEvent_ = "Ashen Lantern — Millhollow Road. The village is dark.";
-    addChatMessage("System", "A new party begins the Ashen Lantern quest (difficulty: " +
+    lastEvent_ = "The Kindling — the Lantern is stolen! A Wickthief Scout blocks the road.";
+    addChatMessage("System", "A new Lamplighter begins Act 1: The Kindling (difficulty: " +
                    std::string(difficultyName(difficulty_)) + ").");
-    dmSay("Welcome, adventurers. I am your Dungeon Master.");
+    dmSay("I am the Lanternkeeper, and I will tell this tale.");
     dmSay("Use Attack for a weapon strike, your class Special for a signature move, Potion for healing, Search once per clear chamber, and Short Rest when safe.");
     {
         Character* ally = findNpcCompanion();
@@ -199,14 +201,14 @@ void Game::startDmSession(const std::string& dmName) {
     roomSearchUsed_ = false; roomRestUsed_ = false;
     dmOnlyTable_ = true;
     resetSoloQuestState();
-    dmName_ = dmName.empty() ? "Dungeon Master" : dmName;
+    dmName_ = dmName.empty() ? "The Lanternkeeper" : dmName;
     isHost_ = true;
 
-    roomDescription_ = "A candlelit tavern table waits for heroes. The DM (" + dmName_ + ") prepares the adventure. Share the session ID so friends can Join.";
-    lastEvent_ = "DM table open — waiting for players to join.";
-    addChatMessage("System", "DM " + dmName_ + " opened an online table.");
-    addJournalEntry("The DM lit the candles and opened the table.");
-    dmSay("I am " + dmName_ + ", your Dungeon Master. When heroes Join, I will begin the dungeon.");
+    roomDescription_ = "A candlelit tavern table waits for heroes. The Lanternkeeper (" + dmName_ + ") prepares the adventure. Share the session ID so friends can Join.";
+    lastEvent_ = "Lanternkeeper table open — waiting for players to join.";
+    addChatMessage("System", "Lanternkeeper " + dmName_ + " opened an online table.");
+    addJournalEntry("The Lanternkeeper lit the candles and opened the table.");
+    dmSay("I am " + dmName_ + ", your Lanternkeeper. When heroes Join, I will begin the dungeon.");
 }
 
 void Game::dmBeginDungeon() {
@@ -224,7 +226,7 @@ void Game::dmBeginDungeon() {
     spawnRoomContent();
     rollInitiative();
     lastEvent_ = "The dungeon begins! Room 1 — roll for initiative!";
-    addChatMessage("System", "The DM began the dungeon.");
+    addChatMessage("System", "The Lanternkeeper began the dungeon.");
     dmSay("The tavern doors close behind you. Steel yourselves.");
 }
 
@@ -255,7 +257,7 @@ void Game::dmAdvanceRoom() {
         lastEvent_ = bossToast;
         addChatMessage("System", lastEvent_);
     } else {
-        lastEvent_ = "DM advanced the party to room " + std::to_string(roomCount_) + ".";
+        lastEvent_ = "The Lanternkeeper advanced the party to room " + std::to_string(roomCount_) + ".";
         addChatMessage("System", lastEvent_);
         dmSay("Onward — a new chamber opens before you.");
     }
@@ -265,7 +267,7 @@ void Game::dmNarrate(const std::string& line) {
     if (line.empty()) return;
     roomDescription_ = line;
     dmSay(line);
-    lastEvent_ = "DM narrates…";
+    lastEvent_ = "The Lanternkeeper narrates…";
 }
 
 
@@ -289,8 +291,8 @@ void Game::prepareClientJoin() {
     isHost_ = false;
     currentTurnIndex_ = 0;
 
-    roomDescription_ = "Connecting to the DM table…";
-    lastEvent_ = "Waiting for the Dungeon Master to sync the party…";
+    roomDescription_ = "Connecting to the Lanternkeeper's table…";
+    lastEvent_ = "Waiting for the Lanternkeeper to sync the party…";
     addChatMessage("System", "Joining online session…");
 }
 
@@ -301,7 +303,7 @@ void Game::dmGrantShortRest() {
     isMerchantRoom_ = false;
     playerRest(/*force=*/true);
     isMerchantRoom_ = wasMerchant;
-    dmSay("The DM grants a short rest.");
+    dmSay("The Lanternkeeper grants a short rest.");
 }
 
 void Game::addAlly(const std::string& name, CharacterClass cl) {
@@ -318,12 +320,12 @@ void Game::addAlly(const std::string& name, CharacterClass cl) {
 std::string Game::companionNameForClass(CharacterClass cl) {
     switch (cl) {
         case CharacterClass::FIGHTER: return "Bren (NPC)";
-        case CharacterClass::WIZARD: return "Melf (NPC)";
+        case CharacterClass::WIZARD: return "Corvin (NPC)";
         case CharacterClass::ROGUE: return "Sable (NPC)";
         case CharacterClass::CLERIC: return "Miren (NPC)";
         case CharacterClass::BARD: return "Jory (NPC)";
     }
-    return "Melf (NPC)";
+    return "Corvin (NPC)";
 }
 
 Character* Game::findNpcCompanion() const {
@@ -502,9 +504,9 @@ void Game::spawnSoloQuestEnemies() {
     // Solo Ashen Lantern: tune early rooms for beginners. attackStatDelta lowers to-hit/damage
     // (and Rogue AC via Dex). resourceCap strips Action Surge / Sneak so early foes don't one-shot.
     // Post-quest procedural spawns are unchanged.
-    auto makeFoe = [&](const std::string& name, CharacterClass cl, int bonusHp, int bonusAc,
+    auto makeFoe = [&](const std::string& enemyId, CharacterClass cl, int bonusHp, int bonusAc,
                        int resourceCap = -1, int attackStatDelta = 0) {
-        auto foe = std::make_unique<Character>(name, cl, name + "-" + std::to_string(getRandomInt(0, 1000000)));
+        auto foe = newEnemy(enemyId, cl);
         if (attackStatDelta != 0) {
             switch (cl) {
                 case CharacterClass::ROGUE:
@@ -538,11 +540,11 @@ void Game::spawnSoloQuestEnemies() {
     switch (beat) {
         case SoloQuestBeat::MILLHOLLOW:
             // Soft open: one weak scout (was HP-2 full Rogue with Sneak).
-            makeFoe("Goblin Scout", CharacterClass::ROGUE, -4, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+            makeFoe("enemy_wickthief_scout", CharacterClass::ROGUE, -4, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
             break;
         case SoloQuestBeat::THORNPATH:
             // Always a single wolf — no random second goblin.
-            makeFoe("Wolf", CharacterClass::ROGUE, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+            makeFoe("enemy_gloamhound", CharacterClass::ROGUE, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
             break;
         case SoloQuestBeat::CRYPT_DOORS:
             // Puzzle-lite soft open: Search once for the rune-key (no mandatory fight).
@@ -550,21 +552,21 @@ void Game::spawnSoloQuestEnemies() {
         case SoloQuestBeat::BONE_GALLERY:
             // Medium+: small chance the gallery hosts the Skeleton King (alone). Easy keeps soft pair.
             if (difficulty_ >= static_cast<int>(Difficulty::MEDIUM) && getRandomInt(1, 100) <= 18) {
-                spawnNamedBoss("Skeleton King", 2);
-                lastEvent_ = "BOSS! Skeleton King — stand ready!";
-                dmSay("A crowned horror stirs among the bones — the Skeleton King (original foe).");
+                spawnNamedBoss("boss_prior");
+                lastEvent_ = "BOSS! The Ossuary Prior — stand ready!";
+                dmSay("A mitred horror stirs among the bones — the Ossuary Prior (original foe).");
             } else {
-                makeFoe("Skeleton", CharacterClass::FIGHTER, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
-                makeFoe("Skeleton", CharacterClass::FIGHTER, -2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+                makeFoe("enemy_ashbound", CharacterClass::FIGHTER, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+                makeFoe("enemy_ashbound", CharacterClass::FIGHTER, -2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
             }
             break;
         case SoloQuestBeat::LANTERN_VAULT:
             // Climax retained: one Champion, HP/AC one notch down, single surge max.
-            makeFoe("Skeleton Champion", CharacterClass::FIGHTER, 12, 1, /*resourceCap=*/1, /*attackStatDelta=*/-2);
+            makeFoe("boss_sexton", CharacterClass::FIGHTER, 12, 1, /*resourceCap=*/1, /*attackStatDelta=*/-2);
             {
                 Character* ally = findNpcCompanion();
                 std::string who = ally ? ally->name : "your companion";
-                dmSay("The vault guardian stirs — a Skeleton Champion. It can surge once; keep a Potion ready and let " + who + " help.");
+                dmSay("The vault's undying custodian stirs — the Lantern Sexton. It can surge once; keep a Potion ready and let " + who + " help.");
             }
             break;
         case SoloQuestBeat::RESOLUTION:
@@ -572,80 +574,80 @@ void Game::spawnSoloQuestEnemies() {
             break;
         case SoloQuestBeat::ACT2_GREEN:
             // Soft open fight: one debt enforcer (bandit-flavored fighter), toned down.
-            makeFoe("Debt Enforcer", CharacterClass::FIGHTER, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+            makeFoe("enemy_tithe_enforcer", CharacterClass::FIGHTER, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
             break;
         case SoloQuestBeat::ACT2_WEIR:
             // Medium+: rare Goblin King ambush at the weir (Easy keeps soft river goblins).
             if (difficulty_ >= static_cast<int>(Difficulty::MEDIUM) && getRandomInt(1, 100) <= 16) {
-                spawnNamedBoss("Goblin King", 1);
-                lastEvent_ = "BOSS! Goblin King — stand ready!";
-                dmSay("Scrap-iron crown by the millrace — the Goblin King (original) bars the path!");
+                spawnNamedBoss("boss_wick_king");
+                lastEvent_ = "BOSS! The Wick King — stand ready!";
+                dmSay("A crown of melted candles by the millrace — the Wick King (original) bars the path!");
             } else {
-                makeFoe("River Goblin", CharacterClass::ROGUE, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
-                makeFoe("River Goblin", CharacterClass::ROGUE, -2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+                makeFoe("enemy_wickthief_river", CharacterClass::ROGUE, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+                makeFoe("enemy_wickthief_river", CharacterClass::ROGUE, -2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
             }
             break;
         case SoloQuestBeat::ACT2_CELLAR:
-            makeFoe("Skeleton", CharacterClass::FIGHTER, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
-            makeFoe("Giant Rat", CharacterClass::ROGUE, -2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-3);
+            makeFoe("enemy_ashbound", CharacterClass::FIGHTER, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+            makeFoe("enemy_tallow_rat", CharacterClass::ROGUE, -2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-3);
             break;
         case SoloQuestBeat::ACT2_LOFT:
             // Soft open: Search for the coerced ledger.
             break;
         case SoloQuestBeat::ACT2_HALL:
-            makeFoe("The Collector", CharacterClass::FIGHTER, 14, 1, /*resourceCap=*/1, /*attackStatDelta=*/-1);
+            makeFoe("boss_collector", CharacterClass::FIGHTER, 14, 1, /*resourceCap=*/1, /*attackStatDelta=*/-1);
             {
                 Character* ally = findNpcCompanion();
                 std::string who = ally ? ally->name : "your companion";
-                dmSay("The Collector wears a false mill seal. Keep a Potion ready — " + who + " will help.");
+                dmSay("Sallow Venn, the Collector, wears a false mill seal. Keep a Potion ready — " + who + " will help.");
             }
             break;
         case SoloQuestBeat::ACT2_SETTLED:
             break;
         case SoloQuestBeat::ACT3_RUMOR:
-            makeFoe("Ash Scavenger", CharacterClass::ROGUE, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+            makeFoe("enemy_tithe_scavenger", CharacterClass::ROGUE, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
             break;
         case SoloQuestBeat::ACT3_WELL:
-            makeFoe("Giant Rat", CharacterClass::ROGUE, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
-            makeFoe("Root Goblin", CharacterClass::ROGUE, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+            makeFoe("enemy_tallow_rat", CharacterClass::ROGUE, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+            makeFoe("enemy_wickthief_root", CharacterClass::ROGUE, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
             break;
         case SoloQuestBeat::ACT3_ROOTS:
-            makeFoe("Skeleton", CharacterClass::FIGHTER, 4, 0, /*resourceCap=*/0, /*attackStatDelta=*/-1);
-            makeFoe("Skeleton", CharacterClass::FIGHTER, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+            makeFoe("enemy_ashbound", CharacterClass::FIGHTER, 4, 0, /*resourceCap=*/0, /*attackStatDelta=*/-1);
+            makeFoe("enemy_ashbound", CharacterClass::FIGHTER, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
             break;
         case SoloQuestBeat::ACT3_RELIC:
             // Soft open: Search for Ember Seal
             break;
         case SoloQuestBeat::ACT3_WARDEN:
-            makeFoe("Breach Warden", CharacterClass::FIGHTER, 22, 2, /*resourceCap=*/2, /*attackStatDelta=*/0);
+            makeFoe("boss_warden", CharacterClass::FIGHTER, 22, 2, /*resourceCap=*/2, /*attackStatDelta=*/0);
             {
                 Character* ally = findNpcCompanion();
                 std::string who = ally ? ally->name : "your companion";
-                dmSay("The Breach Warden bars the ember wound. Keep potions ready — " + who + " will help.");
+                dmSay("The Breach Warden — the First Lamplighter, bound as a gate — bars the ember wound. Keep potions ready — " + who + " will help.");
             }
             break;
         case SoloQuestBeat::ACT3_SEALED:
             break;
         case SoloQuestBeat::ACT4_WATCH:
-            makeFoe("Ashwake Scout", CharacterClass::ROGUE, 4, 0, /*resourceCap=*/0, /*attackStatDelta=*/-1);
+            makeFoe("enemy_tithe_watcher", CharacterClass::ROGUE, 4, 0, /*resourceCap=*/0, /*attackStatDelta=*/-1);
             break;
         case SoloQuestBeat::ACT4_MARSH:
-            makeFoe("Marsh Goblin", CharacterClass::ROGUE, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
-            makeFoe("Giant Rat", CharacterClass::ROGUE, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+            makeFoe("enemy_wickthief_fen", CharacterClass::ROGUE, 2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
+            makeFoe("enemy_tallow_rat", CharacterClass::ROGUE, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
             break;
         case SoloQuestBeat::ACT4_CAUSEWAY:
-            makeFoe("Skeleton", CharacterClass::FIGHTER, 6, 0, /*resourceCap=*/0, /*attackStatDelta=*/-1);
-            makeFoe("Skeleton", CharacterClass::FIGHTER, 4, 0, /*resourceCap=*/0, /*attackStatDelta=*/-1);
+            makeFoe("enemy_ashbound", CharacterClass::FIGHTER, 6, 0, /*resourceCap=*/0, /*attackStatDelta=*/-1);
+            makeFoe("enemy_ashbound", CharacterClass::FIGHTER, 4, 0, /*resourceCap=*/0, /*attackStatDelta=*/-1);
             break;
         case SoloQuestBeat::ACT4_EMBER:
             // Soft open: Search for Vigil Ember
             break;
         case SoloQuestBeat::ACT4_HERALD:
-            makeFoe("Ashwake Herald", CharacterClass::FIGHTER, 26, 2, /*resourceCap=*/2, /*attackStatDelta=*/0);
+            makeFoe("boss_herald", CharacterClass::FIGHTER, 26, 2, /*resourceCap=*/2, /*attackStatDelta=*/0);
             {
                 Character* ally = findNpcCompanion();
                 std::string who = ally ? ally->name : "your companion";
-                dmSay("The Ashwake Herald bars the Vigil Spire. Keep potions ready — " + who + " will help.");
+                dmSay("The Bell-Herald of the Tithe bars the Vigil Spire. Keep potions ready — " + who + " will help.");
             }
             break;
         case SoloQuestBeat::ACT4_KINDLED:
@@ -670,10 +672,10 @@ void Game::grantAshenLantern(Character* actor) {
         hero->equippedWeapon = Item::make("Ashen Lantern", ItemType::WEAPON, 1, ItemRarity::RARE, -1);
         hero->gold += 25;
     }
-    dmSay("You seize the Ashen Lantern. Grey glass drinks the dark — Millhollow's hope is in your hands.");
+    dmSay("You lift the Ashen Lantern from the plinth. It is barely warm, and Wren is barely breathing.");
     addJournalEntry("Recovered the Ashen Lantern (questLanternRecovered).");
     addChatMessage("Quest", "Ashen Lantern recovered!");
-    lastEvent_ = "Ashen Lantern recovered! Rest if needed, then Onward to the shrine.";
+    lastEvent_ = "Ashen Lantern recovered! Rest if needed, then carry Wren Onward to the shrine.";
 }
 
 void Game::maybeFinishQuestOnResolutionEnter() {
@@ -684,10 +686,11 @@ void Game::maybeFinishQuestOnResolutionEnter() {
     }
     if (!questComplete_) {
         questComplete_ = true;
-        dmSay("You set the Ashen Lantern on the shrine. Warm ash-light blooms. Night-things withdraw from Millhollow.");
-        dmSay("Act 1 complete. Rest if you need, then Onward — Millhollow's Debt waits on the green.");
-        addJournalEntry("Ashen Lantern quest complete — lantern lit at the crypt shrine.");
-        addChatMessage("Quest", "Act 1 done — Ashen Lantern. Act 2 awaits.");
+        dmSay("From inside the glass, Wren's voice: \"I'm still here. Don't you dare cry.\" Night-things withdraw from Millhollow.");
+        dmSay("In the crypt dark, a figure in a grey mask watches. It writes something in a ledger, and is gone.");
+        dmSay("Act 1 complete: The Kindling. Rest if you need, then Onward — Millhollow's Debt waits on the green.");
+        addJournalEntry("Act 1 complete — Wren relit the Ashen Lantern with her own soul. A masked watcher saw it.");
+        addChatMessage("Quest", "Act 1 done — The Kindling. Act 2 awaits.");
     }
 }
 
@@ -763,9 +766,9 @@ bool Game::trySoloQuestSearch(Character* hero) {
 
     if (beat == SoloQuestBeat::MILLHOLLOW) {
         hero->gold += 8;
-        lastEvent_ = hero->name + " finds a soot-stained note: \"Hollowbarrow Crypt. Bring no open flame — the Ashen Lantern alone.\"";
-        dmSay("A villager's scrap points to Hollowbarrow Crypt. The Ashen Lantern must burn there — or return to the green.");
-        addJournalEntry("Clue: Hollowbarrow Crypt holds the Ashen Lantern; open flame is unwelcome.");
+        lastEvent_ = hero->name + " finds a black funeral ribbon snagged on a thorn — Wren's. Her trail runs toward Hollowbarrow Crypt.";
+        dmSay("The thieves ran for Hollowbarrow Crypt, and Wren ran after them. Follow.");
+        addJournalEntry("Clue: Wren's funeral ribbon on the road; the thieves fled toward Hollowbarrow Crypt.");
         addChatMessage("Search", lastEvent_);
         return true;
     }
@@ -786,8 +789,8 @@ bool Game::trySoloQuestSearch(Character* hero) {
         return true;
     }
     if (beat == SoloQuestBeat::RESOLUTION) {
-        lastEvent_ = hero->name + " finds soot-spirals on the altar — the shrine remembers every night the lantern burned.";
-        dmSay("Nothing more to take. Millhollow's thanks will be quieter than gold. Onward leads to Millhollow's Debt.");
+        lastEvent_ = hero->name + " finds a grey wax seal on the floor where the masked watcher stood.";
+        dmSay("Someone was keeping count tonight. Onward leads to Millhollow's Debt.");
         addJournalEntry("Searched the Ashen Shrine — Act 1 is won.");
         addChatMessage("Search", lastEvent_);
         return true;
@@ -922,13 +925,13 @@ void Game::spawnRoomContent() {
     // Authored set-pieces (AA step 2): bias mid-crawl / post-story; fall back to light trash.
     if (trySpawnAuthoredEncounter()) return;
 
-    auto goblin = std::make_unique<Character>("Goblin", CharacterClass::ROGUE, "goblin-" + std::to_string(getRandomInt(0, 1000000)));
+    auto goblin = newEnemy("enemy_wickthief", CharacterClass::ROGUE);
     goblin->maxHp += (roomCount_ * 2);
     goblin->currentHp = goblin->maxHp;
     enemies_.push_back(std::move(goblin));
 
     if (roomCount_ > 5) {
-        auto skeleton = std::make_unique<Character>("Skeleton", CharacterClass::FIGHTER, "skeleton-" + std::to_string(getRandomInt(0, 1000000)));
+        auto skeleton = newEnemy("enemy_ashbound", CharacterClass::FIGHTER);
         skeleton->maxHp += roomCount_;
         skeleton->currentHp = skeleton->maxHp;
         skeleton->armorClass += (roomCount_ / 10);
@@ -1380,29 +1383,37 @@ bool Game::transferEquippedItemToAlly(const std::string& fromName, int slot) {
     return true;
 }
 
-void Game::markBossSeen(const std::string& name) {
-    int tier = LootSystem::bossTier(name);
-    if (tier == 1) bossSeenGk_ = true;
-    else if (tier == 2) bossSeenSk_ = true;
-    else if (name.find("Ashen Drake") != std::string::npos || name.find("Dragon") != std::string::npos)
-        bossSeenDrake_ = true;
-    else if (name.find("Hollow Crown") != std::string::npos) bossSeenHollow_ = true;
-    else if (name.find("Ember Hydra") != std::string::npos) bossSeenHydra_ = true;
-    else if (name.find("Nightfang Matriarch") != std::string::npos) bossSeenNightfang_ = true;
-    else if (tier >= 3) bossSeenDrake_ = true;
+void Game::markBossSeen(const std::string& enemyId) {
+    // Boss-seen save flags key off the stable enemy ID.
+    if (enemyId == "boss_wick_king") bossSeenGk_ = true;
+    else if (enemyId == "boss_prior") bossSeenSk_ = true;
+    else if (enemyId == "boss_drake") bossSeenDrake_ = true;
+    else if (enemyId == "boss_hollow_crown") bossSeenHollow_ = true;
+    else if (enemyId == "boss_ember_hydra") bossSeenHydra_ = true;
+    else if (enemyId == "boss_nightfang") bossSeenNightfang_ = true;
+    else if (LootSystem::bossTier(enemyId) >= 3) bossSeenDrake_ = true;
 }
 
-void Game::spawnNamedBoss(const std::string& name, int tier) {
-    markBossSeen(name);
+std::unique_ptr<Character> Game::newEnemy(const std::string& enemyId, CharacterClass cl, const std::string& uidTag) {
+    std::string uid = enemyId + "-" + (uidTag.empty() ? std::string() : uidTag + "-")
+        + std::to_string(getRandomInt(0, 1000000));
+    auto foe = std::make_unique<Character>(bestiary::displayName(enemyId), cl, uid);
+    foe->enemyId = enemyId;
+    return foe;
+}
+
+void Game::spawnNamedBoss(const std::string& enemyId) {
+    markBossSeen(enemyId);
+    const int tier = LootSystem::bossTier(enemyId);
     CharacterClass cl = CharacterClass::FIGHTER;
     if (tier == 1) cl = CharacterClass::ROGUE;
     else if (tier == 3) cl = CharacterClass::WIZARD;
     else if (tier >= 4) {
-        if (name.find("Ember Hydra") != std::string::npos) cl = CharacterClass::WIZARD;
-        else if (name.find("Nightfang") != std::string::npos) cl = CharacterClass::ROGUE;
+        if (enemyId == "boss_ember_hydra") cl = CharacterClass::WIZARD;
+        else if (enemyId == "boss_nightfang") cl = CharacterClass::ROGUE;
         else cl = CharacterClass::FIGHTER;
     }
-    auto foe = std::make_unique<Character>(name, cl, name + "-" + std::to_string(getRandomInt(0, 1000000)));
+    auto foe = newEnemy(enemyId, cl);
     int hpBonus = 10 + tier * 8 + roomCount_;
     int acBonus = std::min(6, tier);
     int atkDelta = (tier >= 3) ? 0 : -1;
@@ -1435,7 +1446,7 @@ void Game::spawnNamedBoss(const std::string& name, int tier) {
 
 bool Game::hasLivingBossEnemy() const {
     for (const auto& e : enemies_) {
-        if (e && !e->isDead && LootSystem::isBossName(e->name)) return true;
+        if (e && !e->isDead && LootSystem::isBossId(e->enemyId)) return true;
     }
     return false;
 }
@@ -1487,8 +1498,8 @@ bool Game::trySpawnAuthoredEncounter() {
         if (easy) c.maxHp = std::max(4, c.maxHp - 4);
         c.currentHp = c.maxHp;
     };
-    auto pushFoe = [&](const std::string& name, CharacterClass cl, int hpFlat, int acFlat, int atkDelta) {
-        auto foe = std::make_unique<Character>(name, cl, name + "-" + std::to_string(getRandomInt(0, 1000000)));
+    auto pushFoe = [&](const std::string& enemyId, CharacterClass cl, int hpFlat, int acFlat, int atkDelta) {
+        auto foe = newEnemy(enemyId, cl);
         scaleHp(*foe, hpFlat);
         foe->armorClass += acFlat;
         foe->resources = 0;
@@ -1501,37 +1512,37 @@ bool Game::trySpawnAuthoredEncounter() {
     using Tid = EncounterAuthorship::TemplateId;
     switch (t.id) {
         case Tid::SHADOW_AMBUSH:
-            pushFoe("Goblin Ambusher", CharacterClass::ROGUE, roomCount_, 0, -1);
-            pushFoe("Goblin Ambusher", CharacterClass::ROGUE, roomCount_ - 2, 0, -2);
-            if (roomCount_ >= 8) pushFoe("Goblin", CharacterClass::ROGUE, roomCount_ / 2, 0, -2);
+            pushFoe("enemy_wickthief_cutpurse", CharacterClass::ROGUE, roomCount_, 0, -1);
+            pushFoe("enemy_wickthief_cutpurse", CharacterClass::ROGUE, roomCount_ - 2, 0, -2);
+            if (roomCount_ >= 8) pushFoe("enemy_wickthief", CharacterClass::ROGUE, roomCount_ / 2, 0, -2);
             break;
         case Tid::BONEBOUND_DUO:
-            pushFoe("Bonebound Skeleton", CharacterClass::FIGHTER, 6 + roomCount_, 1, -1);
-            pushFoe("Bonebound Skeleton", CharacterClass::FIGHTER, 4 + roomCount_, 1, -1);
+            pushFoe("enemy_ashbound_bonebound", CharacterClass::FIGHTER, 6 + roomCount_, 1, -1);
+            pushFoe("enemy_ashbound_bonebound", CharacterClass::FIGHTER, 4 + roomCount_, 1, -1);
             break;
         case Tid::RELIC_SNATCH:
-            pushFoe("Wolf", CharacterClass::ROGUE, 2 + roomCount_ / 2, 0, -2);
-            pushFoe("Wolf", CharacterClass::ROGUE, roomCount_ / 2, 0, -2);
-            pushFoe("Cache Goblin", CharacterClass::ROGUE, 4 + roomCount_, 0, -1);
+            pushFoe("enemy_gloamhound", CharacterClass::ROGUE, 2 + roomCount_ / 2, 0, -2);
+            pushFoe("enemy_gloamhound", CharacterClass::ROGUE, roomCount_ / 2, 0, -2);
+            pushFoe("enemy_wickthief_cache", CharacterClass::ROGUE, 4 + roomCount_, 0, -1);
             break;
         case Tid::KINGS_HERALD: {
             // Tease deeper bosses without spawning them; pick herald flavor by depth.
             if (roomCount_ >= 9) {
-                pushFoe("Bone Herald", CharacterClass::FIGHTER, 10 + roomCount_, 1, -1);
-                pushFoe("Skeleton", CharacterClass::FIGHTER, roomCount_, 0, -2);
+                pushFoe("enemy_crier_bone", CharacterClass::FIGHTER, 10 + roomCount_, 1, -1);
+                pushFoe("enemy_ashbound", CharacterClass::FIGHTER, roomCount_, 0, -2);
             } else {
-                pushFoe("Goblin Herald", CharacterClass::ROGUE, 8 + roomCount_, 1, -1);
-                pushFoe("Goblin Scout", CharacterClass::ROGUE, roomCount_, 0, -2);
+                pushFoe("enemy_crier_wick", CharacterClass::ROGUE, 8 + roomCount_, 1, -1);
+                pushFoe("enemy_wickthief_scout", CharacterClass::ROGUE, roomCount_, 0, -2);
             }
             break;
         }
         case Tid::WOLF_PACK:
-            pushFoe("Wolf", CharacterClass::ROGUE, 2 + roomCount_ / 2, 0, -2);
-            pushFoe("Wolf", CharacterClass::ROGUE, roomCount_ / 2, 0, -2);
-            if (roomCount_ >= 7) pushFoe("Wolf", CharacterClass::ROGUE, roomCount_ / 3, 0, -3);
+            pushFoe("enemy_gloamhound", CharacterClass::ROGUE, 2 + roomCount_ / 2, 0, -2);
+            pushFoe("enemy_gloamhound", CharacterClass::ROGUE, roomCount_ / 2, 0, -2);
+            if (roomCount_ >= 7) pushFoe("enemy_gloamhound", CharacterClass::ROGUE, roomCount_ / 3, 0, -3);
             break;
         case Tid::OGRE_ROADBLOCK:
-            pushFoe("Ogre", CharacterClass::FIGHTER, 18 + roomCount_, 2, 0);
+            pushFoe("enemy_brute", CharacterClass::FIGHTER, 18 + roomCount_, 2, 0);
             break;
         default:
             return false;
@@ -1569,17 +1580,17 @@ void Game::maybeSpawnBossEncounter() {
     const int endChance = easy ? 18 : 22;
 
     auto spawnGkCourt = [&]() {
-        spawnNamedBoss("Goblin King", 1);
+        spawnNamedBoss("boss_wick_king");
         if (difficulty_ >= static_cast<int>(Difficulty::MEDIUM)) {
-            auto scout = std::make_unique<Character>("Goblin Scout", CharacterClass::ROGUE, "gk-scout-" + std::to_string(getRandomInt(0, 1000000)));
+            auto scout = newEnemy("enemy_wickthief_scout", CharacterClass::ROGUE, "gk");
             scout->maxHp = std::max(4, scout->maxHp - 4);
             scout->currentHp = scout->maxHp;
             enemies_.push_back(std::move(scout));
         }
-        roomDescription_ = "Crude banners hang from spikes. The Goblin King bellows a challenge from a scrap-iron throne.";
-        lastEvent_ = "BOSS! Goblin King — stand ready!";
-        dmSay("The Goblin King! Original boss — richer spoils if you prevail.");
-        addJournalEntry("Boss: Goblin King.");
+        roomDescription_ = "Stolen candles gutter on every spike. The Wick King rises from a throne of scrap iron, his crown a ring of melted wax.";
+        lastEvent_ = "BOSS! The Wick King — stand ready!";
+        dmSay("The Wick King! Original boss — richer spoils if you prevail.");
+        addJournalEntry("Boss: The Wick King.");
     };
 
     if (roomCount_ >= 10 && !bossSeenGk_) {
@@ -1594,30 +1605,31 @@ void Game::maybeSpawnBossEncounter() {
     // Endgame-only originals — require story Acts 1–3 complete (or Boss Raid).
     if (endgame && roomCount_ >= endNeed && roll <= endChance) {
         int pick = getRandomInt(0, 2);
-        auto place = [&](const std::string& nm, int tier, const std::string& desc) {
-            spawnNamedBoss(nm, tier);
+        auto place = [&](const std::string& bossId, const std::string& desc) {
+            spawnNamedBoss(bossId);
+            const std::string nm = bestiary::displayName(bossId);
             roomDescription_ = desc;
             lastEvent_ = "BOSS! " + nm + " — stand ready!";
             dmSay("Endgame boss: " + nm + " (original). Legendary spoils possible.");
             addJournalEntry("Boss: " + nm + ".");
         };
         if (pick == 0) {
-            place("Hollow Crown", 4,
+            place("boss_hollow_crown",
                   "A throne of cracked millstone and bone. The Hollow Crown — an endgame tyrant of ash — rises without a face.");
             return;
         }
         if (pick == 1) {
-            place("Ember Hydra", 5,
+            place("boss_ember_hydra",
                   "Multiple ember-lit heads weave between pillars. The Ember Hydra hisses steam and bone-fire.");
             return;
         }
-        place("Nightfang Matriarch", 4,
+        place("boss_nightfang",
               "Webs thick as rope choke the vault. The Nightfang Matriarch — a vast spider-queen — descends.");
         return;
     }
 
     if (roomCount_ >= dragonNeed && roll <= dragonChance) {
-        spawnNamedBoss("Ashen Drake", 3);
+        spawnNamedBoss("boss_drake");
         roomDescription_ = "The chamber opens into a scorched hollow. An Ashen Drake coils around a cracked pillar — heat warps the air.";
         lastEvent_ = "BOSS! Ashen Drake — stand ready!";
         dmSay("Original menace: the Ashen Drake (not from any published module). Stand ready — this is a late-game trial.");
@@ -1625,11 +1637,11 @@ void Game::maybeSpawnBossEncounter() {
         return;
     }
     if (roomCount_ >= skNeed && roll <= skChance) {
-        spawnNamedBoss("Skeleton King", 2);
-        roomDescription_ = "Bone thrones and rusted crowns litter the floor. The Skeleton King rises, empty eyes fixed on you.";
-        lastEvent_ = "BOSS! Skeleton King — stand ready!";
-        dmSay("The Skeleton King claims this ossuary. Original foe — fight smart.");
-        addJournalEntry("Boss: Skeleton King.");
+        spawnNamedBoss("boss_prior");
+        roomDescription_ = "Bone thrones and rusted crowns litter the floor. The Ossuary Prior rises, a mitre of stacked skulls, empty eyes fixed on you.";
+        lastEvent_ = "BOSS! The Ossuary Prior — stand ready!";
+        dmSay("The Ossuary Prior claims this ossuary. Original foe — fight smart.");
+        addJournalEntry("Boss: The Ossuary Prior.");
         return;
     }
     if (roomCount_ >= gkNeed && roll <= gkChance) {
@@ -1637,8 +1649,8 @@ void Game::maybeSpawnBossEncounter() {
     }
 }
 
-void Game::noteBossDefeat(const std::string& foeName) {
-    int tier = LootSystem::bossTier(foeName);
+void Game::noteBossDefeat(const std::string& foeName, const std::string& foeId) {
+    int tier = LootSystem::bossTier(foeId);
     if (tier <= 0) return;
     dqBossesDefeated_++;
     // #46 base luck: 10+tier*8 — bosses better than trash, not BiS flood
@@ -1647,7 +1659,7 @@ void Game::noteBossDefeat(const std::string& foeName) {
     int gold = 20 * tier + getRandomInt(5, 15);
     // Endless Deep: Legendary only from endgame apex names (depth 10/20/…); other focused
     // modes (Raid/Challenge/Arena) allow Legendary on any focused-run boss defeat.
-    const bool endgameBossLoot = LootSystem::isEndgameBossName(foeName)
+    const bool endgameBossLoot = LootSystem::isEndgameBossId(foeId)
         || (isFocusedEndgameRun() && !isEndlessDeep());
     if (endgameBossLoot) {
         xp += 80;
@@ -1659,14 +1671,14 @@ void Game::noteBossDefeat(const std::string& foeName) {
     pendingBossLootLuck_ += luck;
     pendingBossGoldBonus_ += gold;
     dmSay("Boss fallen: " + foeName + "! Greater rewards await.");
-    maybeGrantRaidKeyFromBoss(foeName);
+    maybeGrantRaidKeyFromBoss(foeName, foeId);
 }
 
-void Game::maybeGrantRaidKeyFromBoss(const std::string& foeName) {
+void Game::maybeGrantRaidKeyFromBoss(const std::string& foeName, const std::string& foeId) {
     if (!endgameContentAllowed()) return;
-    int tier = LootSystem::bossTier(foeName);
-    if (tier < 3 && !LootSystem::isEndgameBossName(foeName) && !isFocusedEndgameRun()) return;
-    int chance = isFocusedEndgameRun() ? 55 : (LootSystem::isEndgameBossName(foeName) ? 40 : 22);
+    int tier = LootSystem::bossTier(foeId);
+    if (tier < 3 && !LootSystem::isEndgameBossId(foeId) && !isFocusedEndgameRun()) return;
+    int chance = isFocusedEndgameRun() ? 55 : (LootSystem::isEndgameBossId(foeId) ? 40 : 22);
     if (getRandomInt(1, 100) <= chance) {
         pendingRaidKeyDrop_ = true;
         dmSay("A Raid Key glints among the spoils — check the menu (max 3 held per calendar day).");
@@ -1824,9 +1836,9 @@ bool Game::beginBossRaidFromCurrent() {
     roomCount_ = std::max(roomCount_, 20);
 
     int pick = getRandomInt(0, 2);
-    if (pick == 0) spawnNamedBoss("Hollow Crown", 4);
-    else if (pick == 1) spawnNamedBoss("Ember Hydra", 5);
-    else spawnNamedBoss("Nightfang Matriarch", 4);
+    if (pick == 0) spawnNamedBoss("boss_hollow_crown");
+    else if (pick == 1) spawnNamedBoss("boss_ember_hydra");
+    else spawnNamedBoss("boss_nightfang");
 
     roomDescription_ = "Raid arena — a sealed endgame vault. One Raid Key spent. Defeat the raid boss for rich spoils.";
     lastEvent_ = "BOSS RAID! Stand ready!";
@@ -1917,21 +1929,19 @@ bool Game::beginChallengeDungeonFromCurrent(int legendaryChancePercent) {
 
     // Original vault: endgame apex + SRD-safe adds (no WotC module text).
     int pick = getRandomInt(0, 2);
-    if (pick == 0) spawnNamedBoss("Hollow Crown", 4);
-    else if (pick == 1) spawnNamedBoss("Ember Hydra", 5);
-    else spawnNamedBoss("Nightfang Matriarch", 4);
+    if (pick == 0) spawnNamedBoss("boss_hollow_crown");
+    else if (pick == 1) spawnNamedBoss("boss_ember_hydra");
+    else spawnNamedBoss("boss_nightfang");
 
     {
-        auto add = std::make_unique<Character>("Ogre", CharacterClass::FIGHTER,
-            "cd-ogre-" + std::to_string(getRandomInt(0, 1000000)));
+        auto add = newEnemy("enemy_brute", CharacterClass::FIGHTER, "cd");
         add->maxHp = std::max(18, add->maxHp + 10 + roomCount_ / 2);
         add->currentHp = add->maxHp;
         add->armorClass += 1;
         enemies_.push_back(std::move(add));
     }
     if (difficulty_ >= static_cast<int>(Difficulty::MEDIUM)) {
-        auto wolf = std::make_unique<Character>("Wolf", CharacterClass::ROGUE,
-            "cd-wolf-" + std::to_string(getRandomInt(0, 1000000)));
+        auto wolf = newEnemy("enemy_gloamhound", CharacterClass::ROGUE, "cd");
         wolf->maxHp = std::max(8, wolf->maxHp + 4);
         wolf->currentHp = wolf->maxHp;
         enemies_.push_back(std::move(wolf));
@@ -1994,8 +2004,8 @@ void Game::spawnArenaWave(int wave) {
     pendingBossAllowLegendary_ = false;
     pendingBossGoldBonus_ = 0;
 
-    auto pushFoe = [&](const std::string& name, CharacterClass cl, int hpFlat, int acFlat, int atkDelta) {
-        auto foe = std::make_unique<Character>(name, cl, name + "-ar-" + std::to_string(getRandomInt(0, 1000000)));
+    auto pushFoe = [&](const std::string& enemyId, CharacterClass cl, int hpFlat, int acFlat, int atkDelta) {
+        auto foe = newEnemy(enemyId, cl, "ar");
         foe->maxHp = std::max(6, foe->maxHp + hpFlat);
         foe->currentHp = foe->maxHp;
         foe->armorClass += acFlat;
@@ -2010,32 +2020,32 @@ void Game::spawnArenaWave(int wave) {
     arenaWave_ = w;
     switch (w) {
         case 1:
-            pushFoe("Goblin", CharacterClass::ROGUE, 2, 0, -2);
-            pushFoe("Goblin", CharacterClass::ROGUE, 0, 0, -2);
+            pushFoe("enemy_wickthief", CharacterClass::ROGUE, 2, 0, -2);
+            pushFoe("enemy_wickthief", CharacterClass::ROGUE, 0, 0, -2);
             roomDescription_ = "Ember Ring — Wave 1. Ashen sand, roaring crowd. Prove yourself against the opener pack.";
             break;
         case 2:
-            pushFoe("Wolf", CharacterClass::ROGUE, 4, 0, -2);
-            pushFoe("Skeleton", CharacterClass::FIGHTER, 2, 0, -2);
+            pushFoe("enemy_gloamhound", CharacterClass::ROGUE, 4, 0, -2);
+            pushFoe("enemy_ashbound", CharacterClass::FIGHTER, 2, 0, -2);
             roomDescription_ = "Ember Ring — Wave 2. Bone and fang circle the ring.";
             break;
         case 3:
-            pushFoe("Ogre", CharacterClass::FIGHTER, 14 + roomCount_ / 2, 1, 0);
+            pushFoe("enemy_brute", CharacterClass::FIGHTER, 14 + roomCount_ / 2, 1, 0);
             roomDescription_ = "Ember Ring — Wave 3. An ogre stomps into the ash.";
             break;
         case 4:
-            pushFoe("Ogre", CharacterClass::FIGHTER, 16 + roomCount_ / 2, 2, 0);
-            pushFoe("Wolf", CharacterClass::ROGUE, 4, 0, -2);
+            pushFoe("enemy_brute", CharacterClass::FIGHTER, 16 + roomCount_ / 2, 2, 0);
+            pushFoe("enemy_gloamhound", CharacterClass::ROGUE, 4, 0, -2);
             if (difficulty_ >= static_cast<int>(Difficulty::MEDIUM)) {
-                pushFoe("Skeleton", CharacterClass::FIGHTER, 4, 0, -1);
+                pushFoe("enemy_ashbound", CharacterClass::FIGHTER, 4, 0, -1);
             }
             roomDescription_ = "Ember Ring — Wave 4. The crowd chants for blood — a heavy pack.";
             break;
         default: {
             int pick = getRandomInt(0, 2);
-            if (pick == 0) spawnNamedBoss("Hollow Crown", 4);
-            else if (pick == 1) spawnNamedBoss("Ember Hydra", 5);
-            else spawnNamedBoss("Nightfang Matriarch", 4);
+            if (pick == 0) spawnNamedBoss("boss_hollow_crown");
+            else if (pick == 1) spawnNamedBoss("boss_ember_hydra");
+            else spawnNamedBoss("boss_nightfang");
             roomDescription_ = "Ember Ring — Wave 5 (Finale). An endgame apex enters. Legendary possible (7%).";
             break;
         }
@@ -2137,8 +2147,8 @@ void Game::spawnEndlessDepth(int depth) {
     pendingBossAllowLegendary_ = false;
     pendingBossGoldBonus_ = 0;
 
-    auto pushFoe = [&](const std::string& name, CharacterClass cl, int hpFlat, int acFlat, int atkDelta) {
-        auto foe = std::make_unique<Character>(name, cl, name + "-ed-" + std::to_string(getRandomInt(0, 1000000)));
+    auto pushFoe = [&](const std::string& enemyId, CharacterClass cl, int hpFlat, int acFlat, int atkDelta) {
+        auto foe = newEnemy(enemyId, cl, "ed");
         foe->maxHp = std::max(6, foe->maxHp + hpFlat);
         foe->currentHp = foe->maxHp;
         foe->armorClass += acFlat;
@@ -2160,9 +2170,9 @@ void Game::spawnEndlessDepth(int depth) {
 
     if (d % ENDLESS_APEX_EVERY == 0) {
         int pick = getRandomInt(0, 2);
-        if (pick == 0) spawnNamedBoss("Hollow Crown", 4);
-        else if (pick == 1) spawnNamedBoss("Ember Hydra", 5);
-        else spawnNamedBoss("Nightfang Matriarch", 4);
+        if (pick == 0) spawnNamedBoss("boss_hollow_crown");
+        else if (pick == 1) spawnNamedBoss("boss_ember_hydra");
+        else spawnNamedBoss("boss_nightfang");
         // Scale apex with depth beyond first apex.
         if (!enemies_.empty() && d > ENDLESS_APEX_EVERY) {
             Character* apex = enemies_.back().get();
@@ -2172,19 +2182,19 @@ void Game::spawnEndlessDepth(int depth) {
             apex->armorClass += std::min(3, d / 20);
         }
         if (d >= 15 || difficulty_ >= static_cast<int>(Difficulty::MEDIUM)) {
-            pushFoe("Wolf", CharacterClass::ROGUE, 4 + hpScale / 2, 0, -1);
+            pushFoe("enemy_gloamhound", CharacterClass::ROGUE, 4 + hpScale / 2, 0, -1);
         }
         roomDescription_ = "Ashen Deep — Depth " + std::to_string(d)
             + " (Apex). The Deep opens a throne of cinders. Legendary possible (7%).";
         lastEvent_ = "ENDLESS APEX DEPTH " + std::to_string(d) + "! Stand ready!";
         dmSay("Ashen Deep apex at depth " + std::to_string(d) + ". Endgame foe — Legendary gated at 7%.");
     } else if (d % ENDLESS_MILESTONE_EVERY == 0) {
-        pushFoe("Ogre", CharacterClass::FIGHTER, 14 + hpScale, 1 + acScale, atkScale);
+        pushFoe("enemy_brute", CharacterClass::FIGHTER, 14 + hpScale, 1 + acScale, atkScale);
         if (d >= 10 || difficulty_ >= static_cast<int>(Difficulty::MEDIUM)) {
-            pushFoe("Skeleton", CharacterClass::FIGHTER, 4 + hpScale / 2, acScale, -1);
+            pushFoe("enemy_ashbound", CharacterClass::FIGHTER, 4 + hpScale / 2, acScale, -1);
         }
         if (difficulty_ >= static_cast<int>(Difficulty::HARD)) {
-            pushFoe("Wolf", CharacterClass::ROGUE, 2 + hpScale / 2, 0, -1);
+            pushFoe("enemy_gloamhound", CharacterClass::ROGUE, 2 + hpScale / 2, 0, -1);
         }
         roomDescription_ = "Ashen Deep — Depth " + std::to_string(d)
             + " (Milestone). An elite pack bars the shaft. Retreat is wise — or press deeper.";
@@ -2192,12 +2202,12 @@ void Game::spawnEndlessDepth(int depth) {
         dmSay("Milestone depth " + std::to_string(d) + ". You may Retreat from Settings with spoils, or Onward deeper.");
     } else {
         // Trash pack — denser with depth.
-        pushFoe("Goblin", CharacterClass::ROGUE, 2 + hpScale, acScale / 2, -2 + (d >= 8 ? 1 : 0));
-        pushFoe("Goblin", CharacterClass::ROGUE, hpScale, 0, -2);
-        if (d >= 3) pushFoe("Wolf", CharacterClass::ROGUE, 2 + hpScale / 2, 0, -2 + (atkScale > 0 ? 1 : 0));
-        if (d >= 6) pushFoe("Skeleton", CharacterClass::FIGHTER, 2 + hpScale / 2, acScale, -1);
-        if (d >= 9) pushFoe("Goblin", CharacterClass::ROGUE, hpScale / 2, 0, -1);
-        if (d >= 14) pushFoe("Skeleton", CharacterClass::FIGHTER, 4 + hpScale / 2, acScale, atkScale);
+        pushFoe("enemy_wickthief", CharacterClass::ROGUE, 2 + hpScale, acScale / 2, -2 + (d >= 8 ? 1 : 0));
+        pushFoe("enemy_wickthief", CharacterClass::ROGUE, hpScale, 0, -2);
+        if (d >= 3) pushFoe("enemy_gloamhound", CharacterClass::ROGUE, 2 + hpScale / 2, 0, -2 + (atkScale > 0 ? 1 : 0));
+        if (d >= 6) pushFoe("enemy_ashbound", CharacterClass::FIGHTER, 2 + hpScale / 2, acScale, -1);
+        if (d >= 9) pushFoe("enemy_wickthief", CharacterClass::ROGUE, hpScale / 2, 0, -1);
+        if (d >= 14) pushFoe("enemy_ashbound", CharacterClass::FIGHTER, 4 + hpScale / 2, acScale, atkScale);
         roomDescription_ = "Ashen Deep — Depth " + std::to_string(d)
             + ". Ashen shafts plunge without end. Foes thicken with every descent.";
         lastEvent_ = "ENDLESS DEPTH " + std::to_string(d) + "! Stand ready!";
@@ -2347,13 +2357,13 @@ bool Game::isAllyAi(const Character* c) const {
     return c->aiControlled;
 }
 
-void Game::grantKillLoot(Character* actor, const std::string& foeName) {
+void Game::grantKillLoot(Character* actor, const std::string& foeName, const std::string& foeId) {
     int gold = 8 + (roomCount_ * 3) + getRandomInt(0, 7);
-    if (LootSystem::isBossName(foeName)) {
-        noteBossDefeat(foeName);
+    if (LootSystem::isBossId(foeId)) {
+        noteBossDefeat(foeName, foeId);
         gold += pendingBossGoldBonus_;
         pendingBossGoldBonus_ = 0;
-        gold = static_cast<int>(gold * (1.5 + 0.25 * LootSystem::bossTier(foeName)));
+        gold = static_cast<int>(gold * (1.5 + 0.25 * LootSystem::bossTier(foeId)));
     }
     Character* looter = actor;
     if (!looter || looter->isDead) {
@@ -2368,7 +2378,8 @@ void Game::grantKillLoot(Character* actor, const std::string& foeName) {
     std::string msg = "Felled " + foeName + "! " + looter->name + " loots " +
                       std::to_string(gold) + " gold.";
     addChatMessage("Combat", msg);
-    dmSay("The " + foeName + " falls. " + looter->name + " claims " + std::to_string(gold) + " gold.");
+    const bool hasArticle = foeName.rfind("The ", 0) == 0 || foeName.rfind("Collector ", 0) == 0;
+    dmSay((hasArticle ? foeName : "The " + foeName) + " falls. " + looter->name + " claims " + std::to_string(gold) + " gold.");
     addJournalEntry("Defeated " + foeName + " — " + looter->name + " loots " + std::to_string(gold) + " gold.");
     lastEvent_ = msg;
 }
@@ -2558,7 +2569,7 @@ void Game::enterClearedRoom(Character* actor) {
         addChatMessage("Combat", lastEvent_);
     }
     if (questLanternRecovered_ && static_cast<SoloQuestBeat>(questBeat_) == SoloQuestBeat::LANTERN_VAULT) {
-        dmSay("The vault is clear. Carry the Ashen Lantern Onward to the shrine — or Search and Rest first.");
+        dmSay("The vault is clear. Carry the Ashen Lantern and Wren Onward to the shrine — or Search and Rest first.");
     } else if (wasSetPiece) {
         dmSay("Set-piece cleared. Search for more, take a Short Rest, or press Onward.");
     } else {
@@ -2572,8 +2583,7 @@ void Game::purgeDownedEnemies() {
     Character* looter = getCurrentActor();
     for (auto it = enemies_.begin(); it != enemies_.end(); ) {
         if ((*it)->currentHp <= 0 || (*it)->isDowned) {
-            std::string foeName = (*it)->name;
-            grantKillLoot(looter, foeName);
+            grantKillLoot(looter, (*it)->name, (*it)->enemyId);
             removeFromTurnOrder(it->get());
             it = enemies_.erase(it);
             removed = true;
@@ -2770,7 +2780,7 @@ void Game::tryFightShield(Character* defender, int& incomingDamage) {
 }
 
 void Game::dmSay(const std::string& line) {
-    addChatMessage("DM", line);
+    addChatMessage("Keeper", line); // narrator = the Lanternkeeper
 }
 
 int Game::proficiencyBonus() const {
@@ -2836,8 +2846,7 @@ void Game::resolveEnemyDefeated(Character* actor, int /*targetEnemyIndex*/) {
     // Strip turnOrder_ entries BEFORE destroying the Character (no dangling pointers).
     for (auto it = enemies_.begin(); it != enemies_.end(); ) {
         if ((*it)->currentHp <= 0) {
-            std::string foeName = (*it)->name;
-            grantKillLoot(actor, foeName); // sets Felled … lastEvent_ + journal/DM
+            grantKillLoot(actor, (*it)->name, (*it)->enemyId); // sets Felled … lastEvent_ + journal/DM
             removeFromTurnOrder(it->get());
             it = enemies_.erase(it);
         } else ++it;
@@ -3753,10 +3762,10 @@ std::string Game::getPartyStatus() const {
     else if (questAct2Complete_ && !isSoloQuestScripted()) ss << "Acts 1–2 done — Act 3 pending or onward\n";
     else if (isAct2Beat(questBeat_)) ss << "Quest: Millhollow's Debt — " << soloQuestBeatName(questBeat_) << "\n";
     else if (questComplete_ && !isSoloQuestScripted()) ss << "Quest complete: Ashen Lantern recovered\n";
-    else if (isAct1Beat(questBeat_)) ss << "Quest: Ashen Lantern — " << soloQuestBeatName(questBeat_) << "\n";
+    else if (isAct1Beat(questBeat_)) ss << "Quest: The Kindling — " << soloQuestBeatName(questBeat_) << "\n";
     ss << "Difficulty: " << difficultyName(difficulty_) << "\n";
     if (gameOver_) ss << "Game Over\n";
-    if (dmOnlyTable_ && !dmName_.empty()) ss << "DM: " << dmName_ << "\n";
+    if (dmOnlyTable_ && !dmName_.empty()) ss << "Lanternkeeper: " << dmName_ << "\n";
     if (Character* companion = findNpcCompanion()) {
         ss << "Companion: " << companion->name
            << (companion->aiControlled ? " [Auto]" : " [Player]") << "\n";
@@ -3789,7 +3798,8 @@ std::string Game::getBattleRoster() const {
         if (i) ss << ";";
         ss << "E," << enemies_[i]->name << ","
            << static_cast<int>(enemies_[i]->characterClass) << ","
-           << enemies_[i]->currentHp << "," << enemies_[i]->maxHp;
+           << enemies_[i]->currentHp << "," << enemies_[i]->maxHp << ","
+           << enemies_[i]->enemyId; // sprite lookup keys off this ID (MainActivity.spriteForEnemyId)
     }
     return ss.str();
 }
@@ -3840,7 +3850,8 @@ std::string Game::serialize() {
     ss << "|";
     // Section 3: Enemies
     for (const auto& e : enemies_) {
-        ss << e->name << "," << static_cast<int>(e->characterClass) << "," << e->level << "," << e->xp << "," << e->currentHp << "," << e->maxHp << "," << e->resources << "," << e->maxResources << "," << e->pendingStatPoints << "," << e->attributes.strength << "," << e->attributes.dexterity << "," << e->attributes.constitution << "," << e->attributes.intelligence << "," << e->attributes.wisdom << "," << e->attributes.charisma << "," << e->gold << "," << e->initiative << "," << e->uid << ";";
+        ss << e->name << "," << static_cast<int>(e->characterClass) << "," << e->level << "," << e->xp << "," << e->currentHp << "," << e->maxHp << "," << e->resources << "," << e->maxResources << "," << e->pendingStatPoints << "," << e->attributes.strength << "," << e->attributes.dexterity << "," << e->attributes.constitution << "," << e->attributes.intelligence << "," << e->attributes.wisdom << "," << e->attributes.charisma << "," << e->gold << "," << e->initiative << "," << e->uid
+           << "," << e->enemyId << ";"; // v2.20+: stable enemy ID (older readers ignore it)
     }
     ss << "|";
     // Section 4: Chat History
@@ -3996,6 +4007,8 @@ void Game::deserialize(const std::string& data) {
             std::getline(ss_p, ini_s, ',');
             std::getline(ss_p, uid, ',');
 
+            // Legacy companion rename (trademark hygiene): "Melf (NPC)" -> "Corvin (NPC)".
+            if (n == "Melf (NPC)") n = "Corvin (NPC)";
             auto p = std::make_unique<Character>(n, static_cast<CharacterClass>(std::stoi(cl_s)), uid);
             p->level = std::stoi(lvl_s);
             p->xp = std::stoi(xp_s);
@@ -4098,6 +4111,15 @@ void Game::deserialize(const std::string& data) {
             e->attributes = {std::stoi(str_s), std::stoi(dex_s), std::stoi(con_s), std::stoi(int_s), std::stoi(wis_s), std::stoi(cha_s)};
             e->gold = std::stoi(gold_s);
             e->initiative = std::stoi(ini_s);
+            // v2.20+: stable enemy ID. Older saves / older hosts have none — migrate from the
+            // legacy display name once, then show the current bestiary display name.
+            std::string id_s;
+            if (std::getline(ss_e, id_s, ',') && bestiary::find(id_s)) {
+                e->enemyId = id_s;
+            } else {
+                e->enemyId = bestiary::migrateLegacyName(n);
+            }
+            if (bestiary::find(e->enemyId)) e->name = bestiary::displayName(e->enemyId);
             e->calculateAC();
             enemies_.push_back(std::move(e));
         }

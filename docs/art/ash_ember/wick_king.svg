@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- THE WICK KING — Ashen Lantern original boss: lord of the Wickthieves, crowned in stolen candles,
+       wax running down into a beard, carrying a caged stolen soul. Three-quarter facing left.
+       VectorDrawable-safe: paths/circles, flat fills + fill-opacity, evenodd cut-outs.
+       Palette: void #0B0A0C, soot #1C1A1E, far-soot #141216, wax #2A262C, rim #3A3640,
+                gloam #5FD3C6, amber #F2A541, amber-core #FFD27A -->
+
+  <!-- trophy chain of stolen (dead) lanterns hanging from the right hand -->
+  <path fill="#141216" d="M400 300 L404 300 L404 330 L400 330 Z M424 300 L428 300 L428 368 L424 368 Z M446 296 L450 296 L450 344 L446 344 Z"/>
+  <path fill="#141216" fill-rule="evenodd" d="
+    M390 330 L414 330 L418 338 L418 366 L412 372 L392 372 L386 366 L386 338 Z M392 340 L400 340 L400 362 L392 362 Z M404 340 L412 340 L412 362 L404 362 Z
+    M414 368 L438 368 L442 376 L442 404 L436 410 L416 410 L410 404 L410 376 Z M416 378 L424 378 L424 400 L416 400 Z M428 378 L436 378 L436 400 L428 400 Z
+    M436 344 L460 344 L464 352 L464 380 L458 386 L438 386 L432 380 L432 352 Z M438 354 L446 354 L446 376 L438 376 Z M450 354 L458 354 L458 376 L450 376 Z"/>
+  <path fill="#141216" d="M396 296 L454 290 L454 298 L396 304 Z"/>
+
+  <!-- great robe: broad mantle, pinched waist, hem flaring and trailing away from the light -->
+  <path fill="#1C1A1E" d="
+    M196 196
+    Q250 178 316 196
+    Q352 206 372 232
+    L380 290 Q372 330 392 382 Q414 432 456 476
+    L430 470 L422 484 L402 468 L388 484 L368 468 L350 484 L332 468 L314 484 L296 468 L278 484 L260 468 L242 484 L224 468 L206 484 L188 468 L170 484 L154 468 L132 476 L112 470
+    Q146 424 158 372 Q168 330 160 290
+    L150 240
+    Q166 208 196 196 Z"/>
+  <!-- wax-encrusted shoulders: drips and spurs -->
+  <path fill="#1C1A1E" d="M150 240 L128 214 L156 222 L150 196 L176 212 L184 190 L196 200 Z"/>
+  <path fill="#1C1A1E" d="M372 232 L398 206 L388 236 L414 232 L390 254 Z"/>
+  <!-- inner robe fold (void line) -->
+  <path fill="#0B0A0C" d="M252 270 L260 270 L276 468 L250 468 Z"/>
+
+  <!-- right arm, clawed hand gripping the trophy chain -->
+  <path fill="#1C1A1E" d="M350 230 L392 268 L410 290 L420 284 L414 296 L426 300 L410 304 L404 314 L398 304 L378 296 L338 260 Z"/>
+
+  <path fill="none" stroke="#2E2B33" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M338 260 L378 296 L398 304"/>
+  <!-- scepter: lantern-hook staff with a caged stolen soul -->
+  <path fill="#1C1A1E" d="M110 480 L122 480 L132 132 L120 132 Z"/>
+  <path fill="#1C1A1E" d="M126 132 C126 104 110 92 94 98 C80 104 78 120 88 128 L82 138 L102 134 L98 122 L94 126 C90 118 94 108 104 108 C114 108 120 118 120 132 Z"/>
+  <path fill="#1C1A1E" d="M124 108 L148 108 L148 112 L124 112 Z"/>
+  <!-- the caged soul (gloam glow) -->
+  <circle cx="148" cy="148" r="34" fill="#5FD3C6" fill-opacity="0.10"/>
+  <circle cx="148" cy="150" r="18" fill="#5FD3C6" fill-opacity="0.30"/>
+  <path fill="#5FD3C6" d="M148 132 Q160 146 154 160 Q148 166 142 160 Q136 146 148 132 Z"/>
+  <path fill="#1C1A1E" fill-rule="evenodd" d="
+    M130 120 L166 120 L172 130 L172 170 L164 180 L132 180 L124 170 L124 130 Z
+    M132 130 L142 130 L142 170 L132 170 Z
+    M146 130 L150 130 L150 170 L146 170 Z
+    M154 130 L164 130 L164 170 L154 170 Z"/>
+  <path fill="#1C1A1E" d="M138 180 L158 180 L152 190 L144 190 Z M146 112 L150 112 L150 120 L146 120 Z"/>
+  <!-- left arm raised to the scepter -->
+  <path fill="#1C1A1E" d="M168 214 L150 262 L132 248 L118 250 L120 240 L112 236 L124 232 L130 226 L144 236 L160 206 Z"/>
+
+  <!-- head: deep cowl -->
+  <path fill="#1C1A1E" d="M200 196 Q196 140 222 116 Q250 96 282 112 Q306 132 302 196 Z"/>
+  <path fill="#0B0A0C" d="M212 196 Q210 150 232 132 Q254 120 276 134 Q292 152 290 196 Z"/>
+  <!-- wax beard: drips hanging from the face -->
+  <path fill="#2A262C" d="
+    M214 176 L290 176 L288 186
+    L282 246 L276 190 L270 262 L262 192 L256 278 L248 192 L240 254 L232 190 L224 236 L218 188 Z"/>
+  <!-- gloam eyes -->
+  <circle cx="236" cy="160" r="12" fill="#5FD3C6" fill-opacity="0.15"/>
+  <circle cx="266" cy="158" r="12" fill="#5FD3C6" fill-opacity="0.15"/>
+  <path fill="#5FD3C6" d="M226 160 L244 154 L246 160 L230 165 Z"/>
+  <path fill="#5FD3C6" d="M258 154 L276 158 L274 163 L258 160 Z"/>
+
+  <!-- crown of melted candles fused to the cowl -->
+  <path fill="#2A262C" d="M206 128 Q250 104 298 126 L300 138 Q250 118 204 142 Z"/>
+  <g fill="#2A262C">
+    <path d="M210 134 L198 92 L210 88 L222 130 Z"/>
+    <path d="M226 122 L226 58 L238 58 L238 118 Z"/>
+    <path d="M244 116 L248 44 L260 46 L258 116 Z"/>
+    <path d="M264 118 L270 70 L282 72 L276 122 Z"/>
+    <path d="M284 126 L294 92 L304 96 L296 132 Z"/>
+    <!-- wax runs -->
+    <path d="M204 96 Q198 112 200 138 L206 138 Z"/>
+    <path d="M238 70 Q244 90 242 118 L238 118 Z"/>
+    <path d="M260 60 Q266 84 262 110 L258 112 Z"/>
+    <path d="M282 84 Q288 100 286 120 L280 122 Z"/>
+  </g>
+  <!-- snuffed wicks + smoke -->
+  <path fill="#0B0A0C" d="M203 90 L205 90 L203 82 L201 82 Z M275 72 L277 72 L277 64 L275 64 Z "/>
+  <path fill="none" stroke="#3A3640" stroke-width="2" stroke-linecap="round" d="M202 80 Q196 70 204 62 Q210 54 204 44 M276 62 Q282 52 276 44 Q270 36 278 26"/>
+  <!-- three lit candles (the only warm accent) -->
+  <circle cx="232" cy="44" r="20" fill="#F2A541" fill-opacity="0.12"/>
+  <circle cx="254" cy="30" r="22" fill="#F2A541" fill-opacity="0.12"/>
+  <circle cx="299" cy="80" r="14" fill="#F2A541" fill-opacity="0.10"/>
+  <path fill="#F2A541" d="M232 34 Q240 46 236 54 Q232 58 228 54 Q224 46 232 34 Z"/>
+  <path fill="#F2A541" d="M254 18 Q263 32 258 42 Q254 46 250 42 Q246 32 254 18 Z"/>
+  <path fill="#F2A541" d="M299 76 Q305 84 302 90 Q299 93 296 90 Q293 84 299 76 Z"/>
+  <path fill="#FFD27A" d="M254 30 Q257 36 255 41 Q253 42 252 40 Q251 36 254 30 Z"/>
+
+  <!-- rim light on lantern-facing edges -->
+  <path fill="none" stroke="#3A3640" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M200 196 Q196 140 222 116"/>
+  <path fill="none" stroke="#3A3640" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M150 240 L160 300 Q156 380 132 470"/>
+  <path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" d="M120 132 L110 480"/>
+</svg>

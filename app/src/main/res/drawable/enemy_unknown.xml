@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Neutral "unknown foe" shadow (Ash & Ember palette). Used only when an enemy ID has no
+     sprite entry (e.g. a newer host sends an ID this build doesn't know). Original art. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="256dp"
+    android:height="256dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- hooded body -->
+    <path
+        android:fillColor="#1C1A1E"
+        android:pathData="M256 120 Q206 120 190 176 L176 250 Q150 330 150 478 L362 478 Q362 330 336 250 L322 176 Q306 120 256 120 Z" />
+    <!-- rim light (party side, left) -->
+    <path
+        android:strokeColor="#3A3640"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M190 176 L176 250 Q150 330 150 478" />
+    <!-- hood mouth -->
+    <path
+        android:fillColor="#0B0A0C"
+        android:pathData="M216 196 Q256 172 296 196 Q300 244 256 256 Q212 244 216 196 Z" />
+    <!-- gloam eyes -->
+    <path
+        android:fillColor="#225FD3C6"
+        android:pathData="M218 218 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0 Z M254 218 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0 Z" />
+    <path
+        android:fillColor="#5FD3C6"
+        android:pathData="M226 220 L246 212 L247 218 L229 225 Z M266 212 L286 220 L283 225 L265 218 Z" />
+</vector>

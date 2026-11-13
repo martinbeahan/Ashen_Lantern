@@ -87,7 +87,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="44dp"
-                android:text="DM voice (on-device TTS)"
+                android:text="Lanternkeeper voice (on-device TTS)"
                 android:textColor="@color/parchment"
                 android:buttonTint="@color/gold"
                 android:paddingBottom="4dp" />

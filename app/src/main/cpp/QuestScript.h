@@ -7,14 +7,14 @@ namespace dnd {
 
 /**
  * Solo story acts — original wording only.
- * Act 1 "Ashen Lantern" (beats 1–6). Act 2 "Millhollow's Debt" (beats 8–13).
+ * Act 1 "The Kindling" (beats 1–6; was "Ashen Lantern"). Act 2 "Millhollow's Debt" (beats 8–13).
  * Act 3 "Emberdeep Breach" (beats 14–19). Act 4 "Ashwake Vigil" (beats 20–25).
  * POST_QUEST (7) = procedural rooms after full story (or legacy mid-save).
  * Compatible with 5e SRD monster/rule concepts only. Not an official D&D product.
  */
 enum class SoloQuestBeat : int {
-    NONE = 0,          // Online Host-as-DM / client / crawl — procedural
-    // Act 1 — Ashen Lantern
+    NONE = 0,          // Online host (Lanternkeeper) / client / crawl — procedural
+    // Act 1 — The Kindling (was "Ashen Lantern")
     MILLHOLLOW = 1,
     THORNPATH = 2,
     CRYPT_DOORS = 3,
@@ -111,7 +111,7 @@ inline const char* soloQuestActTitle(int beat) {
     if (b >= SoloQuestBeat::ACT2_GREEN && b <= SoloQuestBeat::ACT2_SETTLED)
         return "Millhollow's Debt";
     if (b >= SoloQuestBeat::MILLHOLLOW && b <= SoloQuestBeat::RESOLUTION)
-        return "Ashen Lantern";
+        return "The Kindling";
     return "";
 }
 
@@ -166,58 +166,77 @@ struct QuestBeatScript {
     const char* journalOnEnter;
 };
 
-// Act 1 — Ashen Lantern (beat IDs 1–6). Original wording only.
+// Act 1 — "The Kindling" (beat IDs 1–6; was "Ashen Lantern"). Original wording only.
+// Hook: the protagonist's mother is kindled into the Lantern; Wickthieves steal it mid-ceremony,
+// the shadows stand up, and sister Wren gives chase. First fight (a Wickthief Scout) is in beat 1,
+// so it starts within ~60s. Act 1 ends with Wren relighting the Lantern and a masked watcher.
+// Same beat ids / titles as before, so saves, wipe-rollback and stage backdrops keep working.
+inline const char* const kKindlingTitleCard =
+    "In Millhollow, we do not bury our dead. We burn them into the light.";
+
 inline const QuestBeatScript kAshenLanternBeats[] = {
     {
         1,
         "Millhollow Road",
-        "Night drapes Millhollow like wet wool. Cottage windows stay shuttered; "
-        "the Ashen Lantern that once burned on the green is gone — stolen into Hollowbarrow Crypt. "
-        "A muddy track leads toward the dark tree-line.",
-        "Millhollow has gone dark. The Ashen Lantern kept night-things at bay — "
-        "until thieves dragged it into Hollowbarrow Crypt. Recover it, or light it at the crypt shrine, "
-        "and the village may sleep again.",
-        "Millhollow is dark. The Ashen Lantern was stolen into Hollowbarrow Crypt."
+        "The green at the edge of Millhollow Road, night of the kindling. A ring of black ribbons, a pyre "
+        "burned down to embers, and the Ashen Lantern on its iron post, flaring as your mother's soul "
+        "enters the glass. Then hooded figures with candle stubs burning on their heads tear the Lantern "
+        "from its hook and run. The light goes with them. Every shadow on the green stands up on its own. "
+        "Your sister Wren is already sprinting into the dark after the thieves. One Wickthief turns back "
+        "to stop you.",
+        "Tonight is your mother's kindling. Her soul has barely touched the glass when the Lantern is "
+        "stolen. Wren gives chase. Strike down the Wickthief Scout and follow her.",
+        "Mother's kindling. Wickthieves stole the Ashen Lantern mid-ceremony; the shadows rose and Wren "
+        "chased the thieves toward Hollowbarrow."
     },
     {
         2,
         "Thornpath Woods",
-        "Thornpath claws at your cloak. Roots twist underfoot; somewhere a low growl answers the wind. "
-        "Broken lantern-glass glints in the mud — a trail toward the barrow.",
-        "The woods remember light. Something else remembers hunger. Stay sharp.",
-        "The party entered Thornpath Woods on the trail of the Ashen Lantern."
+        "Thornpath claws at your cloak. Wren's bootprints run ahead between the roots. Lantern-glass "
+        "glints in the mud, and when you lift a shard it whispers in your mother's voice: "
+        "\"Don't let them light me again.\" Ahead, something made of smoke hunts by sound.",
+        "The woods remember light. A Gloamhound remembers hunger: smoke for a body, two teal eyes, "
+        "a jaw too long. Stay sharp.",
+        "Thornpath Woods: a shard of the Lantern whispered in Mother's voice: \"Don't let them light me again.\""
     },
     {
         3,
         "Crypt Doors",
-        "Stone doors seal Hollowbarrow. Ash-stained runes spiral around a cold keyhole. "
-        "A draft smells of old bone and extinguished oil.",
-        "The crypt doors wait. Search for a rune-key if you can — or force a way past whatever watches.",
-        "The party reached the sealed doors of Hollowbarrow Crypt."
+        "Stone doors seal Hollowbarrow Crypt. Ash-stained runes spiral around a cold keyhole, and Wren's "
+        "knife is wedged in the rune-lock, snapped at the hilt. She got here first. A draft smells of old "
+        "bone and extinguished oil.",
+        "Wren is ahead of you, alone, inside the crypt. Search for a rune-key to open the wards cleanly, "
+        "or force a way after her.",
+        "Wren's broken knife was jammed in Hollowbarrow's rune-lock. She went in alone."
     },
     {
         4,
         "Bone Gallery",
-        "A long gallery of niches. Pale bones sit too neatly. Dust motes hang where lantern-light once walked.",
-        "Steel yourselves. The dead here do not sleep kindly.",
-        "The party entered the Bone Gallery beneath Hollowbarrow."
+        "A long gallery of burial niches. The Ashbound sit in them too neatly: tall, thin, cracked like "
+        "burnt paper, ember light leaking between their ribs. Some still wear Millhollow funeral ribbons.",
+        "Steel yourselves. These dead were kindled once. What is left of them does not sleep kindly.",
+        "The Bone Gallery: Ashbound in the niches, some still wearing Millhollow funeral ribbons."
     },
     {
         5,
         "Lantern Vault",
-        "The vault chamber opens on a stone plinth. The Ashen Lantern rests there — cold iron, grey glass, "
-        "still faintly warm. Something large shifts in the dark beyond the plinth.",
-        "There — the Ashen Lantern. A Skeleton Champion guards it — watch for one brutal surge, then claim the light.",
-        "The party found the Lantern Vault and the stolen Ashen Lantern."
+        "The vault opens on a stone plinth. The Ashen Lantern rests there, cold iron and grey glass, "
+        "guttering. Wren lies collapsed beside it, breathing shallow. Beyond the plinth, the vault's "
+        "undying custodian unfolds from the dark.",
+        "There: the Lantern, and Wren. The Lantern Sexton guards them both. Watch for one brutal surge, "
+        "then claim the light.",
+        "The Lantern Vault: the stolen Lantern on its plinth, Wren collapsed beside it, the Lantern Sexton on guard."
     },
     {
         6,
         "Ashen Shrine",
-        "A shallow shrine niche faces the vault path. Soot rings the altar where the Ashen Lantern once burned. "
-        "You may Rest here, then return the light — or carry it onward into deeper dark.",
-        "The shrine accepts the lantern's glow. Millhollow's night thins. "
-        "Act 1 complete — Rest if you need, then Onward: Millhollow's Debt waits on the green.",
-        "The Ashen Lantern was restored at the crypt shrine. Millhollow can sleep again."
+        "A shallow shrine niche faces the vault path. Soot rings the altar. The Lantern gutters in your "
+        "hands; it will not burn again without a soul. Wren, wounded and fading into the Gloam, presses "
+        "her palm to the glass before you can stop her. The light flares brighter than it has in decades, "
+        "and it speaks with her voice.",
+        "The Lantern is guttering. It will not burn again without a soul to feed it.",
+        "Wren gave herself to the Lantern at the Ashen Shrine. It burns again, in her voice. A grey-masked "
+        "watcher wrote in a ledger and vanished."
     }
 };
 

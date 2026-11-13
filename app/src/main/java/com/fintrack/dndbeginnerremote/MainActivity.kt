@@ -680,7 +680,7 @@ class MainActivity : AppCompatActivity() {
         if (isOnlineClient) {
             val mp = multiplayer
             if (mp == null || !mp.isAvailable) {
-                Toast.makeText(this, "Not connected to the DM session.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Not connected to the Lanternkeeper's session.", Toast.LENGTH_SHORT).show()
                 return
             }
             mp.pushAction(
@@ -692,7 +692,7 @@ class MainActivity : AppCompatActivity() {
                     "classId" to localClassId
                 )
             )
-            Toast.makeText(this, "Sent to the DM…", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Sent to the Lanternkeeper…", Toast.LENGTH_SHORT).show()
             return
         }
         localApply()
@@ -806,7 +806,7 @@ class MainActivity : AppCompatActivity() {
                     "2. The Google Services plugin is already enabled in app/build.gradle.kts\n" +
                     "3. Enable Realtime Database (see FIREBASE_SETUP.md)\n" +
                     "4. Clean + Rebuild\n\n" +
-                    "Host: enter your DM name only — friends Join and pick a class.\n" +
+                    "Host: enter your Lanternkeeper name only — friends Join and pick a class.\n" +
                     "Solo adventure works without Firebase."
             )
             .setPositiveButton("OK") { _, _ -> then?.invoke() }
@@ -922,7 +922,7 @@ class MainActivity : AppCompatActivity() {
     private fun admitPlayer(player: String, classId: Int) {
         if (partyHasPlayer(player)) return
         addRemoteAlly(classId, player)
-        try { sendChatMessage("DM", "$player has joined the party.") } catch (_: Exception) {}
+        try { sendChatMessage("Keeper", "$player has joined the party.") } catch (_: Exception) {}
         Toast.makeText(this, "$player joined the table.", Toast.LENGTH_SHORT).show()
         lastBattleRoster = ""
         refreshBattleArena()
@@ -1187,7 +1187,7 @@ class MainActivity : AppCompatActivity() {
         lastCoachTip = ""
         lastCoachTurnKey = ""
         val status = try { getPlayerStatus() } catch (_: Exception) { "" }
-        if (!status.contains(localPlayerName) && !status.contains("| HP:") && !status.contains("DM:")) {
+        if (!status.contains(localPlayerName) && !status.contains("| HP:") && !status.contains("Lanternkeeper:") && !status.contains("DM:")) {
             Toast.makeText(this, "Save looked empty — starting fresh is safer.", Toast.LENGTH_LONG).show()
             prefs().edit().remove("save_state").apply()
             showStartDialog()
@@ -1229,7 +1229,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Welcome back (offline) — could not resume Host session.", Toast.LENGTH_LONG).show()
             } else {
                 syncAndSave()
-                Toast.makeText(this, "Welcome back, DM — resumed session $savedSid", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Welcome back, Lanternkeeper — resumed session $savedSid", Toast.LENGTH_SHORT).show()
             }
         } else if (resumeOnline && wasClient) {
             setHost(false)
@@ -1243,7 +1243,7 @@ class MainActivity : AppCompatActivity() {
                 isOnlineClient = false
                 multiplayer = null
                 onlineSessionId = ""
-                Toast.makeText(this, "Welcome back (offline) — DM session unavailable.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Welcome back (offline) — Lanternkeeper session unavailable.", Toast.LENGTH_LONG).show()
             } else {
                 scheduleJoinTimeout(savedSid, resuming = true)
                 Toast.makeText(this, "Rejoining $savedSid…", Toast.LENGTH_SHORT).show()
@@ -1529,7 +1529,7 @@ class MainActivity : AppCompatActivity() {
                 showFirebaseRequiredDialog { showStartDialog() }
                 return@setOnClickListener
             }
-            askHeroName(hint = "Your DM name") { name ->
+            askHeroName(hint = "Your Lanternkeeper name") { name ->
                 localPlayerName = name
                 startHostingAsDm()
             }
@@ -1699,7 +1699,7 @@ class MainActivity : AppCompatActivity() {
                 "quantumelle Dark forest path; Clint Bellanger Tiny Creatures.\n\n" +
                 "Audio (CC0): Ironchest Dungeon Loops (explore / town / combat / boss beds); " +
                 "StarNinjas sword/clash SFX; Darsycho monster snarl; bart interface beep. " +
-                "DM voice uses on-device Text-to-Speech. See docs/AUDIO_BEDS.md."
+                "Lanternkeeper voice uses on-device Text-to-Speech. See docs/AUDIO_BEDS.md."
         settingsRoot.visibility = View.VISIBLE
         settingsRoot.bringToFront()
     }
@@ -2527,7 +2527,7 @@ class MainActivity : AppCompatActivity() {
             setHost(true)
         } catch (e: Exception) {
             Log.e(TAG, "startDmSession failed", e)
-            Toast.makeText(this, "Could not open DM table.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Could not open the Lanternkeeper table.", Toast.LENGTH_LONG).show()
             showStartDialog()
             return
         }
@@ -2592,7 +2592,7 @@ class MainActivity : AppCompatActivity() {
                     updateUi()
                     Toast.makeText(
                         this,
-                        "Joining $sid — waiting for the DM to admit you…",
+                        "Joining $sid — waiting for the Lanternkeeper to admit you…",
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -2602,17 +2602,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun companionDisplayName(classId: Int): String = when (classId) {
         0 -> "Bren (NPC)"
-        1 -> "Melf (NPC)"
+        1 -> "Corvin (NPC)"
         2 -> "Sable (NPC)"
         3 -> "Miren (NPC)"
         4 -> "Jory (NPC)"
-        else -> "Melf (NPC)"
+        else -> "Corvin (NPC)"
     }
 
     private fun showCompanionSetup(mode: String, heroClass: Int) {
         val classes = arrayOf(
             "Fighter — Bren",
-            "Wizard — Melf",
+            "Wizard — Corvin",
             "Rogue — Sable",
             "Cleric — Miren",
             "Bard — Jory"
@@ -2672,7 +2672,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showJoinDialog() {
         val input = EditText(this).apply { hint = "Session ID (e.g. AL-A1B2)" }
-        AlertDialog.Builder(this).setTitle("Join DM session").setView(input)
+        AlertDialog.Builder(this).setTitle("Join a Lanternkeeper session").setView(input)
             .setPositiveButton("Join") { _, _ ->
                 val sid = input.text.toString().trim().uppercase()
                 if (sid.isNotEmpty()) showClassSelection(mode = "join", sid = sid)
@@ -2692,7 +2692,7 @@ class MainActivity : AppCompatActivity() {
             "Show session ID again",
             "Close"
         )
-        val title = if (firstOpen) "DM tools — you control the story" else "DM tools"
+        val title = if (firstOpen) "Lanternkeeper tools — you control the story" else "Lanternkeeper tools"
         AlertDialog.Builder(this)
             .setTitle(title)
             .setItems(options) { _, which ->
@@ -2737,12 +2737,12 @@ class MainActivity : AppCompatActivity() {
         val clip = android.content.ClipData.newPlainText("AL_SESSION", sid)
         (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
         AlertDialog.Builder(this)
-            .setTitle("You are the DM")
+            .setTitle("You are the Lanternkeeper")
             .setMessage(
                 "Session ID:\n\n$sid\n\n" +
-                    "You are the DM — not a hero on the battle map.\n" +
+                    "You are the Lanternkeeper — not a hero on the battle map.\n" +
                     "Friends: Join session, enter this ID, pick a class.\n" +
-                    "Use the DM button for Begin dungeon / Advance / Narrate.\n\n" +
+                    "Use the Keeper button for Begin dungeon / Advance / Narrate.\n\n" +
                     "(Copied to clipboard.)"
             )
             .setPositiveButton("Got it", null)
@@ -2997,7 +2997,7 @@ class MainActivity : AppCompatActivity() {
         if (!nativeReady) return
         val dmTable = isOnlineHost && try { isDmTable() } catch (_: Exception) { isOnlineHost }
         if (dmTable) {
-            Toast.makeText(this, "DM table has no solo companion.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "The Lanternkeeper table has no solo companion.", Toast.LENGTH_SHORT).show()
             return
         }
         val name = try { getCompanionName() } catch (_: Exception) { "" }
@@ -3033,7 +3033,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     2 -> {
-                        val classes = arrayOf("Fighter — Bren", "Wizard — Melf", "Rogue — Sable", "Cleric — Miren", "Bard — Jory")
+                        val classes = arrayOf("Fighter — Bren", "Wizard — Corvin", "Rogue — Sable", "Cleric — Miren", "Bard — Jory")
                         AlertDialog.Builder(this).setTitle("Companion class").setItems(classes) { _, cl ->
                             val ok = try { setCompanionClass(cl) } catch (_: Exception) { false }
                             if (ok) {
@@ -3087,7 +3087,7 @@ class MainActivity : AppCompatActivity() {
         if (isOnlineClient) {
             val mp = multiplayer
             if (mp == null || !mp.isAvailable) {
-                Toast.makeText(this, "Not connected to the DM session.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Not connected to the Lanternkeeper's session.", Toast.LENGTH_SHORT).show()
                 return
             }
             mp.pushAction(
@@ -3100,7 +3100,7 @@ class MainActivity : AppCompatActivity() {
                     "classId" to localClassId
                 )
             )
-            Toast.makeText(this, "Sent $total point(s) to the DM…", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Sent $total point(s) to the Lanternkeeper…", Toast.LENGTH_SHORT).show()
             return
         }
         applyLevelUpBatch(forName, allocStr)
@@ -4043,10 +4043,10 @@ class MainActivity : AppCompatActivity() {
         val myTurnBanner = whose.equals(localPlayerName, ignoreCase = true) ||
             whose.equals("You", ignoreCase = true) || companionTurnNow
         turnBanner.text = when {
-            isOnlineHost && status.contains("Game Over", ignoreCase = true) -> "DM · defeat…"
-            isOnlineHost && status.contains("waiting for players", ignoreCase = true) -> "DM · waiting for heroes"
-            isOnlineHost -> "DM · directing the table"
-            isOnlineClient && remoteDmName.isNotBlank() -> "DM: $remoteDmName · $whose"
+            isOnlineHost && status.contains("Game Over", ignoreCase = true) -> "Keeper · defeat…"
+            isOnlineHost && status.contains("waiting for players", ignoreCase = true) -> "Keeper · waiting for heroes"
+            isOnlineHost -> "Keeper · directing the table"
+            isOnlineClient && remoteDmName.isNotBlank() -> "Keeper: $remoteDmName · $whose"
             status.contains("Story complete", ignoreCase = true) &&
                 try { isRoomCleared() } catch (_: Exception) { false } ->
                 "Story complete · Menu / Boss Raid / Onward"
@@ -4071,7 +4071,8 @@ class MainActivity : AppCompatActivity() {
                 try { isRoomCleared() } catch (_: Exception) { false } ->
                 "Main quest done — Ashen Lantern · Search, Rest, or Onward"
             status.contains("Quest complete", ignoreCase = true) -> "Main quest done — Ashen Lantern"
-            (status.contains("Quest: Ashen Lantern", ignoreCase = true) ||
+            (status.contains("Quest: The Kindling", ignoreCase = true) ||
+                status.contains("Quest: Ashen Lantern", ignoreCase = true) ||
                 status.contains("Quest: Millhollow", ignoreCase = true) ||
                 status.contains("Quest: Emberdeep", ignoreCase = true) ||
                 status.contains("Quest: Ashwake", ignoreCase = true)) &&
@@ -4112,12 +4113,12 @@ class MainActivity : AppCompatActivity() {
 
         val dmTable = isOnlineHost && try { isDmTable() } catch (_: Exception) { isOnlineHost }
         if (dmTable) {
-            btnSheet.text = "DM"
+            btnSheet.text = "Keeper"
             btnCompanion.visibility = View.GONE
             turnBanner.text = when {
-                status.contains("Game Over", ignoreCase = true) -> "DM · defeat…"
-                getBattleRoster().substringBefore('|').isBlank() -> "DM · waiting for heroes to Join"
-                else -> "DM · tap DM for story tools"
+                status.contains("Game Over", ignoreCase = true) -> "Keeper · defeat…"
+                getBattleRoster().substringBefore('|').isBlank() -> "Keeper · waiting for heroes to Join"
+                else -> "Keeper · tap Keeper for story tools"
             }
         } else {
             btnCompanion.visibility = if (companionNameSafe().isNotBlank()) View.VISIBLE else View.GONE
@@ -4255,7 +4256,9 @@ class MainActivity : AppCompatActivity() {
         val name: String,
         val classId: Int,
         val hp: Int,
-        val maxHp: Int
+        val maxHp: Int,
+        /** Stable enemy ID from native (Bestiary.h); empty for heroes. */
+        val enemyId: String = ""
     )
 
     private fun parseBattleRoster(raw: String): Pair<List<BattleUnit>, List<BattleUnit>> {
@@ -4275,7 +4278,8 @@ class MainActivity : AppCompatActivity() {
                     name = bits[1],
                     classId = bits[2].toIntOrNull() ?: 0,
                     hp = bits[3].toIntOrNull() ?: 0,
-                    maxHp = bits[4].toIntOrNull() ?: 1
+                    maxHp = bits[4].toIntOrNull() ?: 1,
+                    enemyId = bits.getOrNull(5).orEmpty().trim()
                 )
             }
         }
@@ -4284,18 +4288,57 @@ class MainActivity : AppCompatActivity() {
         return party to foes
     }
 
+    /**
+     * Enemy sprite table keyed by the stable enemy ID (native Bestiary.h). Every ID has its
+     * own entry — no shared goblin fallback. Ash & Ember VectorDrawables (enemy_wickthief,
+     * enemy_ashbound, boss_wick_king) are authored facing left and have no attack frame
+     * (attacks are animated in code). Entries marked PLACEHOLDER reuse older CC0 bitmaps
+     * until their silhouette ships (Phase 2).
+     */
+    private val enemySprites: Map<String, Int> = mapOf(
+        // Ash & Ember art
+        "enemy_wickthief" to R.drawable.enemy_wickthief,
+        "enemy_wickthief_scout" to R.drawable.enemy_wickthief,
+        "enemy_wickthief_cutpurse" to R.drawable.enemy_wickthief,
+        "enemy_wickthief_cache" to R.drawable.enemy_wickthief,
+        "enemy_wickthief_river" to R.drawable.enemy_wickthief,
+        "enemy_wickthief_root" to R.drawable.enemy_wickthief,
+        "enemy_wickthief_fen" to R.drawable.enemy_wickthief,
+        "enemy_crier_wick" to R.drawable.enemy_wickthief,
+        "enemy_ashbound" to R.drawable.enemy_ashbound,
+        "enemy_ashbound_bonebound" to R.drawable.enemy_ashbound,
+        "enemy_crier_bone" to R.drawable.enemy_ashbound,
+        "boss_sexton" to R.drawable.enemy_ashbound, // Lantern Sexton: Ashbound silhouette until its own art
+        "boss_prior" to R.drawable.enemy_ashbound, // Ossuary Prior: PLACEHOLDER (Ashbound)
+        "boss_wick_king" to R.drawable.boss_wick_king,
+        // PLACEHOLDER bitmaps (own entries; replaced in Phase 2)
+        "enemy_gloamhound" to R.drawable.sprite_wolf,
+        "enemy_tallow_rat" to R.drawable.sprite_wolf,
+        "enemy_brute" to R.drawable.sprite_ogre,
+        "enemy_tithe_enforcer" to R.drawable.sprite_skeleton,
+        "enemy_tithe_scavenger" to R.drawable.sprite_skeleton,
+        "enemy_tithe_watcher" to R.drawable.sprite_skeleton,
+        "boss_collector" to R.drawable.sprite_ogre,
+        "boss_warden" to R.drawable.sprite_ogre,
+        "boss_herald" to R.drawable.sprite_skeleton,
+        "boss_drake" to R.drawable.sprite_ogre,
+        "boss_hollow_crown" to R.drawable.boss_wick_king, // crowned silhouette PLACEHOLDER
+        "boss_ember_hydra" to R.drawable.sprite_ogre,
+        "boss_nightfang" to R.drawable.sprite_wolf,
+        // Unknown / future IDs from a newer host: neutral shadow, never a goblin.
+        "enemy_unknown" to R.drawable.enemy_unknown
+    )
+
+    /** Ash & Ember vector silhouettes: authored facing left, attack is code-animated (no _atk frame). */
+    private fun isAshEmberSprite(res: Int): Boolean =
+        res == R.drawable.enemy_wickthief || res == R.drawable.enemy_ashbound ||
+            res == R.drawable.boss_wick_king || res == R.drawable.enemy_unknown
+
+    private fun spriteForEnemyId(enemyId: String): Int =
+        enemySprites[enemyId] ?: enemySprites.getValue("enemy_unknown")
+
     private fun spriteFor(unit: BattleUnit): Int {
-        if (!unit.isPlayer) {
-            val n = unit.name.lowercase()
-            return when {
-                n.contains("ashen drake") || n.contains("dragon") -> R.drawable.sprite_ogre
-                n.contains("skeleton king") || n.contains("skeleton") -> R.drawable.sprite_skeleton
-                n.contains("wolf") -> R.drawable.sprite_wolf
-                n.contains("ogre") || n.contains("collector") -> R.drawable.sprite_ogre
-                n.contains("goblin king") || n.contains("goblin") -> R.drawable.sprite_goblin
-                else -> R.drawable.sprite_goblin
-            }
-        }
+        if (!unit.isPlayer) return spriteForEnemyId(unit.enemyId)
         return when (unit.classId) {
             0 -> R.drawable.sprite_fighter
             1 -> R.drawable.sprite_wizard
@@ -4312,7 +4355,6 @@ class MainActivity : AppCompatActivity() {
             R.drawable.sprite_wizard -> R.drawable.sprite_wizard_atk
             R.drawable.sprite_rogue -> R.drawable.sprite_rogue_atk
             R.drawable.sprite_cleric -> R.drawable.sprite_cleric_atk
-            R.drawable.sprite_goblin -> R.drawable.sprite_goblin_atk
             R.drawable.sprite_skeleton -> R.drawable.sprite_skeleton_atk
             R.drawable.sprite_wolf -> R.drawable.sprite_wolf_atk
             R.drawable.sprite_ogre -> R.drawable.sprite_ogre_atk
@@ -4328,10 +4370,11 @@ class MainActivity : AppCompatActivity() {
         val blob = (status + "\n" + room).lowercase()
         val res = when {
             // Boss rooms (Ashen Drake / kings / named boss beats)
-            blob.contains("ashen drake") || blob.contains("goblin king") ||
-                blob.contains("skeleton king") || blob.contains("hollow crown") ||
+            blob.contains("ashen drake") || blob.contains("wick king") ||
+                blob.contains("ossuary prior") || blob.contains("hollow crown") ||
                 blob.contains("ember hydra") || blob.contains("nightfang") ||
-                blob.contains("breach warden") || blob.contains("boss") ->
+                blob.contains("breach warden") || blob.contains("first lamplighter") ||
+                blob.contains("boss") ->
                 R.drawable.bg_battle_stage_boss
             // Act 3 — Emberdeep Breach / Act 4 — Ashwake Vigil
             blob.contains("wellside") || blob.contains("old well") || blob.contains("ember seal") ||
@@ -4404,6 +4447,21 @@ class MainActivity : AppCompatActivity() {
                 selectedAllyIndex = null
             }
         }
+        // Ash-dissolve: foes that vanished from the roster (native erases the dead) dissolve
+        // into ash where they stood. Only when the new roster is a subset of the old one, so a
+        // fresh room / wave never triggers it.
+        if (oldNames.isNotEmpty()) {
+            val oldFoes = parseBattleRoster(oldNames).second
+            val pool = foes.map { it.enemyId to it.name }.toMutableList()
+            val gone = mutableListOf<Int>()
+            oldFoes.forEachIndexed { i, u ->
+                val k = u.enemyId to u.name
+                if (!pool.remove(k)) gone += i
+            }
+            if (pool.isEmpty() && gone.isNotEmpty()) {
+                for (i in gone) findSpriteByIndex(enemyColumn, i)?.let { playAshDissolve(it) }
+            }
+        }
         rebuildColumn(partyColumn, party, alignEnd = false, isEnemyColumn = false)
         rebuildColumn(enemyColumn, foes, alignEnd = true, isEnemyColumn = true)
         applySelectionHighlights()
@@ -4440,7 +4498,8 @@ class MainActivity : AppCompatActivity() {
                 background = getDrawable(R.drawable.bg_portrait_frame)
                 tag = "sprite"
                 // Party on left faces right (native); foes on right face left toward the party.
-                scaleX = if (isEnemyColumn) -1f else 1f
+                // Ash & Ember vectors are authored facing left already — don't mirror them.
+                scaleX = if (isEnemyColumn && !isAshEmberSprite(idleRes)) -1f else 1f
                 alpha = if (unit.hp <= 0) 0.35f else 1f
             }.also { img ->
                 if (unit.hp > 0) startIdleBob(img)
@@ -4454,7 +4513,11 @@ class MainActivity : AppCompatActivity() {
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
                 setShadowLayer(2f * density, 0f, 1f * density, Color.BLACK)
                 gravity = if (alignEnd) Gravity.END else Gravity.START
-                maxLines = 1
+                // Longer bestiary names wrap to 2 lines within the sprite width so the
+                // duplicate-slot "#N" suffix (#71) stays visible.
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                layoutParams = LinearLayout.LayoutParams(spriteSize, LinearLayout.LayoutParams.WRAP_CONTENT)
             }
             val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
                 max = unit.maxHp.coerceAtLeast(1)
@@ -4598,23 +4661,109 @@ class MainActivity : AppCompatActivity() {
     }
 
     
-    /** Gentle idle bob using LuizMelo idle frames — skipped when reduce-flash is on. */
+    /**
+     * Gentle idle bob (all sprites) plus a slow sway for Ash & Ember silhouettes, pivoting at
+     * the feet. Skipped when reduce-flash is on (photosensitive mode keeps sprites still).
+     */
     private fun startIdleBob(img: ImageView) {
         if (reduceFlashEnabled) return
         img.animate().cancel()
         img.translationY = 0f
+        val res = (img.getTag(R.id.sheetPortrait) as? Int) ?: 0
+        val sway = if (isAshEmberSprite(res)) 1.6f else 0f
+        if (sway != 0f) {
+            img.pivotX = img.width / 2f
+            img.pivotY = img.height * 0.94f
+        }
         img.animate()
             .translationY(-5f)
-            .setDuration(700L)
+            .rotation(-sway)
+            .setDuration(if (sway != 0f) 900L else 700L)
             .setInterpolator(AccelerateDecelerateInterpolator())
             .withEndAction {
                 img.animate()
                     .translationY(0f)
-                    .setDuration(700L)
+                    .rotation(sway)
+                    .setDuration(if (sway != 0f) 900L else 700L)
                     .setInterpolator(AccelerateDecelerateInterpolator())
                     .withEndAction { startIdleBob(img) }
                     .start()
             }.start()
+    }
+
+    /**
+     * Ash-dissolve on death: a ghost copy of the sprite greys to ash, sinks/thins and fades
+     * while ash flecks (and a few embers) drift up. Reduce-flash: a plain slow fade, no flecks.
+     */
+    private fun playAshDissolve(sprite: ImageView) {
+        val host = battleFxOverlay ?: return
+        val d = sprite.drawable?.constantState?.newDrawable()?.mutate() ?: return
+        if (sprite.width <= 0 || sprite.height <= 0) return
+        val density = resources.displayMetrics.density
+        val locHost = IntArray(2)
+        val locSprite = IntArray(2)
+        host.getLocationOnScreen(locHost)
+        sprite.getLocationOnScreen(locSprite)
+        val x = (locSprite[0] - locHost[0]).toFloat()
+        val y = (locSprite[1] - locHost[1]).toFloat()
+        val ghost = ImageView(this).apply {
+            setImageDrawable(d)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setPadding(sprite.paddingLeft, sprite.paddingTop, sprite.paddingRight, sprite.paddingBottom)
+            layoutParams = FrameLayout.LayoutParams(sprite.width, sprite.height)
+            translationX = x
+            translationY = y
+            scaleX = if (sprite.scaleX < 0f) -1f else 1f
+            pivotY = sprite.height * 0.94f
+            isClickable = false
+            isFocusable = false
+        }
+        host.addView(ghost)
+        if (reduceFlashEnabled) {
+            ghost.animate().alpha(0f).setDuration(700L)
+                .withEndAction { host.removeView(ghost) }.start()
+            return
+        }
+        ghost.setColorFilter(Color.parseColor("#B04A4650"), android.graphics.PorterDuff.Mode.SRC_ATOP)
+        ghost.animate()
+            .alpha(0f)
+            .translationY(y + 10f * density)
+            .scaleY(0.82f)
+            .setStartDelay(120L)
+            .setDuration(820L)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .withEndAction { host.removeView(ghost) }
+            .start()
+        val flecks = 14
+        val rnd = java.util.Random()
+        for (i in 0 until flecks) {
+            val size = ((2 + rnd.nextInt(3)) * density).toInt()
+            val ember = i % 5 == 0
+            val fleck = View(this).apply {
+                layoutParams = FrameLayout.LayoutParams(size, size)
+                setBackgroundColor(
+                    Color.parseColor(
+                        when {
+                            ember -> "#FFF2A541"
+                            i % 2 == 0 -> "#FFD9D2C3"
+                            else -> "#FF6E6872"
+                        }
+                    )
+                )
+                translationX = x + sprite.width * (0.25f + rnd.nextFloat() * 0.5f)
+                translationY = y + sprite.height * (0.30f + rnd.nextFloat() * 0.55f)
+                alpha = 0.9f
+            }
+            host.addView(fleck)
+            fleck.animate()
+                .translationXBy((rnd.nextFloat() - 0.6f) * 40f * density)
+                .translationYBy(-(30f + rnd.nextFloat() * 60f) * density)
+                .alpha(0f)
+                .setStartDelay((rnd.nextInt(220)).toLong())
+                .setDuration(900L + rnd.nextInt(400))
+                .withEndAction { host.removeView(fleck) }
+                .start()
+        }
     }
 
     private fun animateAttack(
@@ -4691,7 +4840,10 @@ class MainActivity : AppCompatActivity() {
             .setInterpolator(AccelerateDecelerateInterpolator())
             .withEndAction {
                 if (idleRes != 0) a.setImageResource(attackSpriteFor(idleRes))
+                // Ash & Ember silhouettes have no attack frame: lean into the lunge instead.
+                val lean = if (isAshEmberSprite(idleRes) && !reduceFlashEnabled) -6f else 0f
                 a.animate()
+                    .rotation(lean)
                     .translationX(dx)
                     .setDuration(lungeMs)
                     .setInterpolator(AccelerateDecelerateInterpolator())
@@ -4699,6 +4851,7 @@ class MainActivity : AppCompatActivity() {
                         playImpact()
                         a.animate()
                             .translationX(0f)
+                            .rotation(0f)
                             .setDuration(recoverMs)
                             .withEndAction {
                                 if (idleRes != 0) a.setImageResource(idleRes)
@@ -4802,9 +4955,14 @@ class MainActivity : AppCompatActivity() {
                     RegexOption.IGNORE_CASE
                 ).find(event.trim())
                 val attackerName = attackMatch?.groupValues?.getOrNull(1)?.trim().orEmpty()
-                val foeNames = listOf(
-                    "goblin", "skeleton", "wolf", "ogre", "collector",
-                    "herald", "drake", "hydra", "nightfang", "warden", "king"
+                // Foe attribution: current roster foe names (bestiary display names from native),
+                // plus generic keywords as a fallback for log lines that abbreviate.
+                val rosterFoeNames = parseBattleRoster(lastBattleRoster).second
+                    .map { it.name.lowercase() }
+                    .filter { it.isNotBlank() }
+                val foeNames = rosterFoeNames + listOf(
+                    "wickthief", "ashbound", "gloamhound", "ogre", "giant rat", "collector", "sexton",
+                    "lamplighter", "herald", "drake", "hydra", "nightfang", "crown", "prior", "king"
                 )
                 val attackerIsFoe = foeNames.any { attackerName.lowercase().contains(it) } ||
                     (attackerName.isBlank() && foeNames.any { e.contains(it) } &&
@@ -5101,7 +5259,7 @@ class MainActivity : AppCompatActivity() {
             Log.w(TAG, "Join timeout for session $sid (resuming=$resuming)")
             Toast.makeText(
                 this,
-                "Could not reach the DM / session $sid (timed out). Returning to menu.",
+                "Could not reach the Lanternkeeper / session $sid (timed out). Returning to menu.",
                 Toast.LENGTH_LONG
             ).show()
             resetToStartMenu()
@@ -5312,12 +5470,12 @@ class MainActivity : AppCompatActivity() {
                 showTutorial(0) {
                     prefs().edit().putBoolean("seen_beginner_tutorial", true).apply()
                     postCoach(
-                        "DM: Tutorial done. I'll coach you on your turns. Tap Help anytime. " +
+                        "Keeper: Tutorial done. I'll coach you on your turns. Tap Help anytime. " +
                             BeginnerGuide.specialBlurb(localClassId)
                     )
                 }
             } else {
-                postCoach("DM: Welcome back. Tap Help if you forget what a button does.")
+                postCoach("Keeper: Welcome back. Tap Help if you forget what a button does.")
             }
         }
     }
@@ -5351,7 +5509,7 @@ class MainActivity : AppCompatActivity() {
             "Show beginner tutorial",
             "Action quick reference",
             "What do stats do?",
-            "Toggle solo DM tips",
+            "Toggle solo Lanternkeeper tips",
             "Settings…"
         )
         AlertDialog.Builder(this)
@@ -5372,7 +5530,7 @@ class MainActivity : AppCompatActivity() {
                     3 -> {
                         soloCoachEnabled = !soloCoachEnabled
                         val state = if (soloCoachEnabled) "ON" else "OFF"
-                        Toast.makeText(this, "Solo DM tips: $state", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Solo Lanternkeeper tips: $state", Toast.LENGTH_SHORT).show()
                         prefs().edit().putBoolean("solo_coach_enabled", soloCoachEnabled).apply()
                     }
                     4 -> showSettingsOverlay()
@@ -5411,7 +5569,7 @@ class MainActivity : AppCompatActivity() {
         if (tip == lastCoachTip) return
         lastCoachTip = tip
         try {
-            sendChatMessage("DM", tip)
+            sendChatMessage("Keeper", tip)
         } catch (e: Exception) {
             Log.e(TAG, "coach chat failed: ${e.message}")
         }

@@ -7,6 +7,7 @@
 #include <memory>
 #include <sstream>
 #include <algorithm>
+#include "Bestiary.h"
 
 namespace dnd {
 
@@ -311,6 +312,8 @@ struct Spell {
 struct Character {
     std::string name;
     std::string uid;
+    /** Stable foe archetype id (Bestiary.h), e.g. "enemy_wickthief". Empty for heroes. */
+    std::string enemyId;
     CharacterClass characterClass;
     int level;
     int xp;
@@ -797,33 +800,10 @@ public:
         }
     }
 
-    static bool isBossName(const std::string& name) {
-        return name.find("Goblin King") != std::string::npos
-            || name.find("Skeleton King") != std::string::npos
-            || name.find("Ashen Drake") != std::string::npos
-            || name.find("Dragon") != std::string::npos
-            || name.find("Hollow Crown") != std::string::npos
-            || name.find("Ember Hydra") != std::string::npos
-            || name.find("Nightfang Matriarch") != std::string::npos
-            || name.find("Breach Warden") != std::string::npos;
-    }
-
-    static int bossTier(const std::string& name) {
-        if (name.find("Hollow Crown") != std::string::npos) return 4;
-        if (name.find("Ember Hydra") != std::string::npos) return 5;
-        if (name.find("Nightfang Matriarch") != std::string::npos) return 4;
-        if (name.find("Ashen Drake") != std::string::npos || name.find("Dragon") != std::string::npos) return 3;
-        if (name.find("Breach Warden") != std::string::npos) return 3;
-        if (name.find("Skeleton King") != std::string::npos) return 2;
-        if (name.find("Goblin King") != std::string::npos) return 1;
-        return 0;
-    }
-
-    static bool isEndgameBossName(const std::string& name) {
-        return name.find("Hollow Crown") != std::string::npos
-            || name.find("Ember Hydra") != std::string::npos
-            || name.find("Nightfang Matriarch") != std::string::npos;
-    }
+    // Boss logic keys off the stable enemy ID (Bestiary.h), never the display name.
+    static bool isBossId(const std::string& enemyId) { return bestiary::isBoss(enemyId); }
+    static int bossTier(const std::string& enemyId) { return bestiary::bossTier(enemyId); }
+    static bool isEndgameBossId(const std::string& enemyId) { return bestiary::isEndgameBoss(enemyId); }
 };
 
 class SkillSystem {
