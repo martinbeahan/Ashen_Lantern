@@ -31,9 +31,12 @@ public:
     void present();
 
     dnd::Game& getGame() { return game_; }
+    /** False when EGL / shader setup failed (H3); the caller deletes the renderer. */
+    bool isReady() const { return ready_; }
 
 private:
-    void initRenderer();
+    bool initRenderer();
+    bool ready_ = false;
     void updateRenderArea();
     void createModels();
 

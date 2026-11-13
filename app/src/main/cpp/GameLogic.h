@@ -11,6 +11,28 @@
 
 namespace dnd {
 
+/**
+ * Seeded RNG for every combat / loot / saving-throw roll (Code Auditor M5). Replaces the
+ * unseeded C rand(), which replayed the same roll sequence on every launch. thread_local so
+ * the UI-thread JNI calls and the native render thread never share engine state.
+ */
+namespace rng {
+inline std::mt19937& engine() {
+    thread_local std::mt19937 eng{[] {
+        std::random_device rd;
+        std::seed_seq seq{rd(), rd(), rd(), rd()};
+        return std::mt19937(seq);
+    }()};
+    return eng;
+}
+/** Uniform integer in [0, n-1]; 0 when n <= 1. Drop-in for the old "rand() % n". */
+inline int below(int n) {
+    if (n <= 1) return 0;
+    std::uniform_int_distribution<int> dist(0, n - 1);
+    return dist(engine());
+}
+} // namespace rng
+
 enum class CharacterClass {
     FIGHTER,
     WIZARD,
@@ -20,12 +42,12 @@ enum class CharacterClass {
 };
 
 struct Attributes {
-    int strength;
-    int dexterity;
-    int constitution;
-    int intelligence;
-    int wisdom;
-    int charisma;
+    int strength = 10;
+    int dexterity = 10;
+    int constitution = 10;
+    int intelligence = 10;
+    int wisdom = 10;
+    int charisma = 10;
 
     static int getModifier(int score) {
         return (score - 10) / 2;
@@ -277,7 +299,7 @@ struct Item {
         // Three distinct bonus stats
         int pool[6] = {0,1,2,3,4,5};
         for (int k = 5; k > 0; --k) {
-            int j = rand() % (k + 1);
+            int j = rng::below(k + 1);
             int tmp = pool[k]; pool[k] = pool[j]; pool[j] = tmp;
         }
         i.legStat0 = pool[0];
@@ -286,7 +308,7 @@ struct Item {
         if (i.type == ItemType::ARMOR) {
             i.subEffect = static_cast<int>(LegendarySubEffect::FIGHT_SHIELD);
         } else {
-            i.subEffect = (rand() % 2 == 0)
+            i.subEffect = (rng::below(2) == 0)
                 ? static_cast<int>(LegendarySubEffect::LIFESTEAL)
                 : static_cast<int>(LegendarySubEffect::ON_HIT_HEAL);
         }
@@ -314,16 +336,16 @@ struct Character {
     std::string uid;
     /** Stable foe archetype id (Bestiary.h), e.g. "enemy_wickthief". Empty for heroes. */
     std::string enemyId;
-    CharacterClass characterClass;
-    int level;
-    int xp;
-    int maxHp;
-    int currentHp;
+    CharacterClass characterClass = CharacterClass::FIGHTER;
+    int level = 1;
+    int xp = 0;
+    int maxHp = 1;
+    int currentHp = 1;
     Attributes attributes;
-    int armorClass;
+    int armorClass = 10;
 
-    int resources;
-    int maxResources;
+    int resources = 0;
+    int maxResources = 0;
     int pendingStatPoints = 0;
     int gold = 0;
 
@@ -342,8 +364,14 @@ struct Character {
     std::shared_ptr<Item> equippedArmor;
     std::vector<std::shared_ptr<Item>> inventory;
 
+    /** Out-of-range class ordinals (bad save / remote input) fall back to Fighter (H2). */
+    static CharacterClass validClass(CharacterClass c) {
+        const int v = static_cast<int>(c);
+        return (v >= 0 && v <= 4) ? c : CharacterClass::FIGHTER;
+    }
+
     Character(std::string n, CharacterClass c, std::string id = "local")
-        : name(std::move(n)), uid(std::move(id)), characterClass(c), level(1), xp(0) {
+        : name(std::move(n)), uid(std::move(id)), characterClass(validClass(c)), level(1), xp(0) {
         // Base class arrays once; never re-applied on level-up (spent points must stick).
         switch (characterClass) {
             case CharacterClass::FIGHTER: attributes = {16, 12, 14, 8, 10, 10}; break;
@@ -351,6 +379,7 @@ struct Character {
             case CharacterClass::ROGUE:   attributes = {10, 16, 12, 12, 10, 14}; break;
             case CharacterClass::CLERIC:  attributes = {14, 10, 14, 10, 16, 12}; break;
             case CharacterClass::BARD:    attributes = {10, 14, 12, 10, 10, 16}; break;
+            default:                      attributes = {16, 12, 14, 8, 10, 10}; break; // Fighter
         }
         applyStatsForLevel();
         currentHp = maxHp;
@@ -404,6 +433,9 @@ struct Character {
             case CharacterClass::BARD:
                 maxResources = 2 + level; // Cutting Quip / performance uses
                 break;
+            default:
+                maxResources = 1 + (level >= 17 ? 1 : 0); // Fighter
+                break;
         }
         int conMod = Attributes::getModifier(attributes.constitution);
         int hd = hitDie();
@@ -444,7 +476,7 @@ struct Character {
     }
 
     bool performSavingThrow(int attributeScore, int dc) {
-        return (rand() % 20 + 1 + Attributes::getModifier(attributeScore)) >= dc;
+        return (rng::below(20) + 1 + Attributes::getModifier(attributeScore)) >= dc;
     }
 
     // amountCritical: treat as a critical hit while dying (2 failures) — 5e style.
@@ -665,7 +697,7 @@ public:
     }
 
     static RollResult performAttackRoll(const Character& attacker) {
-        int die = rand() % 20 + 1;
+        int die = rng::below(20) + 1;
         int mod = getPrimaryModifier(attacker);
         int pb = proficiencyBonusForLevel(attacker.level);
         int weaponBonus = (attacker.equippedWeapon && attacker.equippedWeapon->type == ItemType::WEAPON) ? attacker.equippedWeapon->bonus : 0;
@@ -674,11 +706,11 @@ public:
 
     static int calculateDamage(const Character& attacker, bool isCritical, int extraDice = 0, int extraSides = 6) {
         int sides = attacker.weaponDamageDie();
-        int damage = (rand() % sides + 1);
-        if (isCritical) damage += (rand() % sides + 1); // 5e: double damage dice only
+        int damage = (rng::below(sides) + 1);
+        if (isCritical) damage += (rng::below(sides) + 1); // 5e: double damage dice only
         for (int i = 0; i < extraDice; ++i) {
-            damage += (rand() % extraSides + 1);
-            if (isCritical) damage += (rand() % extraSides + 1);
+            damage += (rng::below(extraSides) + 1);
+            if (isCritical) damage += (rng::below(extraSides) + 1);
         }
         int mod = getPrimaryModifier(attacker);
         int weaponBonus = (attacker.equippedWeapon && attacker.equippedWeapon->type == ItemType::WEAPON) ? attacker.equippedWeapon->bonus : 0;
@@ -705,17 +737,17 @@ public:
                                               bool allowLegendary = false,
                                               int legendaryChancePercent = 7) {
         // Drop gate (shared luck) — ~42% item on luck=0
-        int dropRoll = (rand() % 100) + luckBonus;
+        int dropRoll = (rng::below(100)) + luckBonus;
         if (dropRoll < 58) return nullptr;
 
         // Rarity: luck only adds luckBonus/3 so bosses stay better than trash, not BiS flood.
-        int rarityRoll = (rand() % 100) + (luckBonus / 3);
+        int rarityRoll = (rng::below(100)) + (luckBonus / 3);
         ItemRarity rarity = ItemRarity::COMMON;
         // Legendary: explicit allow + chance% of successful drops (default 7; Challenge Dungeon higher/dynamic).
         int legChance = legendaryChancePercent;
         if (legChance < 0) legChance = 0;
         if (legChance > 100) legChance = 100;
-        if (allowLegendary && (rand() % 100) < legChance) {
+        if (allowLegendary && (rng::below(100)) < legChance) {
             rarity = ItemRarity::LEGENDARY;
         } else if (rarityRoll >= 98) {
             rarity = ItemRarity::EPIC;       // #46: was shared-roll >=95
@@ -731,7 +763,7 @@ public:
         int bonus = (roomDepth / 5) + static_cast<int>(rarity);
         if (rarity == ItemRarity::LEGENDARY) bonus += 2;
         if (bonus < 0) bonus = 0;
-        bool weapon = (rand() % 2) == 0;
+        bool weapon = (rng::below(2)) == 0;
 
         int party[5];
         int partyN = 0;
@@ -744,9 +776,9 @@ public:
         pushParty(preferClass2);
 
         int cls = -1;
-        int pick = rand() % 100;
+        int pick = rng::below(100);
         if (partyN > 0) {
-            if (pick < 62) cls = party[rand() % partyN];
+            if (pick < 62) cls = party[rng::below(partyN)];
             else if (pick < 92) cls = -1;
             else {
                 int off[5];
@@ -756,10 +788,10 @@ public:
                     for (int i = 0; i < partyN; ++i) if (party[i] == c) { in = true; break; }
                     if (!in) off[offN++] = c;
                 }
-                cls = (offN > 0) ? off[rand() % offN] : -1;
+                cls = (offN > 0) ? off[rng::below(offN)] : -1;
             }
         } else {
-            if (pick < 40) cls = rand() % 5;
+            if (pick < 40) cls = rng::below(5);
             else cls = -1;
         }
 
@@ -783,7 +815,7 @@ public:
 
         if (weapon) {
             const char* names[] = {"Steel Blade", "Runed Blade", "Shadow Dirk", "War Maul", "Arcane Wand"};
-            int ni = rand() % 5;
+            int ni = rng::below(5);
             if (cls == 0) return Item::make("Champion's Longsword", ItemType::WEAPON, bonus, rarity, 0);
             if (cls == 1) return Item::make("Focus Staff", ItemType::WEAPON, bonus, rarity, 1);
             if (cls == 2) return Item::make("Silent Shortsword", ItemType::WEAPON, bonus, rarity, 2);
@@ -809,7 +841,7 @@ public:
 class SkillSystem {
 public:
     static bool performCheck(const Character& c, int attributeScore, int dc) {
-        return (rand() % 20 + 1 + Attributes::getModifier(attributeScore)) >= dc;
+        return (rng::below(20) + 1 + Attributes::getModifier(attributeScore)) >= dc;
     }
 };
 

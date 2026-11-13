@@ -925,7 +925,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun admitPlayer(player: String, classId: Int) {
+    private fun admitPlayer(rawPlayer: String, rawClassId: Int) {
+        // C1 / H2: remote joiners are untrusted — sanitize the name and validate the class.
+        val player = TextSafety.sanitizeName(rawPlayer, "Hero")
+        val classId = TextSafety.validClassId(rawClassId)
+        if (rawClassId != classId) Log.w(TAG, "Joiner '$player' sent class $rawClassId — using Fighter")
         if (partyHasPlayer(player)) return
         addRemoteAlly(classId, player)
         try { sendChatMessage("Keeper", "$player has joined the party.") } catch (_: Exception) {}
@@ -936,7 +940,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun applyHostAction(action: Map<String, Any>) {
         val type = action["type"]?.toString() ?: return
-        val player = action["playerName"]?.toString() ?: "Hero"
+        // Sanitized the same way admitPlayer stored it, so turn validation matches older clients too.
+        val player = TextSafety.sanitizeName(action["playerName"]?.toString(), "Hero")
         val target = (action["targetIndex"] as? Number)?.toInt()
             ?: action["targetIndex"]?.toString()?.toIntOrNull()
             ?: 0
@@ -1156,7 +1161,8 @@ class MainActivity : AppCompatActivity() {
         if (stored.isNotEmpty()) return stored
         val parts = data.split('|')
         if (parts.size < 3) return "Hero"
-        val name = parts[2].substringBefore(';').substringBefore(',').trim()
+        val field = parts[2].substringBefore(';').substringBefore(',')
+        val name = (if (TextSafety.isEncodedSave(data)) TextSafety.decode(field) else field).trim()
         return name.ifEmpty { "Hero" }
     }
 
@@ -2520,6 +2526,7 @@ class MainActivity : AppCompatActivity() {
     private fun askHeroName(hint: String = "Your hero name", onName: (String) -> Unit) {
         val input = EditText(this).apply {
             this.hint = hint
+            filters = TextSafety.nameInputFilters() // C1: no save separators in names
             val prior = prefs().getString("hero_name", null)
             if (!prior.isNullOrBlank()) setText(prior)
             setSelection(text.length)
@@ -2529,7 +2536,8 @@ class MainActivity : AppCompatActivity() {
             .setView(input)
             .setCancelable(false)
             .setPositiveButton("Next") { _, _ ->
-                onName(input.text.toString().ifBlank { "Hero" })
+                // Same rule as native resetGame/startDmSession, so name lookups keep matching.
+                onName(TextSafety.sanitizeName(input.text.toString(), "Hero"))
             }
             .setNegativeButton("Back") { _, _ -> showStartDialog() }
             .show()
