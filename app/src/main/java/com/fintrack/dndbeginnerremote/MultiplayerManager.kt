@@ -109,10 +109,13 @@ class MultiplayerManager(private val sessionId: String) {
                 val name = snapshot.child("playerName").getValue(String::class.java)
                     ?: snapshot.key
                     ?: return
-                val classId = snapshot.child("classId").getValue(Long::class.java)?.toInt()
-                    ?: snapshot.child("classId").getValue(Int::class.java)
-                    ?: 0
-                onJoin(name, classId)
+                val rawClass = try {
+                    snapshot.child("classId").getValue(Long::class.java)?.toInt()
+                } catch (_: Exception) { null } // non-numeric classId from a bad client
+                // H2: only 0..4 are real classes; anything else joins as Fighter.
+                val classId = TextSafety.validClassId(rawClass)
+                if (rawClass != classId) Log.w(tag, "lobby: bad classId $rawClass for '$name' — using 0")
+                onJoin(TextSafety.sanitizeName(name, "Hero"), classId)
             }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onChildRemoved(snapshot: DataSnapshot) {}

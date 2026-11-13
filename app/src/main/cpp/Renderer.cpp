@@ -59,7 +59,8 @@ Renderer::Renderer(android_app *pApp, dnd::Game& game) :
         height_(0),
         totalTime_(0.0f),
         shaderNeedsNewProjectionMatrix_(true) {
-    initRenderer();
+    ready_ = initRenderer();
+    if (!ready_) aout << "Renderer: init failed — GL layer disabled for this window" << std::endl;
 }
 
 Renderer::~Renderer() {
@@ -118,7 +119,7 @@ void Renderer::updateAnimations() {
                 if (s.flashIntensity > 0.01f) {
                     s.flashIntensity *= 0.88f;
                     // Hit shake
-                    s.xOffset += ((rand() % 11) - 5) * 0.012f;
+                    s.xOffset += (dnd::rng::below(11) - 5) * 0.012f;
                 }
                 if (s.framesRemaining == 0) {
                     s.xOffset = 0;
@@ -156,6 +157,7 @@ void Renderer::triggerAnim(bool isPlayer, int index, dnd::VisualEventType type) 
 }
 
 void Renderer::render() {
+    if (!ready_ || !shader_) return; // H3: never draw with a failed context / null shader
     updateRenderArea();
     updateAnimations();
     totalTime_ += 0.016f;
@@ -258,58 +260,87 @@ void Renderer::render() {
 }
 
 void Renderer::present() {
-    if (display_ != EGL_NO_DISPLAY && surface_ != EGL_NO_SURFACE) {
+    if (ready_ && display_ != EGL_NO_DISPLAY && surface_ != EGL_NO_SURFACE) {
         eglSwapBuffers(display_, surface_);
     }
 }
 
-void Renderer::initRenderer() {
+bool Renderer::initRenderer() {
+    // H3: every EGL call is checked; release builds compile assert() out (NDEBUG), so a missing
+    // config / context / shader used to dereference end() or null and SIGSEGV at window init.
     constexpr EGLint attribs[] = {
             EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
             EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
             EGL_BLUE_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_RED_SIZE, 8,
             EGL_DEPTH_SIZE, 24, EGL_NONE
     };
+    if (!app_ || !app_->window) {
+        aout << "Renderer: no native window" << std::endl;
+        return false;
+    }
 
-    auto display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    eglInitialize(display, nullptr, nullptr);
+    EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    if (display == EGL_NO_DISPLAY || eglInitialize(display, nullptr, nullptr) != EGL_TRUE) {
+        aout << "Renderer: eglInitialize failed (0x" << std::hex << eglGetError() << std::dec << ")" << std::endl;
+        return false;
+    }
+    display_ = display; // from here on, failures are cleaned up by the destructor
 
-    EGLint numConfigs;
-    eglChooseConfig(display, attribs, nullptr, 0, &numConfigs);
+    EGLint numConfigs = 0;
+    if (eglChooseConfig(display, attribs, nullptr, 0, &numConfigs) != EGL_TRUE || numConfigs <= 0) {
+        aout << "Renderer: no EGL config for ES3 window (0x" << std::hex << eglGetError() << std::dec << ")" << std::endl;
+        return false;
+    }
+    std::vector<EGLConfig> supportedConfigs(static_cast<size_t>(numConfigs));
+    if (eglChooseConfig(display, attribs, supportedConfigs.data(), numConfigs, &numConfigs) != EGL_TRUE
+        || numConfigs <= 0) {
+        aout << "Renderer: eglChooseConfig failed" << std::endl;
+        return false;
+    }
+    supportedConfigs.resize(static_cast<size_t>(numConfigs));
 
-    std::unique_ptr<EGLConfig[]> supportedConfigs(new EGLConfig[numConfigs]);
-    eglChooseConfig(display, attribs, supportedConfigs.get(), numConfigs, &numConfigs);
-
-    auto config = *std::find_if(
-            supportedConfigs.get(),
-            supportedConfigs.get() + numConfigs,
-            [&display](const EGLConfig &config) {
-                EGLint red, green, blue, depth;
-                if (eglGetConfigAttrib(display, config, EGL_RED_SIZE, &red)
-                    && eglGetConfigAttrib(display, config, EGL_GREEN_SIZE, &green)
-                    && eglGetConfigAttrib(display, config, EGL_BLUE_SIZE, &blue)
-                    && eglGetConfigAttrib(display, config, EGL_DEPTH_SIZE, &depth)) {
-                    return red == 8 && green == 8 && blue == 8 && depth == 24;
-                }
-                return false;
-            });
+    // Prefer an exact RGB888 / D24 config; otherwise fall back to the first one returned
+    // (configs are already filtered to >= 8 bits per channel, and the 2D renderer needs no depth).
+    EGLConfig config = supportedConfigs.front();
+    for (const EGLConfig& c : supportedConfigs) {
+        EGLint red = 0, green = 0, blue = 0, depth = 0;
+        if (eglGetConfigAttrib(display, c, EGL_RED_SIZE, &red)
+            && eglGetConfigAttrib(display, c, EGL_GREEN_SIZE, &green)
+            && eglGetConfigAttrib(display, c, EGL_BLUE_SIZE, &blue)
+            && eglGetConfigAttrib(display, c, EGL_DEPTH_SIZE, &depth)
+            && red == 8 && green == 8 && blue == 8 && depth == 24) {
+            config = c;
+            break;
+        }
+    }
 
     EGLSurface surface = eglCreateWindowSurface(display, config, app_->window, nullptr);
-    EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE};
-    EGLContext context = eglCreateContext(display, config, nullptr, contextAttribs);
-
-    auto madeCurrent = eglMakeCurrent(display, surface, surface, context);
-    assert(madeCurrent);
-
-    display_ = display;
+    if (surface == EGL_NO_SURFACE) {
+        aout << "Renderer: eglCreateWindowSurface failed (0x" << std::hex << eglGetError() << std::dec << ")" << std::endl;
+        return false;
+    }
     surface_ = surface;
+    EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE};
+    EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
+    if (context == EGL_NO_CONTEXT) {
+        aout << "Renderer: eglCreateContext failed (0x" << std::hex << eglGetError() << std::dec << ")" << std::endl;
+        return false;
+    }
     context_ = context;
+
+    if (eglMakeCurrent(display, surface, surface, context) != EGL_TRUE) {
+        aout << "Renderer: eglMakeCurrent failed (0x" << std::hex << eglGetError() << std::dec << ")" << std::endl;
+        return false;
+    }
     width_ = -1;
     height_ = -1;
 
     shader_ = std::unique_ptr<Shader>(
             Shader::loadShader(vertex, fragment, "inPosition", "inUV", "uProjection"));
-    assert(shader_);
+    if (!shader_) {
+        aout << "Renderer: shader failed to load" << std::endl;
+        return false;
+    }
     shader_->activate();
 
     glClearColor(DUNGEON_BG);
@@ -317,6 +348,7 @@ void Renderer::initRenderer() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     createModels();
+    return true;
 }
 
 void Renderer::updateRenderArea() {

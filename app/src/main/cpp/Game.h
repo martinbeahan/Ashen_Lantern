@@ -127,7 +127,12 @@ public:
 
     // Networking/Persistence
     std::string serialize();
-    void deserialize(const std::string& data);
+    /**
+     * Load a save / host state. Transactional (Code Auditor H1): the data is parsed into a
+     * scratch Game first and only adopted when every section parsed; on failure *this is left
+     * untouched, false is returned and *error (if given) says why.
+     */
+    bool deserialize(const std::string& data, std::string* error = nullptr);
 
     std::string getLastEvent() const { return lastEvent_; }
     std::string getRoomDescription() const { return roomDescription_; }
@@ -247,6 +252,12 @@ public:
     }
 
 private:
+    struct LoadOnlyTag {};
+    explicit Game(LoadOnlyTag);
+    /** Parse every section into this (scratch) Game; throws on malformed data. Returns
+     *  whether the descriptions section was present. */
+    bool parseSave(const std::string& data);
+
     std::vector<std::unique_ptr<Character>> players_;
     std::vector<std::unique_ptr<Character>> enemies_;
     std::vector<Character*> turnOrder_;
@@ -386,6 +397,10 @@ private:
     bool performWeaponAttack(Character* actor, Character& target, int attackerVisualIndex, bool targetIsEnemy, int targetIndex, bool sneakAttack);
     void pushVisualEvent(VisualEventType type, int index) { visualEvents_.push({type, index}); }
     Character* findCharacter(const std::string& name);
+    bool isPartyMember(const Character* c) const {
+        for (const auto& p : players_) if (p.get() == c) return true;
+        return false;
+    }
 };
 
 } // namespace dnd

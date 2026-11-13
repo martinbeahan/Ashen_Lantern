@@ -6,7 +6,18 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.22 / 61) — Ash & Ember, phase 3
+## What's new (v2.23 / 62) — save & online safety fixes
+
+- **Names with commas no longer break your save** — a hero called *Bob, Jr* (or any name or chat line with `, ; | ~`) used to wipe the party on Continue or corrupt an online table. Save and sync text is now encoded safely, and old saves still load
+- **Cleaner names** — hero, Lanternkeeper and joining-player names skip the few separator characters (`, ; | ~ ^ : %`) and are capped at 24 characters
+- **Chat can't erase the adventure log** — a `|` in chat no longer overwrites the journal
+- **Broken saves fail safely** — a damaged save is now rejected as a whole (you get the "Save looked broken" message) instead of loading half a game; a bad online update is ignored and the table keeps its last good state
+- **Online joins are checked** — a joiner with an invalid class joins as a Fighter instead of getting garbage stats
+- **Fairer dice** — combat, loot and saving-throw rolls use a properly seeded random generator, so each launch no longer replays the same roll sequence
+- **Stability** — the native layer checks its inputs and no longer crashes on graphics-setup failures or unexpected errors
+- Unchanged: Long Rest every 5 rooms, Short Rest once per clear, duplicate foes selectable by slot (`#2`), Host/Join never touches the solo save. **Online play:** host and joiners should all update to v2.23 together (older versions show encoded names)
+
+## Previous (v2.22 / 61) — Ash & Ember, phase 3
 
 - **New original backgrounds** — 16 hand-authored *Ash & Ember* stages replace the old CC0 battlebacks. The stage now follows the mode and story beat instead of guessing from room text: Kindling Pyre, Thornpath Woods, the Ossuary, Millhollow Green, the Millrace Weir, the Mill Hall, Emberdeep, Greyfen Marsh, the Catacombs (Crawl), Ember Ring (Arena), Cinder Crucible (Challenge), Ashen Deep (Endless) and a stage per Boss Raid. Boss fights add a heavier vignette with a teal glow. Art is centre-cropped (never stretched), and tablets and large phones get sharper 1080×1350 versions
 - **Original hero art** — the Fighter, Wizard, Rogue, Cleric and **Bard** have new hand-drawn silhouettes with idle and attack frames, facing the foes. The Bard finally has their own sprite instead of borrowing the Wizard's. With *Reduce flashing* on, the attack frames use calmer glows
