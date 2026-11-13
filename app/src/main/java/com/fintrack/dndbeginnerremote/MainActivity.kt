@@ -14,7 +14,6 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import android.graphics.Color
 import android.view.Gravity
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -31,7 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var turnBanner: TextView
     private var hudXpRow: View? = null
-    private var hudXpBar: ProgressBar? = null
+    private var hudXpBar: EmberXpView? = null
     private var hudXpText: TextView? = null
     private var hudXpLabel: TextView? = null
     /** name -> last known pendingStatPoints; used to fire level-up toasts. */
@@ -60,6 +59,8 @@ class MainActivity : AppCompatActivity() {
     private var battleFxOverlay: FrameLayout? = null
     private var combatFlashOverlay: View? = null
     private var lastBattleBgKey = ""
+    private var battleStageImage: ImageView? = null
+    private var battleBossOverlay: View? = null
     
     private var multiplayer: MultiplayerManager? = null
     private var lastBattleRoster = ""
@@ -271,6 +272,8 @@ class MainActivity : AppCompatActivity() {
     external fun setDifficulty(difficulty: Int)
     external fun getDifficulty(): Int
     external fun getSoloPlayMode(): Int
+    /** SoloQuestBeat value (QuestScript.h) — drives the stage background. */
+    external fun getQuestBeat(): Int
     external fun isStoryFullyComplete(): Boolean
     external fun consumePendingRaidKeyDrop(): Boolean
     external fun beginBossRaidFromCurrent(): Boolean
@@ -349,6 +352,8 @@ class MainActivity : AppCompatActivity() {
         enemyColumn = findViewById(R.id.enemyColumn)
         battleArena = findViewById(R.id.battleArena)
         battleFxOverlay = findViewById(R.id.battleFxOverlay)
+        battleStageImage = findViewById(R.id.battleStageImage)
+        battleBossOverlay = findViewById(R.id.battleBossOverlay)
         combatFlashOverlay = findViewById(R.id.combatFlashOverlay)
         wireDiceOverlay()
         wireMainMenuAndSettings()
@@ -1448,6 +1453,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun wireMainMenuAndSettings() {
         mainMenuRoot = findViewById(R.id.mainMenuRoot)
+        findViewById<ImageView?>(R.id.mainMenuBackdrop)?.let { iv ->
+            // Centre-cropped (never stretched); sharper 1080x2340 art on larger / denser screens.
+            iv.setImageResource(if (useHdBackgrounds()) R.drawable.bg_menu_backdrop_hd else R.drawable.bg_menu_backdrop)
+        }
         btnMenuContinue = findViewById(R.id.btnMenuContinue)
         btnMenuSolo = findViewById(R.id.btnMenuSolo)
         btnMenuCrawl = findViewById(R.id.btnMenuCrawl)
@@ -2815,11 +2824,10 @@ class MainActivity : AppCompatActivity() {
         val prog = parseXpProgress(localPlayerName)
         if (prog == null) {
             label.text = "—"
-            bar.progress = 0
+            bar.setProgress(0, 1)
             return
         }
-        bar.max = prog.need.coerceAtLeast(1)
-        bar.progress = prog.xp.coerceIn(0, bar.max)
+        bar.setProgress(prog.xp, prog.need)
         label.text = "${prog.xp}/${prog.need}"
         hudXpLabel?.text = "XP L${prog.level}"
     }
@@ -2827,7 +2835,7 @@ class MainActivity : AppCompatActivity() {
     private fun setSheetButtonHighlight(active: Boolean) {
         if (active) {
             btnSheet.text = "Sheet!"
-            btnSheet.setTextColor(getColor(R.color.gold))
+            btnSheet.isActivated = true // active HUD chip: far-soot + amber stroke
             if (reduceFlashEnabled) {
                 // Soft highlight only — no rapid opacity pulse.
                 sheetPulseAnimator?.cancel()
@@ -2848,7 +2856,7 @@ class MainActivity : AppCompatActivity() {
             if (!(isOnlineHost && try { isDmTable() } catch (_: Exception) { false })) {
                 btnSheet.text = "Sheet"
             }
-            btnSheet.setTextColor(getColor(R.color.parchment))
+            btnSheet.isActivated = false
         }
     }
 
@@ -2911,7 +2919,7 @@ class MainActivity : AppCompatActivity() {
         val classTv = view.findViewById<TextView>(R.id.sheetClass)
         val goldTv = view.findViewById<TextView>(R.id.sheetGold)
         val hpLabel = view.findViewById<TextView>(R.id.sheetHpLabel)
-        val hpBar = view.findViewById<ProgressBar>(R.id.sheetHpBar)
+        val hpBar = view.findViewById<WickBarView>(R.id.sheetHpBar)
         val resourcesTv = view.findViewById<TextView>(R.id.sheetResources)
         val equippedTv = view.findViewById<TextView>(R.id.sheetEquipped)
         val pointsHint = view.findViewById<TextView>(R.id.sheetPointsHint)
@@ -2927,25 +2935,21 @@ class MainActivity : AppCompatActivity() {
         val max = hp?.groupValues?.getOrNull(2)?.toIntOrNull() ?: 1
         val ac = Regex("""AC:\s*(\d+)""").find(sheet)?.groupValues?.getOrNull(1) ?: "?"
         hpLabel.text = "HP $cur/$max · AC $ac"
-        hpBar.max = max.coerceAtLeast(1)
-        hpBar.progress = cur.coerceIn(0, hpBar.max)
-        hpBar.progressDrawable = getDrawable(R.drawable.bg_hp_bar)?.mutate()
+        hpBar.setHp(cur, max)
         val res = Regex("""Resources:\s*(\d+)/(\d+)""").find(sheet)
         resourcesTv.text = if (res != null) {
             "Resources: ${res.groupValues[1]}/${res.groupValues[2]}"
         } else "Resources: —"
         val xpProg = parseXpProgress(forName)
         val sheetXpLabel = view.findViewById<TextView>(R.id.sheetXpLabel)
-        val sheetXpBar = view.findViewById<ProgressBar>(R.id.sheetXpBar)
+        val sheetXpBar = view.findViewById<EmberXpView>(R.id.sheetXpBar)
         if (xpProg != null) {
             val (xp, need, lvl, _) = xpProg
             sheetXpLabel.text = "XP $xp/$need · Level $lvl → ${lvl + 1}"
-            sheetXpBar.max = need.coerceAtLeast(1)
-            sheetXpBar.progress = xp.coerceIn(0, sheetXpBar.max)
-            sheetXpBar.progressDrawable = getDrawable(R.drawable.bg_xp_bar)?.mutate()
+            sheetXpBar.setProgress(xp, need)
         } else {
             sheetXpLabel.text = "XP —"
-            sheetXpBar.progress = 0
+            sheetXpBar.setProgress(0, 1)
         }
         fun stat(key: String): String {
             val m = Regex("""$key:\s*(\d+)\s*\(([^)]+)\)""").find(sheet)
@@ -3244,6 +3248,44 @@ class MainActivity : AppCompatActivity() {
         logText.text = combatFeed.joinToString("\n")
         val scroll = findViewById<android.widget.ScrollView?>(R.id.combatLogScroll)
         scroll?.post { scroll.fullScroll(View.FOCUS_DOWN) }
+    }
+
+    private fun rarityKey(rarity: String): String = when (rarity.lowercase()) {
+        "uncommon", "rare", "epic", "legendary" -> rarity.lowercase()
+        else -> "common"
+    }
+
+    /** Rarity row stripe, glyph socket and pip (colour + shape, so colour-blind players can tell them apart). */
+    private fun bindRarityRow(row: View, rarity: String, socket: ImageView?, pip: ImageView?) {
+        val k = rarityKey(rarity)
+        row.background = getDrawable(
+            when (k) {
+                "uncommon" -> R.drawable.bg_item_row_uncommon
+                "rare" -> R.drawable.bg_item_row_rare
+                "epic" -> R.drawable.bg_item_row_epic
+                "legendary" -> R.drawable.bg_item_row_legendary
+                else -> R.drawable.bg_item_row_common
+            }
+        )
+        socket?.setImageResource(
+            when (k) {
+                "uncommon" -> R.drawable.bg_item_socket_uncommon
+                "rare" -> R.drawable.bg_item_socket_rare
+                "epic" -> R.drawable.bg_item_socket_epic
+                "legendary" -> R.drawable.bg_item_socket_legendary
+                else -> R.drawable.bg_item_socket_common
+            }
+        )
+        pip?.setImageResource(
+            when (k) {
+                "uncommon" -> R.drawable.ic_rarity_uncommon
+                "rare" -> R.drawable.ic_rarity_rare
+                "epic" -> R.drawable.ic_rarity_epic
+                "legendary" -> R.drawable.ic_rarity_legendary
+                else -> R.drawable.ic_rarity_common
+            }
+        )
+        pip?.contentDescription = "$k rarity"
     }
 
     private fun rarityColor(rarity: String): Int {
@@ -3678,7 +3720,7 @@ class MainActivity : AppCompatActivity() {
             if (entries.isEmpty()) {
                 val empty = TextView(this).apply {
                     text = "No gear yet. Visit a merchant or clear rooms for loot."
-                    setTextColor(getColor(R.color.parchment))
+                    setTextColor(getColor(R.color.ae_bone))
                     textSize = 13f
                 }
                 list.addView(empty)
@@ -3711,6 +3753,9 @@ class MainActivity : AppCompatActivity() {
                 val itemLabel = "$name (+$bonus)"
                 nameTv.text = itemLabel
                 nameTv.setTextColor(rarityColor(rarity))
+                bindRarityRow(row, rarity, row.findViewById(R.id.invItemSocket), row.findViewById(R.id.invItemPip))
+                row.findViewById<View?>(R.id.invEquippedTag)?.visibility =
+                    if (slot == "weapon" || slot == "armor") View.VISIBLE else View.GONE
                 val slotLabel = when (slot) {
                     "weapon" -> "Equipped · Weapon"
                     "armor" -> "Equipped · Armor"
@@ -3962,6 +4007,7 @@ class MainActivity : AppCompatActivity() {
                 val nameTv = row.findViewById<TextView>(R.id.shopItemName)
                 nameTv.text = "$name (+$bonus) · $type"
                 nameTv.setTextColor(rarityColor(rarity))
+                bindRarityRow(row, rarity, row.findViewById(R.id.shopItemSocket), row.findViewById(R.id.shopItemPip))
                 val bonusInt = bonus.toIntOrNull() ?: 0
                 val flavor = BeginnerGuide.gearBonusFlavor(type, bonusInt)
                 row.findViewById<TextView>(R.id.shopItemCost).text = "$rarity · $cls · ${cost}g\n$flavor"
@@ -4382,77 +4428,103 @@ class MainActivity : AppCompatActivity() {
             1 -> R.drawable.sprite_wizard
             2 -> R.drawable.sprite_rogue
             3 -> R.drawable.sprite_cleric
-            4 -> R.drawable.sprite_wizard // temporary: reuse wizard until Bard CC0 art
+            4 -> R.drawable.sprite_bard
             else -> R.drawable.sprite_fighter
         }
     }
 
+    /**
+     * Hero attack frame (Ash & Ember heroes share one scale/anchor, so swapping doesn't jump).
+     * Reduce flashing uses the --calm _atk variants (amber flares — Cleric rays, Wizard ember
+     * bolt, sword arc, lute arcs — toned down to 30% / 55%).
+     */
     private fun attackSpriteFor(idleRes: Int): Int {
+        val calm = reduceFlashEnabled
         return when (idleRes) {
-            R.drawable.sprite_fighter -> R.drawable.sprite_fighter_atk
-            R.drawable.sprite_wizard -> R.drawable.sprite_wizard_atk
-            R.drawable.sprite_rogue -> R.drawable.sprite_rogue_atk
-            R.drawable.sprite_cleric -> R.drawable.sprite_cleric_atk
+            R.drawable.sprite_fighter -> if (calm) R.drawable.sprite_fighter_atk_calm else R.drawable.sprite_fighter_atk
+            R.drawable.sprite_wizard -> if (calm) R.drawable.sprite_wizard_atk_calm else R.drawable.sprite_wizard_atk
+            R.drawable.sprite_rogue -> if (calm) R.drawable.sprite_rogue_atk_calm else R.drawable.sprite_rogue_atk
+            R.drawable.sprite_cleric -> if (calm) R.drawable.sprite_cleric_atk_calm else R.drawable.sprite_cleric_atk
+            R.drawable.sprite_bard -> if (calm) R.drawable.sprite_bard_atk_calm else R.drawable.sprite_bard_atk
             else -> idleRes
         }
     }
 
-    /** Quest-beat / room-type battle backdrop (CC0 art) — Act 2 + crawl variety. */
-    private fun refreshBattleBackground() {
-        if (!::battleArena.isInitialized) return
-        val status = try { getPlayerStatus() } catch (_: Exception) { "" }
-        val room = try { getRoomDescription() } catch (_: Exception) { "" }
-        val blob = (status + "\n" + room).lowercase()
-        val res = when {
-            // Boss rooms (Ashen Drake / kings / named boss beats)
-            blob.contains("ashen drake") || blob.contains("wick king") ||
-                blob.contains("ossuary prior") || blob.contains("hollow crown") ||
-                blob.contains("ember hydra") || blob.contains("nightfang") ||
-                blob.contains("breach warden") || blob.contains("first lamplighter") ||
-                blob.contains("boss") ->
-                R.drawable.bg_battle_stage_boss
-            // Act 3 — Emberdeep Breach / Act 4 — Ashwake Vigil
-            blob.contains("wellside") || blob.contains("old well") || blob.contains("ember seal") ||
-                blob.contains("root labyrinth") || blob.contains("breach") ->
-                R.drawable.bg_battle_stage_cave
-            // Act 2 — Millhollow's Debt
-            blob.contains("millrace") || blob.contains("weir") ->
-                R.drawable.bg_battle_stage_weir
-            blob.contains("flooded cellar") || blob.contains("flooded") ->
-                R.drawable.bg_battle_stage_flooded
-            blob.contains("ledger loft") || blob.contains("loft") ->
-                R.drawable.bg_battle_stage_loft
-            blob.contains("collector's hall") || blob.contains("collectors hall") ||
-                (blob.contains("collector") && blob.contains("hall")) ->
-                R.drawable.bg_battle_stage_hall
-            blob.contains("debt settled") || blob.contains("millhollow green") ->
-                R.drawable.bg_battle_stage_road
-            // Act 1
-            blob.contains("millhollow") && !blob.contains("debt") ->
-                R.drawable.bg_battle_stage_road
-            blob.contains("thornpath") || blob.contains("woods") || blob.contains("forest") ->
-                R.drawable.bg_battle_stage_woods
-            blob.contains("bone gallery") || blob.contains("crypt") ->
-                R.drawable.bg_battle_stage_crypt
-            blob.contains("lantern vault") || blob.contains("vault") ->
-                R.drawable.bg_battle_stage_vault
-            blob.contains("ashen shrine") || blob.contains("shrine") || blob.contains("ruins") ->
-                R.drawable.bg_battle_stage_ruins
-            // Crawl / procedural variety from room nouns
-            blob.contains("library") || blob.contains("laboratory") ->
-                R.drawable.bg_battle_stage_loft
-            blob.contains("hallway") || blob.contains("corridor") || blob.contains("cave") ->
-                R.drawable.bg_battle_stage_cave
-            blob.contains("merchant") ->
-                R.drawable.bg_battle_stage_road
-            blob.contains("chamber") ->
-                R.drawable.bg_battle_stage_dungeon
-            else -> R.drawable.bg_battle_stage_dungeon
+    private val heroSpriteRes: Set<Int> = setOf(
+        R.drawable.sprite_fighter, R.drawable.sprite_wizard, R.drawable.sprite_rogue,
+        R.drawable.sprite_cleric, R.drawable.sprite_bard
+    )
+
+    /** Sharper 1080-wide stage / menu art on tablets and dense phones (centre-cropped either way). */
+    private fun useHdBackgrounds(): Boolean {
+        val dm = resources.displayMetrics
+        return resources.configuration.smallestScreenWidthDp >= 600 || dm.widthPixels > 900
+    }
+
+    /**
+     * Stage art by play mode + story beat (Phase 3 mapping, docs/ASH_EMBER_PHASE3.md) — replaces the
+     * old room-text keyword matching. Raids pick by the boss enemyId in the roster; any boss fight
+     * adds bg_stage_boss_overlay. Pure function so the mapping is easy to audit.
+     */
+    internal fun stageForContext(mode: Int, beat: Int, merchant: Boolean, rosterIds: List<String>): String {
+        return when (mode) {
+            4 -> "ember_ring"        // ARENA
+            3 -> "cinder_crucible"   // CHALLENGE
+            5 -> "ashen_deep"        // ENDLESS
+            2 -> when {              // RAID
+                "boss_ember_hydra" in rosterIds -> "raid_kilnmouth"
+                "boss_nightfang" in rosterIds -> "raid_weftholme"
+                else -> "raid_corrans_rest" // boss_hollow_crown + default
+            }
+            1 -> if (merchant) "millhollow_green" else "catacombs" // CRAWL
+            else -> when (beat) {    // STORY (0) and anything else
+                1, 6 -> "kindling_pyre"
+                2 -> "thornpath_woods"
+                3, 4, 5 -> "ossuary"
+                8, 13, 14, 20, 25 -> "millhollow_green"
+                9, 10 -> "mill_weir"
+                11, 12 -> "mill_hall"
+                in 15..19 -> "emberdeep"
+                in 21..24 -> "greyfen_marsh"
+                // 0 = online / Lanternkeeper table, 7 = post-quest procedural
+                else -> if (merchant) "millhollow_green" else "catacombs"
+            }
         }
-        val key = res.toString()
+    }
+
+    private fun stageDrawable(stage: String, hd: Boolean): Int = when (stage) {
+        "ember_ring" -> if (hd) R.drawable.bg_stage_ember_ring_hd else R.drawable.bg_stage_ember_ring
+        "cinder_crucible" -> if (hd) R.drawable.bg_stage_cinder_crucible_hd else R.drawable.bg_stage_cinder_crucible
+        "ashen_deep" -> if (hd) R.drawable.bg_stage_ashen_deep_hd else R.drawable.bg_stage_ashen_deep
+        "raid_corrans_rest" -> if (hd) R.drawable.bg_stage_raid_corrans_rest_hd else R.drawable.bg_stage_raid_corrans_rest
+        "raid_kilnmouth" -> if (hd) R.drawable.bg_stage_raid_kilnmouth_hd else R.drawable.bg_stage_raid_kilnmouth
+        "raid_weftholme" -> if (hd) R.drawable.bg_stage_raid_weftholme_hd else R.drawable.bg_stage_raid_weftholme
+        "kindling_pyre" -> if (hd) R.drawable.bg_stage_kindling_pyre_hd else R.drawable.bg_stage_kindling_pyre
+        "thornpath_woods" -> if (hd) R.drawable.bg_stage_thornpath_woods_hd else R.drawable.bg_stage_thornpath_woods
+        "ossuary" -> if (hd) R.drawable.bg_stage_ossuary_hd else R.drawable.bg_stage_ossuary
+        "millhollow_green" -> if (hd) R.drawable.bg_stage_millhollow_green_hd else R.drawable.bg_stage_millhollow_green
+        "mill_weir" -> if (hd) R.drawable.bg_stage_mill_weir_hd else R.drawable.bg_stage_mill_weir
+        "mill_hall" -> if (hd) R.drawable.bg_stage_mill_hall_hd else R.drawable.bg_stage_mill_hall
+        "emberdeep" -> if (hd) R.drawable.bg_stage_emberdeep_hd else R.drawable.bg_stage_emberdeep
+        "greyfen_marsh" -> if (hd) R.drawable.bg_stage_greyfen_marsh_hd else R.drawable.bg_stage_greyfen_marsh
+        else -> if (hd) R.drawable.bg_stage_catacombs_hd else R.drawable.bg_stage_catacombs
+    }
+
+    private fun refreshBattleBackground() {
+        val img = battleStageImage ?: return
+        val mode = try { getSoloPlayMode() } catch (_: Exception) { 0 }
+        val beat = try { getQuestBeat() } catch (_: Exception) { 0 }
+        val merchant = try { isMerchantRoom() } catch (_: Exception) { false }
+        val roster = try { getBattleRoster() } catch (_: Exception) { "" }
+        val ids = parseBattleRoster(roster).second.map { it.enemyId }
+        val stage = stageForContext(mode, beat, merchant, ids)
+        val boss = ids.any { it.startsWith("boss_") }
+        val hd = useHdBackgrounds()
+        val key = "$stage|$hd|$boss"
         if (key == lastBattleBgKey) return
         lastBattleBgKey = key
-        battleArena.background = getDrawable(res)?.mutate()
+        img.setImageResource(stageDrawable(stage, hd))
+        battleBossOverlay?.visibility = if (boss) View.VISIBLE else View.GONE
     }
 
     private fun refreshBattleArena() {
@@ -4510,43 +4582,80 @@ class MainActivity : AppCompatActivity() {
         alignEnd: Boolean,
         isEnemyColumn: Boolean
     ) {
+        for (i in 0 until column.childCount) {
+            val ring = column.getChildAt(i).findViewWithTag<ImageView?>("ring")
+            (ring?.getTag(R.id.battleArena) as? android.animation.Animator)?.cancel()
+        }
         column.removeAllViews()
         val density = resources.displayMetrics.density
         val spriteSize = (112 * density).toInt()
         val barW = (96 * density).toInt()
-        val barH = (12 * density).toInt()
+        val cinzel = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.cinzel)
         units.forEachIndexed { index, unit ->
             val wrap = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = if (alignEnd) Gravity.END else Gravity.START
                 setPadding(4, 4, 4, 4)
                 tag = index // unique slot (duplicate names allowed)
+                clipChildren = false
+                clipToPadding = false
             }
             val idleRes = spriteFor(unit)
+            // Sprite slot: static backlight (so dark silhouettes read on dark floors), a ring under
+            // the feet (teal target / amber selected hero; hidden until selected), then the sprite.
+            val slot = FrameLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(spriteSize, spriteSize)
+                clipChildren = false
+                clipToPadding = false
+                tag = "slot"
+            }
+            val backlight = View(this).apply {
+                background = getDrawable(
+                    if (isEnemyColumn) R.drawable.bg_sprite_backlight_enemy else R.drawable.bg_sprite_backlight_hero
+                )
+                layoutParams = FrameLayout.LayoutParams(spriteSize, spriteSize)
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                alpha = if (unit.hp <= 0) 0.35f else 1f
+            }
+            val ring = ImageView(this).apply {
+                setImageResource(if (isEnemyColumn) R.drawable.ic_target_ring else R.drawable.ic_select_ring)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                layoutParams = FrameLayout.LayoutParams(
+                    (spriteSize * 0.92f).toInt(), (spriteSize * 0.30f).toInt(),
+                    Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                ).apply { bottomMargin = -(spriteSize * 0.06f).toInt() }
+                visibility = View.INVISIBLE
+                tag = "ring"
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }
             val img = ImageView(this).apply {
                 setImageResource(idleRes)
                 setTag(R.id.sheetPortrait, idleRes)
-                layoutParams = LinearLayout.LayoutParams(spriteSize, spriteSize)
+                layoutParams = FrameLayout.LayoutParams(spriteSize, spriteSize)
                 adjustViewBounds = true
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 setPadding(4, 4, 4, 4)
-                background = getDrawable(R.drawable.bg_portrait_frame)
                 tag = "sprite"
-                // Party on left faces right (native); foes on right face left toward the party.
-                // Ash & Ember vectors are authored facing left already — don't mirror them.
+                // Heroes face right (never mirrored); foes on the right face left toward the party.
+                // Ash & Ember vectors are authored facing their side already — don't mirror them.
                 scaleX = if (isEnemyColumn && !isAshEmberSprite(idleRes)) -1f else 1f
                 alpha = if (unit.hp <= 0) 0.35f else 1f
             }.also { img ->
                 if (unit.hp > 0) startIdleBob(img)
             }
+            slot.addView(backlight)
+            slot.addView(ring)
+            slot.addView(img)
             val dupeCount = units.count { it.name == unit.name }
             val displayName = if (dupeCount > 1) "${unit.name} #${index + 1}" else unit.name
             val name = TextView(this).apply {
                 text = displayName
-                setTextColor(Color.parseColor("#FFFFE08A"))
+                setTextColor(getColor(R.color.ae_bone))
                 textSize = 11f
-                setTypeface(typeface, android.graphics.Typeface.BOLD)
-                setShadowLayer(2f * density, 0f, 1f * density, Color.BLACK)
+                typeface = cinzel
+                letterSpacing = 0.06f
+                isAllCaps = true
+                setShadowLayer(2f * density, 0f, 1f * density, getColor(R.color.ae_void))
                 gravity = if (alignEnd) Gravity.END else Gravity.START
                 // Longer bestiary names wrap to 2 lines within the sprite width so the
                 // duplicate-slot "#N" suffix (#71) stays visible.
@@ -4554,23 +4663,35 @@ class MainActivity : AppCompatActivity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 layoutParams = LinearLayout.LayoutParams(spriteSize, LinearLayout.LayoutParams.WRAP_CONTENT)
             }
-            val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-                max = unit.maxHp.coerceAtLeast(1)
-                progress = unit.hp.coerceIn(0, max)
-                layoutParams = LinearLayout.LayoutParams(barW, barH).apply {
-                    topMargin = (4 * density).toInt()
-                    bottomMargin = (2 * density).toInt()
+            val bar: View = if (isEnemyColumn) {
+                // Enemy HP: thin teal soul thread.
+                ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                    max = unit.maxHp.coerceAtLeast(1)
+                    progress = unit.hp.coerceIn(0, max)
+                    progressDrawable = getDrawable(R.drawable.bg_hp_bar_enemy)?.mutate()
+                    layoutParams = LinearLayout.LayoutParams(barW, (5 * density).toInt()).apply {
+                        topMargin = (5 * density).toInt()
+                        bottomMargin = (3 * density).toInt()
+                    }
                 }
-                progressDrawable = getDrawable(R.drawable.bg_hp_bar)?.mutate()
+            } else {
+                // Hero HP: the burning wick.
+                WickBarView(this).apply {
+                    setHp(unit.hp, unit.maxHp)
+                    layoutParams = LinearLayout.LayoutParams(barW, (18 * density).toInt()).apply {
+                        topMargin = (1 * density).toInt()
+                    }
+                }
             }
             val hp = TextView(this).apply {
                 text = "${unit.hp}/${unit.maxHp}"
-                setTextColor(Color.parseColor("#FFC4A574"))
-                textSize = 10f
-                setShadowLayer(1.5f * density, 0f, 1f * density, Color.BLACK)
+                setTextColor(getColor(R.color.ae_fog))
+                textSize = 12f
+                setShadowLayer(1.5f * density, 0f, 1f * density, getColor(R.color.ae_void))
                 gravity = if (alignEnd) Gravity.END else Gravity.START
             }
-            wrap.addView(img)
+            // Child order kept: 0 = sprite slot, 1 = name (findSpriteByName), 2 = bar, 3 = hp.
+            wrap.addView(slot)
             wrap.addView(name)
             wrap.addView(bar)
             wrap.addView(hp)
@@ -4625,16 +4746,44 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applySelectionHighlights() {
-        fun paint(column: LinearLayout, selectedIndex: Int?) {
+        // Selected foe: teal target ring (gentle 0.6 -> 1 alpha pulse over 900 ms; static with
+        // Reduce flashing). Selected hero: static amber ring. No box highlight any more.
+        fun paint(column: LinearLayout, selectedIndex: Int?, pulse: Boolean) {
             for (i in 0 until column.childCount) {
                 val child = column.getChildAt(i)
+                child.background = null
                 val slot = child.tag as? Int
                 val selectedHere = selectedIndex != null && slot == selectedIndex
-                child.background = if (selectedHere) getDrawable(R.drawable.bg_sprite_selected) else null
+                val ring = child.findViewWithTag<ImageView?>("ring") ?: continue
+                if (selectedHere) {
+                    if (ring.visibility != View.VISIBLE) {
+                        ring.visibility = View.VISIBLE
+                        ring.animate().cancel()
+                        ring.alpha = 1f
+                        if (pulse && !reduceFlashEnabled) {
+                            ring.alpha = 0.6f
+                            val anim = android.animation.ObjectAnimator.ofFloat(ring, "alpha", 0.6f, 1f).apply {
+                                duration = 900
+                                repeatMode = android.animation.ValueAnimator.REVERSE
+                                repeatCount = android.animation.ValueAnimator.INFINITE
+                            }
+                            ring.setTag(R.id.battleArena, anim)
+                            anim.start()
+                        }
+                    } else if (reduceFlashEnabled) {
+                        (ring.getTag(R.id.battleArena) as? android.animation.Animator)?.cancel()
+                        ring.alpha = 1f
+                    }
+                } else {
+                    (ring.getTag(R.id.battleArena) as? android.animation.Animator)?.cancel()
+                    ring.setTag(R.id.battleArena, null)
+                    ring.visibility = View.INVISIBLE
+                    ring.alpha = 1f
+                }
             }
         }
-        paint(partyColumn, selectedAllyIndex)
-        paint(enemyColumn, selectedEnemyIndex)
+        paint(partyColumn, selectedAllyIndex, pulse = false)
+        paint(enemyColumn, selectedEnemyIndex, pulse = true)
     }
 
     private fun startTargetPulse(column: LinearLayout) {
@@ -4759,7 +4908,7 @@ class MainActivity : AppCompatActivity() {
                 .withEndAction { host.removeView(ghost) }.start()
             return
         }
-        ghost.setColorFilter(Color.parseColor("#B04A4650"), android.graphics.PorterDuff.Mode.SRC_ATOP)
+        ghost.setColorFilter(withAlpha(R.color.ae_ash, 0xB0), android.graphics.PorterDuff.Mode.SRC_ATOP)
         ghost.animate()
             .alpha(0f)
             .translationY(y + 10f * density)
@@ -4777,11 +4926,11 @@ class MainActivity : AppCompatActivity() {
             val fleck = View(this).apply {
                 layoutParams = FrameLayout.LayoutParams(size, size)
                 setBackgroundColor(
-                    Color.parseColor(
+                    getColor(
                         when {
-                            ember -> "#FFF2A541"
-                            i % 2 == 0 -> "#FFD9D2C3"
-                            else -> "#FF6E6872"
+                            ember -> R.color.ae_amber
+                            i % 2 == 0 -> R.color.ae_bone
+                            else -> R.color.ae_fog
                         }
                     )
                 )
@@ -4807,7 +4956,8 @@ class MainActivity : AppCompatActivity() {
         targetAllyIndex: Int? = null,
         attackerName: String? = null,
         critical: Boolean = false,
-        damageAmount: Int? = null
+        damageAmount: Int? = null,
+        missed: Boolean = false
     ) {
         val attackerCol = if (attackerIsPlayer) partyColumn else enemyColumn
         val defenderCol = if (attackerIsPlayer) enemyColumn else partyColumn
@@ -4860,6 +5010,8 @@ class MainActivity : AppCompatActivity() {
                 } else if (critical) {
                     flashScreen(true)
                     shakeBattleArena(true)
+                } else if (missed) {
+                    spawnFloatingText(d, "miss", FloatKind.MISS)
                 }
             } ?: run {
                 if (critical) {
@@ -4875,8 +5027,14 @@ class MainActivity : AppCompatActivity() {
             .setInterpolator(AccelerateDecelerateInterpolator())
             .withEndAction {
                 if (idleRes != 0) a.setImageResource(attackSpriteFor(idleRes))
-                // Ash & Ember silhouettes have no attack frame: lean into the lunge instead.
-                val lean = if (isAshEmberSprite(idleRes) && !reduceFlashEnabled) -6f else 0f
+                // Foes (face left, no attack frame) lean -6°; heroes (face right) lean +6° into the
+                // swing. Reduce flashing: no lean.
+                val lean = when {
+                    reduceFlashEnabled -> 0f
+                    idleRes in heroSpriteRes -> 6f
+                    isAshEmberSprite(idleRes) -> -6f
+                    else -> 0f
+                }
                 a.animate()
                     .rotation(lean)
                     .translationX(dx)
@@ -4899,13 +5057,13 @@ class MainActivity : AppCompatActivity() {
     private fun flashHit(target: ImageView, critical: Boolean) {
         if (reduceFlashEnabled) {
             // Gentle brief tint — no hard white/red blink.
-            val soft = if (critical) Color.parseColor("#66C9A84A") else Color.parseColor("#55AA5533")
+            val soft = if (critical) withAlpha(R.color.ae_amber, 0x66) else withAlpha(R.color.ae_ember, 0x55)
             target.setColorFilter(soft, android.graphics.PorterDuff.Mode.SRC_ATOP)
             target.animate().cancel()
             handler.postDelayed({ target.clearColorFilter() }, 280L)
             return
         }
-        val flash = if (critical) Color.parseColor("#FFFFE08A") else Color.parseColor("#FFFF5544")
+        val flash = if (critical) getColor(R.color.ae_amber_core) else getColor(R.color.ae_ember)
         target.setColorFilter(flash, android.graphics.PorterDuff.Mode.SRC_ATOP)
         target.animate().cancel()
         handler.postDelayed({
@@ -4917,7 +5075,7 @@ class MainActivity : AppCompatActivity() {
         // Full-screen white/red/gold pulses are the highest photosensitivity risk.
         if (reduceFlashEnabled) return
         val overlay = combatFlashOverlay ?: return
-        val color = if (critical) Color.parseColor("#BBFFE08A") else Color.parseColor("#77FF4433")
+        val color = if (critical) withAlpha(R.color.ae_amber_core, 0xBB) else withAlpha(R.color.ae_ember, 0x77)
         overlay.setBackgroundColor(color)
         overlay.visibility = View.VISIBLE
         overlay.alpha = if (critical) 0.9f else 0.6f
@@ -4933,7 +5091,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Floating damage number over defender — does not intercept taps. */
-    private fun spawnFloatingDamage(anchor: View, amount: Int, critical: Boolean) {
+    private enum class FloatKind { HIT, CRIT, HEAL, MISS }
+
+    private fun spawnFloatingDamage(anchor: View, amount: Int, critical: Boolean) =
+        spawnFloatingText(anchor, if (critical) "CRIT -$amount" else "-$amount",
+            if (critical) FloatKind.CRIT else FloatKind.HIT)
+
+    /**
+     * Combat floats (Phase 3 kit): hit = bone Cinzel, crit = Amber Core Cinzel with a 2dp ember
+     * underline, heal = lichen, miss = fog italic. Never intercepts taps.
+     */
+    private fun spawnFloatingText(anchor: View, label: String, kind: FloatKind) {
+        val critical = kind == FloatKind.CRIT
         val host = battleFxOverlay ?: return
         val density = resources.displayMetrics.density
         val locHost = IntArray(2)
@@ -4941,11 +5110,27 @@ class MainActivity : AppCompatActivity() {
         host.getLocationOnScreen(locHost)
         anchor.getLocationOnScreen(locAnchor)
         val tv = TextView(this).apply {
-            text = if (critical) "CRIT $amount" else "-$amount"
-            setTextColor(if (critical) Color.parseColor("#FFFFE08A") else Color.parseColor("#FFFFF5F0"))
-            textSize = if (critical) 24f else 18f
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setShadowLayer(5f * density, 0f, 1f * density, Color.BLACK)
+            text = label
+            setTextColor(
+                getColor(
+                    when (kind) {
+                        FloatKind.CRIT -> R.color.ae_amber_core
+                        FloatKind.HEAL -> R.color.ae_lichen
+                        FloatKind.MISS -> R.color.ae_fog
+                        FloatKind.HIT -> R.color.ae_bone
+                    }
+                )
+            )
+            textSize = when (kind) { FloatKind.CRIT -> 24f; FloatKind.MISS -> 17f; else -> 18f }
+            typeface = if (kind == FloatKind.MISS) {
+                android.graphics.Typeface.create(
+                    androidx.core.content.res.ResourcesCompat.getFont(this@MainActivity, R.font.cormorant),
+                    android.graphics.Typeface.ITALIC
+                )
+            } else {
+                androidx.core.content.res.ResourcesCompat.getFont(this@MainActivity, R.font.cinzel_title)
+            }
+            setShadowLayer(5f * density, 0f, 1f * density, getColor(R.color.ae_void))
             background = getDrawable(
                 if (critical) R.drawable.bg_damage_float_crit else R.drawable.bg_damage_float
             )
@@ -4980,6 +5165,14 @@ class MainActivity : AppCompatActivity() {
         if (event == lastAnimEvent) return
         lastAnimEvent = event
         val e = event.lowercase()
+        // Heals ("… drinks … for N HP." / "… Healing Word on X for N HP."): lichen "+N" float.
+        Regex("""(?i)(?:drinks|healing word|restores).*?(?:\bon\s+(.+?)\s+)?for\s+(\d+)\s+HP""").find(event)?.let { m ->
+            val amount = m.groupValues[2].toIntOrNull() ?: 0
+            val who = m.groupValues[1].trim()
+            val target = (if (who.isNotBlank()) findSpriteByName(partyColumn, who) else null) ?: firstSprite(partyColumn)
+            if (amount > 0 && target != null) spawnFloatingText(target, "+$amount", FloatKind.HEAL)
+            return
+        }
         when {
             e.contains("attacks") || e.contains("hits") || e.contains("slashes") ||
                 e.contains("fireball") || e.contains("sneak") || e.contains("action surge") ||
@@ -5012,7 +5205,8 @@ class MainActivity : AppCompatActivity() {
                     attackerIsPlayer = !attackerIsFoe,
                     attackerName = attackerName.ifBlank { null },
                     critical = isCrit,
-                    damageAmount = dmg
+                    damageAmount = dmg,
+                    missed = !landed && e.contains("miss")
                 )
                 // Shake only when animateAttack had no damageAmount to drive it.
                 if (landed && dmg == null) {
@@ -5081,16 +5275,24 @@ class MainActivity : AppCompatActivity() {
             .start()
     }
 
+    /** Palette colour with an explicit alpha byte (keeps every tint on the ae_* tokens). */
+    private fun withAlpha(colorRes: Int, alpha: Int): Int =
+        (getColor(colorRes) and 0x00FFFFFF) or ((alpha and 0xFF) shl 24)
+
+    /** Set by maybeSpecialAbilityJuice: true when the special came from a foe (teal), else amber. */
+    private var accentFromEnemy = false
+
     /** One-shot soft UI pulse — never a rapid strobe. Soft tint only when reduce-flash. */
     private fun pulseAccent(kind: AccentKind) {
         val overlay = combatFlashOverlay
         val color = when (kind) {
-            AccentKind.KILL -> Color.parseColor("#66C9A84A")
-            AccentKind.SPECIAL -> Color.parseColor("#554A90C9")
-            AccentKind.LEVEL_UP -> Color.parseColor("#66E8C84A")
-            AccentKind.RARE_LOOT -> Color.parseColor("#66B07AFF")
-            AccentKind.CRIT -> Color.parseColor("#88FFE08A")
-            AccentKind.HIT -> Color.parseColor("#55FF4433")
+            AccentKind.KILL -> withAlpha(R.color.ae_amber, 0x66)
+            // Gloam teal only for enemy effects; the party's own specials glow amber.
+            AccentKind.SPECIAL -> if (accentFromEnemy) withAlpha(R.color.ae_gloam, 0x55) else withAlpha(R.color.ae_amber, 0x55)
+            AccentKind.LEVEL_UP -> withAlpha(R.color.ae_amber_core, 0x66)
+            AccentKind.RARE_LOOT -> withAlpha(R.color.ae_epic_violet, 0x66)
+            AccentKind.CRIT -> withAlpha(R.color.ae_amber_core, 0x88)
+            AccentKind.HIT -> withAlpha(R.color.ae_ember, 0x55)
         }
         // Light button pulse for specials (always safe — single scale, no opacity strobe).
         if (kind == AccentKind.SPECIAL && ::btnSpecial.isInitialized) {
@@ -5170,8 +5372,12 @@ class MainActivity : AppCompatActivity() {
             e.contains("action surge") || e.contains("sneak attack") ||
             e.contains("healing word")
         if (!special) return
+        // Foe-originated special? (log lines start with the actor's name.)
+        val rosterFoeNames = parseBattleRoster(lastBattleRoster).second.map { it.name.lowercase() }
+        accentFromEnemy = rosterFoeNames.any { it.isNotBlank() && e.startsWith(it) }
         // Combat-log line is already appended; light UI pulse only (no spam toast).
         pulseAccent(AccentKind.SPECIAL)
+        accentFromEnemy = false
     }
 
     private fun wireDiceOverlay() {
@@ -5221,6 +5427,25 @@ class MainActivity : AppCompatActivity() {
             d20Match != null -> "Attack Roll"
             else -> "Combat"
         }
+        // Hex die faces: natural 20 = amber stroke + glow, natural 1 = old-blood stroke + rose text.
+        val natural = d20Match?.groupValues?.getOrNull(1)?.toIntOrNull()
+        diceD20?.setBackgroundResource(
+            when (natural) {
+                20 -> R.drawable.bg_die_face_crit
+                1 -> R.drawable.bg_die_face_fumble
+                else -> R.drawable.bg_die_face
+            }
+        )
+        diceD20?.setTextColor(
+            getColor(
+                when (natural) {
+                    20 -> R.color.ae_amber_core
+                    1 -> R.color.ae_danger_text
+                    else -> R.color.ae_bone
+                }
+            )
+        )
+        diceTitle?.setTextColor(getColor(R.color.ae_amber))
         if (d20Match != null) {
             diceD20?.visibility = View.VISIBLE
             diceD20?.text = d20Match.groupValues[1]
@@ -5250,7 +5475,7 @@ class MainActivity : AppCompatActivity() {
         root.scaleY = 0.92f
         root.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(130).start()
         if (crit) {
-            diceTitle?.setTextColor(Color.parseColor("#FFFFE08A"))
+            diceTitle?.setTextColor(getColor(R.color.ae_amber_core))
             diceTitle?.animate()?.scaleX(1.2f)?.scaleY(1.2f)?.setDuration(100)
                 ?.withEndAction {
                     diceTitle?.animate()?.scaleX(1f)?.scaleY(1f)?.setDuration(100)?.start()

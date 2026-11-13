@@ -3,27 +3,71 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/bg_shop_row"
-    android:padding="10dp"
+    android:background="@drawable/bg_item_row_common"
+    android:paddingStart="12dp"
+    android:paddingEnd="10dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
     android:layout_marginBottom="6dp">
 
-    <TextView
-        android:id="@+id/invItemName"
+    <!-- Header: rarity socket · name (Cormorant 700, rarity colour) + rarity pip · EQUIPPED tag -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/parchment"
-        android:textStyle="bold"
-        android:textSize="13sp"
-        android:maxLines="2"
-        android:ellipsize="end" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/invItemSocket"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/bg_item_socket_common"
+            android:importantForAccessibility="no" />
+
+        <TextView
+            android:id="@+id/invItemName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/cormorant"
+            android:textColor="@color/ae_bone"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:drawablePadding="6dp" />
+
+        <ImageView
+            android:id="@+id/invItemPip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/ic_rarity_common" />
+
+        <TextView
+            android:id="@+id/invEquippedTag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_equipped_tag"
+            android:fontFamily="@font/cinzel"
+            android:text="EQUIPPED"
+            android:textColor="@color/ae_amber"
+            android:textSize="9sp"
+            android:letterSpacing="0.08"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <TextView
+        android:fontFamily="@font/cormorant"
         android:id="@+id/invItemMeta"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textColor="@color/parchment_dark"
-        android:textSize="11sp"
-        android:layout_marginTop="2dp" />
+        android:textSize="13sp"
+        android:layout_marginTop="2dp"
+        android:layout_marginStart="34dp" />
 
     <!-- Horizontal scroll keeps Equip/Upgrade/Transfer/Sell usable on S20 -->
     <HorizontalScrollView
@@ -73,7 +117,7 @@
 
             <Button
                 android:id="@+id/invSellBtn"
-                style="@style/Widget.DnD.ActionButton"
+                style="@style/Widget.DnD.ActionButton.Danger"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:minWidth="68dp"

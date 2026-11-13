@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp" android:height="16dp" android:viewportWidth="20" android:viewportHeight="20">
+    <!-- Ash & Ember corner ornament (Phase 3 UI kit): bracket, curl, diamond, two end dots. -->
+    <path android:pathData="M1,15 L1,1 L15,1" android:strokeColor="#FFF2A541" android:strokeWidth="1.4" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+    <path android:pathData="M4,11 L4,4 L11,4" android:strokeColor="#99F2A541" android:strokeWidth="0.8" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+    <path android:pathData="M7.5,5.3 L9.7,7.5 L7.5,9.7 L5.3,7.5 Z" android:fillColor="#FFF2A541"/>
+    <path android:pathData="M17.1,1 a0.9,0.9 0 1,0 1.8,0 a0.9,0.9 0 1,0 -1.8,0 Z M0.1,18 a0.9,0.9 0 1,0 1.8,0 a0.9,0.9 0 1,0 -1.8,0 Z" android:fillColor="#FFF2A541"/>
+</vector>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cinzel (SIL OFL 1.1, assets/licenses/OFL-Cinzel.txt): 600 for buttons/labels, 700 for titles. -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font android:font="@font/cinzel_semibold" android:fontStyle="normal" android:fontWeight="600"/>
+    <font android:font="@font/cinzel_bold" android:fontStyle="normal" android:fontWeight="700"/>
+</font-family>

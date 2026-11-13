@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/dungeon_bg"
+    android:background="@color/ae_void"
     android:padding="6dp">
 
     <!-- Slim production HUD -->
@@ -27,6 +27,7 @@
             android:layout_marginEnd="4dp">
 
             <TextView
+                android:fontFamily="@font/cinzel"
                 android:id="@+id/turnBanner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -40,13 +41,14 @@
                 android:ellipsize="end" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/playerStatusText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:text="Room 1"
                 android:textColor="@color/parchment"
-                android:textSize="11sp"
+                android:textSize="13sp"
                 android:maxLines="1"
                 android:ellipsize="end" />
 
@@ -59,6 +61,7 @@
                 android:layout_marginTop="4dp">
 
                 <TextView
+                    android:fontFamily="@font/cinzel"
                     android:id="@+id/hudXpLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -68,23 +71,20 @@
                     android:textStyle="bold"
                     android:layout_marginEnd="6dp" />
 
-                <ProgressBar
+                <com.fintrack.dndbeginnerremote.EmberXpView
                     android:id="@+id/hudXpBar"
-                    style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="0dp"
-                    android:layout_height="11dp"
-                    android:layout_weight="1"
-                    android:max="100"
-                    android:progress="0"
-                    android:progressDrawable="@drawable/bg_xp_bar" />
+                    android:layout_height="14dp"
+                    android:layout_weight="1" />
 
                 <TextView
+                    android:fontFamily="@font/cormorant"
                     android:id="@+id/hudXpText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0/100"
                     android:textColor="@color/parchment_dark"
-                    android:textSize="10sp"
+                    android:textSize="12sp"
                     android:layout_marginStart="6dp" />
             </LinearLayout>
         </LinearLayout>
@@ -136,36 +136,72 @@
             android:contentDescription="Settings" />
     </LinearLayout>
 
-    <!-- Parchment room blurb -->
-    <TextView
-        android:id="@+id/roomDescText"
+    <!-- Narration card (Lanternkeeper voice): soot, 3dp amber bar, Cormorant italic -->
+    <LinearLayout
+        android:id="@+id/narrationCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/topBar"
         android:layout_marginTop="6dp"
-        android:background="@drawable/bg_parchment"
-        android:paddingStart="12dp"
+        android:orientation="vertical"
+        android:background="@drawable/bg_narration_card"
+        android:paddingStart="14dp"
         android:paddingEnd="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
-        android:text="The torchlight flickers…"
-        android:textColor="@color/ink"
-        android:textSize="13sp"
-        android:fontFamily="serif"
-        android:textStyle="italic"
-        android:lineSpacingExtra="1dp"
-        android:maxLines="3"
-        android:ellipsize="end" />
+        android:paddingTop="7dp"
+        android:paddingBottom="6dp">
+
+        <TextView
+            android:id="@+id/roomDescText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/cormorant"
+            android:text="The torchlight flickers…"
+            android:textColor="@color/ae_bone"
+            android:textSize="14sp"
+            android:textStyle="italic"
+            android:lineSpacingExtra="1dp"
+            android:maxLines="3"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/narrationAttribution"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/cormorant"
+            android:text="@string/narration_attribution"
+            android:textColor="@color/ae_amber"
+            android:textSize="12sp"
+            android:textStyle="italic"
+            android:importantForAccessibility="no" />
+    </LinearLayout>
 
     <!-- Battle stage (main focus) + FX overlay for floating damage -->
     <FrameLayout
         android:id="@+id/battleStageHost"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/roomDescText"
+        android:layout_below="@id/narrationCard"
         android:layout_above="@id/bottomControls"
         android:layout_marginTop="6dp"
         android:layout_marginBottom="6dp">
+
+        <!-- Stage art: centre-cropped, never stretched (bg_stage_* / _hd picked at runtime). -->
+        <ImageView
+            android:id="@+id/battleStageImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/bg_stage_catacombs"
+            android:importantForAccessibility="no" />
+
+        <!-- Boss fights: stronger teal from the right + heavier vignette -->
+        <View
+            android:id="@+id/battleBossOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_stage_boss_overlay"
+            android:visibility="gone"
+            android:importantForAccessibility="no" />
 
         <LinearLayout
             android:id="@+id/battleArena"
@@ -174,7 +210,7 @@
             android:orientation="horizontal"
             android:padding="10dp"
             android:gravity="center"
-            android:background="@drawable/bg_battle_stage"
+            android:background="@drawable/bg_battle_stage_shade"
             android:clipChildren="false"
             android:clipToPadding="false">
 
@@ -188,12 +224,14 @@
                 android:clipChildren="false" />
 
             <TextView
+                android:fontFamily="@font/cinzel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="VS"
-                android:textSize="18sp"
+                android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="@color/gold_bright"
+                android:textColor="@color/ae_amber"
+                android:alpha="0.7"
                 android:letterSpacing="0.08"
                 android:padding="4dp" />
 
@@ -219,7 +257,7 @@
             android:id="@+id/combatFlashOverlay"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#00FFFFFF"
+            android:background="@android:color/transparent"
             android:visibility="gone"
             android:clickable="false"
             android:focusable="false"
@@ -251,12 +289,13 @@
             android:paddingBottom="4dp"
             android:overScrollMode="ifContentScrolls">
             <TextView
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/combatLogText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="The adventure begins…"
                 android:textColor="@color/parchment"
-                android:textSize="11sp"
+                android:textSize="13sp"
                 android:lineSpacingExtra="2dp"
                 android:breakStrategy="simple"
                 android:hyphenationFrequency="none" />
@@ -270,14 +309,15 @@
             android:orientation="horizontal"
             android:visibility="gone">
             <EditText
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/chatInput"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:hint="Say something…"
                 android:textColor="@color/parchment"
-                android:textColorHint="#80E8D5A3"
-                android:textSize="12sp" />
+                android:textColorHint="@color/ae_fog"
+                android:textSize="14sp" />
             <Button
                 android:id="@+id/btnSendChat"
                 style="@style/Widget.DnD.ActionButton"
@@ -300,7 +340,7 @@
 
                 <Button
                     android:id="@+id/btnAttack"
-                    style="@style/Widget.DnD.ActionButton"
+                    style="@style/Widget.DnD.ActionButton.Primary"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:minWidth="68dp"

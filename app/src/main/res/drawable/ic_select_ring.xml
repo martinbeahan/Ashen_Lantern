@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="120dp" android:height="40dp" android:viewportWidth="120" android:viewportHeight="40">
+    <!-- Amber ring under the selected hero (static; replaces the old bg_sprite_selected box). -->
+    <path android:pathData="M14,20 a46,14 0 1,0 92,0 a46,14 0 1,0 -92,0 Z" android:fillColor="#1FF2A541" android:strokeColor="#FFF2A541" android:strokeWidth="2"/>
+    <path android:pathData="M26,20 a34,9 0 1,0 68,0 a34,9 0 1,0 -68,0 Z" android:strokeColor="#99F2A541" android:strokeWidth="1.2"/>
+</vector>

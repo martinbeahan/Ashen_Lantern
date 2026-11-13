@@ -16,9 +16,10 @@
         android:background="@drawable/bg_dice_panel"
         android:padding="16dp"
         android:elevation="8dp"
-        android:minWidth="200dp">
+        android:minWidth="220dp">
 
         <TextView
+            android:fontFamily="@font/cinzel"
             android:id="@+id/diceTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -35,6 +36,7 @@
             android:gravity="center">
 
             <TextView
+                android:fontFamily="@font/cinzel"
                 android:id="@+id/diceD20"
                 android:layout_width="64dp"
                 android:layout_height="64dp"
@@ -47,6 +49,7 @@
                 android:layout_marginEnd="10dp" />
 
             <TextView
+                android:fontFamily="@font/cinzel"
                 android:id="@+id/diceDamage"
                 android:layout_width="64dp"
                 android:layout_height="64dp"
@@ -60,6 +63,7 @@
         </LinearLayout>
 
         <TextView
+            android:fontFamily="@font/cormorant"
             android:id="@+id/diceSummary"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -67,6 +71,6 @@
             android:gravity="center"
             android:maxWidth="260dp"
             android:textColor="@color/parchment"
-            android:textSize="12sp" />
+            android:textSize="14sp" />
     </LinearLayout>
 </FrameLayout>
