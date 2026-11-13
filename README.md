@@ -6,7 +6,15 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.26 / 65) — The Memory Ledger
+## What's new (v2.27 / 66) — Gear icons
+
+- **Every item has an icon** — inventory and shop rows now show a hand-drawn *Ash & Ember* glyph for the item in a larger 40dp socket (was 26dp). 18 glyphs cover every item in the game: sword, short blade, rapier, staff, wand, mace, warhammer, maul, leathers, robes/cloaks, mail, plate, coat, healing draught, tonic, Raid Key, gold, and unique art for the **Ashen Lantern**
+- **Rarity at a glance** — the socket frame takes the rarity colour (Common ash, Uncommon, Rare, Epic, Legendary amber) and the row keeps its rarity pip (hollow dot, 1–3 diamonds, flame), so colour isn't the only cue. Legendary gear adds an amber inlay on the item and a soft static glow; with *Reduce flashing* on, the glow is dropped and the inlay stays
+- **Potion button** — the combat Potion button shows the draught flask instead of an emoji, dimmed when you can't drink
+- **Raid Key and gold** — the Raid Key hint on the main menu and in Settings shows a key once raids are unlocked, and the inventory header shows a gold coin
+- Greater Potion shares the draught glyph (its frame shows the rarity). Item names are unchanged. Hero gear is amber, never teal. Icons are picked from the item name, so old saves show them straight away; no save change. Host/Join unchanged
+
+## Previous (v2.26 / 65) — The Memory Ledger
 
 - **Memory Ledger** — open it from the main menu (under Daily Quests) or from Settings during a solo run. It holds 47 Ember Memories in three ribbons, **Wren**, **Maren** and **The Lantern**, with source filters (Story / Rounds / Deep / Ring / Raids). Tap a card to read it and Wren's remark. New cards are marked **NEW** until you open them. Uncollected cards say only "A voice not yet kindled" and where they're found, so nothing is spoiled
 - **Where memories come from:**
@@ -122,6 +130,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Memory Ledger** — a book of 47 Ember Memories: short testimonies from the souls in the Lantern, with Wren's remarks, sorted into three ribbons (*Wren*, *Maren*, *The Lantern*). They come from story beats, Lamplighter's Rounds, the Ashen Deep, the Ember Ring and the Drowned Lantern raids. Lore only, no stat effects. Each hero has their own Ledger; uncollected cards show only where they are found
 - **Ash & Ember art** — original hand-authored silhouettes for all 27 foes (one per stable enemy ID) and all five hero classes, with code-driven idle sway / attack lunge / ash-dissolve animation; 16 original stage backgrounds chosen by mode and story beat; *Reduce flashing* stills them and calms the bright amber boss and hero glows
 - **Ash & Ember UI** — soot-and-amber panels, buttons and dialogs, Cinzel / Cormorant Garamond type, a candle-wick HP bar, a 10-ember XP row and rarity pips on loot
+- **Gear icons** — 18 original item glyphs (one per kind of gear, unique art for the Ashen Lantern) in rarity-framed 40dp sockets across inventory and shop, plus the Potion button, Raid Key hints and a gold coin. Legendary gear carries an amber inlay; *Reduce flashing* drops its glow
 - **Dungeon Crawl** — procedural rooms from the start (skip the scripted quest)
 - **Difficulty** — Easy / Medium / Hard / Nightmare (locked for the run; wipe rules differ by tier)
 - **Classes** — Fighter, Wizard, Rogue, Cleric, and **Bard** (CHA-based; Cutting Quip special)

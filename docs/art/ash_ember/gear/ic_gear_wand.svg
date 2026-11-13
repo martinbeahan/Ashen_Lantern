@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<!-- Ash & Ember gear glyph: wand. Original Ashen Lantern art; paths/circles only. -->
+<path fill="#2A262C" d="M150 432 L178 452 L346 178 L328 166 Z"/><path fill="#F2A541" fill-opacity="0.5" d="M150 432 L160 440 L334 170 L328 166 Z"/><path fill="#3A3640" d="M140 420 L186 450 L214 404 L170 376 Z"/><path fill="#4A4650" d="M176 378 L206 396 L202 402 L172 384 Z"/><path fill="#4A4650" d="M165 398 L195 416 L191 422 L161 404 Z"/><path fill="#4A4650" d="M154 418 L184 436 L180 442 L150 424 Z"/><circle cx="150" cy="446" r="16" fill="#3A3640"/><circle cx="147" cy="443" r="7" fill="#D9D2C3"/><path fill="#3A3640" d="M316 196 L356 222 L370 196 L332 172 Z"/><circle cx="343" cy="197" r="6" fill="#F2A541"/><path fill="#F2A541" d="M352 176 L404 92 L382 196 L360 196 Z"/><path fill="#FFD27A" d="M360 170 L396 108 L378 184 Z"/><circle cx="392" cy="118" r="28" fill="#F2A541" fill-opacity="0.1"/>
+</svg>

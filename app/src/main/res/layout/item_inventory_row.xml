@@ -10,7 +10,7 @@
     android:paddingBottom="10dp"
     android:layout_marginBottom="6dp">
 
-    <!-- Header: rarity socket · name (Cormorant 700, rarity colour) + rarity pip · EQUIPPED tag -->
+    <!-- Header: 40dp gear socket (glyph + rarity frame) · name (Cormorant 700, rarity colour) + rarity pip · EQUIPPED tag -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -19,10 +19,13 @@
 
         <ImageView
             android:id="@+id/invItemSocket"
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:layout_marginEnd="8dp"
-            android:src="@drawable/bg_item_socket_common"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="10dp"
+            android:background="@drawable/bg_gear_socket_common"
+            android:src="@drawable/ic_gear_sword"
+            android:padding="3dp"
+            android:scaleType="fitCenter"
             android:importantForAccessibility="no" />
 
         <TextView

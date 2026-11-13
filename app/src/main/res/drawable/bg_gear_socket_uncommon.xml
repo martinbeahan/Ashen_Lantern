@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v2.27 gear socket: far-soot plate, rarity stroke, rim hairline. The glyph (ic_gear_*) is the ImageView src. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/ae_far_soot"/>
+            <stroke android:width="1.5dp" android:color="@color/rarity_uncommon"/>
+            <corners android:radius="3dp"/>
+        </shape>
+    </item>
+    <item android:left="3dp" android:top="3dp" android:right="3dp" android:bottom="3dp">
+        <shape android:shape="rectangle">
+            <stroke android:width="0.75dp" android:color="@color/ae_rim"/>
+            <corners android:radius="2dp"/>
+        </shape>
+    </item>
+</layer-list>

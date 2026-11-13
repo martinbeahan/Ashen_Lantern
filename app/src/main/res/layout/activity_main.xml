@@ -362,7 +362,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:minWidth="68dp"
-                    android:text="⚗&#10;Potion"
+                    android:text="Potion"
                     android:textSize="11sp"
                     android:layout_marginEnd="5dp" />
                 <Button
