@@ -6,7 +6,19 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.21 / 60) — Ash & Ember, phase 2
+## What's new (v2.22 / 61) — Ash & Ember, phase 3
+
+- **New original backgrounds** — 16 hand-authored *Ash & Ember* stages replace the old CC0 battlebacks. The stage now follows the mode and story beat instead of guessing from room text: Kindling Pyre, Thornpath Woods, the Ossuary, Millhollow Green, the Millrace Weir, the Mill Hall, Emberdeep, Greyfen Marsh, the Catacombs (Crawl), Ember Ring (Arena), Cinder Crucible (Challenge), Ashen Deep (Endless) and a stage per Boss Raid. Boss fights add a heavier vignette with a teal glow. Art is centre-cropped (never stretched), and tablets and large phones get sharper 1080×1350 versions
+- **Original hero art** — the Fighter, Wizard, Rogue, Cleric and **Bard** have new hand-drawn silhouettes with idle and attack frames, facing the foes. The Bard finally has their own sprite instead of borrowing the Wizard's. With *Reduce flashing* on, the attack frames use calmer glows
+- **UI reskin** — soot panels with amber corner ornaments, new buttons (primary, normal and danger, with pressed and disabled states), dark Lanternkeeper narration card, matching dialogs, and *Cinzel* / *Cormorant Garamond* type
+- **Wick HP bar** — your HP is a burning candle that melts down and gutters below 30%. Enemy HP is a thin teal soul thread
+- **Ember XP** — XP is a row of 10 embers that light up (in half steps) as you earn XP toward the next level
+- **Loot rarity markers** — each item row has a rarity stripe, socket and pip (hollow dot, ◆, ◆◆, ◆◆◆, flame), so rarities are easy to tell apart without relying on colour alone. Equipped gear shows an *Equipped* tag
+- **Targeting** — the targeted foe stands on a teal ring and your selected hero on an amber ring, and every sprite has a soft backlight so dark silhouettes stay visible on dark floors. Damage floats are styled (crit, heal and miss)
+- *Reduce flashing* keeps the new UI still: the rings and backlights don't pulse, and the calm boss and hero art is used
+- Unchanged: Long Rest every 5 rooms, Short Rest once per clear, duplicate foes selectable by slot (`#2`), old saves load fine, Host/Join never touches the solo save
+
+## Previous (v2.21 / 60) — Ash & Ember, phase 2
 
 - **Every foe has its own art** — 24 new hand-authored *Ash & Ember* silhouettes complete the bestiary: all six Wickthief variants, Bonebound Ashbound, Gloamhound, Tallow Rat, Millstone Brute, the Grey Tithe (Enforcer, Scavenger, Watcher), both Criers, every story boss (Lantern Sexton, Collector Sallow Venn, First Lamplighter, Bell-Herald, Ossuary Prior), Ashen Drake and the Three Drowned Lanterns (Hollow Crown, Ember Hydra, Nightfang Matriarch). All 27 enemy IDs now resolve to 27 distinct drawables — nothing borrows another foe's sprite, and the old CC0 wolf/ogre/skeleton placeholders are gone
 - **Renamed foes** (names only — saves and IDs unchanged): Giant Rat → **Tallow Rat**, Ogre → **Millstone Brute** (set-piece: *Millstone Roadblock*), Debt Enforcer → **Tithe Enforcer**, Ashwake Scout → **Tithe Watcher**, Bone Herald → **Bone Crier**. Old saves (both pre-v2.20 and v2.20) pick up the new names automatically
@@ -61,7 +73,8 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 ## Features
 
 - **Story adventure** — original scripted acts (Act 1 *The Kindling*, Act 2 *Millhollow's Debt*, Act 3 *Emberdeep Breach*, Act 4 *Ashwake Vigil*), with Continue mid-quest. You are the Lamplighter's child; your sister Wren and the Ashen Lantern are at the heart of it
-- **Ash & Ember art** — original hand-authored silhouettes for all 27 foes (one per stable enemy ID) with code-driven idle sway / attack lunge / ash-dissolve animation; *Reduce flashing* stills them and calms the bright amber boss glows
+- **Ash & Ember art** — original hand-authored silhouettes for all 27 foes (one per stable enemy ID) and all five hero classes, with code-driven idle sway / attack lunge / ash-dissolve animation; 16 original stage backgrounds chosen by mode and story beat; *Reduce flashing* stills them and calms the bright amber boss and hero glows
+- **Ash & Ember UI** — soot-and-amber panels, buttons and dialogs, Cinzel / Cormorant Garamond type, a candle-wick HP bar, a 10-ember XP row and rarity pips on loot
 - **Dungeon Crawl** — procedural rooms from the start (skip the scripted quest)
 - **Difficulty** — Easy / Medium / Hard / Nightmare (locked for the run; wipe rules differ by tier)
 - **Classes** — Fighter, Wizard, Rogue, Cleric, and **Bard** (CHA-based; Cutting Quip special)
@@ -156,8 +169,10 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | Document | Purpose |
 |----------|---------|
 | [`ATTRIBUTION.md`](ATTRIBUTION.md) | Trademarks notice, SRD credit, art & audio licenses |
-| [`docs/art/ash_ember/`](docs/art/ash_ember/) | Ash & Ember style sheet + original enemy SVG sources, one per enemy ID (`tools/svg2vd.py` converts them to VectorDrawables; `--calm` makes the Reduce-flashing variants) |
+| [`docs/art/ash_ember/`](docs/art/ash_ember/) | Ash & Ember style sheet + original enemy SVG sources, one per enemy ID, plus `phase3/` (backgrounds + UI kit) and `heroes/` (`tools/svg2vd.py` converts them to VectorDrawables; `--calm` makes the Reduce-flashing variants) |
 | [`docs/ASH_EMBER_PHASE2.md`](docs/ASH_EMBER_PHASE2.md) | Phase 2: art import, renames + save migration, Reduce-flashing variants, checks (`tools/check_enemy_sprites.py`, `tools/migration_test/run.sh`) |
+| [`docs/ASH_EMBER_PHASE3.md`](docs/ASH_EMBER_PHASE3.md) | Phase 3: backgrounds (mode/beat mapping), UI kit, fonts, hero art, and the device checklist. Design sources live in `docs/art/ash_ember/phase3/` and `docs/art/ash_ember/heroes/` |
+| [`assets/licenses/`](app/src/main/assets/licenses/) | SIL Open Font License text for the bundled Cinzel and Cormorant Garamond fonts |
 | [`LICENSE`](LICENSE) | MIT (source code & original adventure text) |
 | [`docs/STORE_LISTING_LEGAL.md`](docs/STORE_LISTING_LEGAL.md) | Paste-ready Play Store legal blurb |
 | [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md) | **3D v2 plan** (Unreal Engine) — desktop slice; 2D app remains production/tester track |

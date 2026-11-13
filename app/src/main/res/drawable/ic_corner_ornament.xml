@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Alias of the top-left ornament (README note 5 name). -->
+    <item android:drawable="@drawable/ic_corner_ornament_tl"/>
+</layer-list>

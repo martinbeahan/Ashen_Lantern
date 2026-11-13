@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Ember XP pip: level 0 unlit, 1 half, 2 lit (EmberXpView). -->
+    <item android:maxLevel="0" android:drawable="@drawable/ic_ember_pip_unlit"/>
+    <item android:maxLevel="1" android:drawable="@drawable/ic_ember_pip_half"/>
+    <item android:maxLevel="2" android:drawable="@drawable/ic_ember_pip_lit"/>
+</level-list>

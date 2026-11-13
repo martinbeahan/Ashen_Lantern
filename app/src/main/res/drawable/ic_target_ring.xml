@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="120dp" android:height="40dp" android:viewportWidth="120" android:viewportHeight="40">
+    <!-- Gloam target ring under the targeted foe's feet (pulses 0.6..1 alpha unless Reduce flashing). -->
+    <path android:pathData="M14,20 a46,14 0 1,0 92,0 a46,14 0 1,0 -92,0 Z" android:fillColor="#1F5FD3C6" android:strokeColor="#FF5FD3C6" android:strokeWidth="2"/>
+    <path android:pathData="M26,20 a34,9 0 1,0 68,0 a34,9 0 1,0 -68,0 Z" android:strokeColor="#995FD3C6" android:strokeWidth="1.2"/>
+    <path android:pathData="M4,20 L14,20 M106,20 L116,20 M60,4 L60,8 M60,32 L60,36" android:strokeColor="#FF5FD3C6" android:strokeWidth="1.6" android:strokeLineCap="round"/>
+</vector>

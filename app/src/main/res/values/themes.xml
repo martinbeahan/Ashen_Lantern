@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.DnDBeginnerRemote" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/gold</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/ink</item>
-        <item name="colorSecondary">@color/parchment_dark</item>
-        <item name="colorSecondaryVariant">@color/stone</item>
-        <item name="colorOnSecondary">@color/parchment</item>
-        <item name="android:statusBarColor">@color/dungeon_bg</item>
-        <item name="android:windowBackground">@color/dungeon_bg</item>
-        <item name="android:navigationBarColor">@color/dungeon_bg</item>
-        <item name="android:textColorPrimary">@color/parchment</item>
-        <!-- Do NOT set buttonStyle globally — Samsung AlertDialogs crash/mis-draw with custom Material backgrounds. -->
+        <item name="colorPrimary">@color/ae_amber</item>
+        <item name="colorPrimaryVariant">@color/ae_ember</item>
+        <item name="colorOnPrimary">@color/ae_void</item>
+        <item name="colorSecondary">@color/ae_gloam</item>
+        <item name="colorSecondaryVariant">@color/ae_rim</item>
+        <item name="colorOnSecondary">@color/ae_void</item>
+        <item name="colorSurface">@color/ae_soot</item>
+        <item name="colorOnSurface">@color/ae_bone</item>
+        <item name="android:colorBackground">@color/ae_void</item>
+        <item name="android:statusBarColor">@color/ae_void</item>
+        <item name="android:windowBackground">@color/ae_void</item>
+        <item name="android:navigationBarColor">@color/ae_void</item>
+        <item name="android:textColorPrimary">@color/ae_bone</item>
+        <item name="android:textColorSecondary">@color/ae_fog</item>
+        <item name="android:textColorHint">@color/ae_fog</item>
+        <item name="android:fontFamily">@font/cormorant</item>
+        <item name="fontFamily">@font/cormorant</item>
+        <!-- One theme attribute styles every AlertDialog (androidx.appcompat AlertDialog.Builder reads
+             alertDialogTheme; MaterialAlertDialogBuilder reads materialAlertDialogTheme). -->
+        <item name="alertDialogTheme">@style/ThemeOverlay.Ashen.Dialog</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Ashen.MaterialDialog</item>
+        <!-- Do NOT set buttonStyle globally — Samsung AlertDialogs crash/mis-draw with custom Material backgrounds.
+             Dialog buttons are styled only inside the dialog overlays below (buttonBar*ButtonStyle). -->
     </style>
 
+    <!-- AlertDialogs: soot panel + amber corners, Cinzel titles, amber text buttons, 2dp corners. -->
+    <style name="ThemeOverlay.Ashen.Dialog" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/bg_dialog_window</item>
+        <item name="colorPrimary">@color/ae_amber</item>
+        <item name="colorAccent">@color/ae_amber</item>
+        <item name="colorSurface">@color/ae_soot</item>
+        <item name="colorOnSurface">@color/ae_bone</item>
+        <item name="android:textColorPrimary">@color/ae_bone</item>
+        <item name="android:textColorSecondary">@color/ae_bone</item>
+        <item name="android:textColorAlertDialogListItem">@color/ae_bone</item>
+        <item name="android:fontFamily">@font/cormorant</item>
+        <item name="android:windowTitleStyle">@style/Ashen.DialogWindowTitle</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.Ashen.DialogButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.Ashen.DialogButton</item>
+        <item name="buttonBarNeutralButtonStyle">@style/Widget.Ashen.DialogButton</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Ashen.Panel</item>
+    </style>
+
+    <style name="ThemeOverlay.Ashen.MaterialDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorPrimary">@color/ae_amber</item>
+        <item name="colorSurface">@color/ae_soot</item>
+        <item name="colorOnSurface">@color/ae_bone</item>
+        <item name="android:background">@drawable/bg_dungeon_panel</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.Ashen.Panel</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/Ashen.MaterialDialogTitle</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.Ashen.DialogButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.Ashen.DialogButton</item>
+        <item name="buttonBarNeutralButtonStyle">@style/Widget.Ashen.DialogButton</item>
+    </style>
+
+    <style name="ShapeAppearance.Ashen.Panel" parent="ShapeAppearance.MaterialComponents.MediumComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">2dp</item>
+    </style>
+
+    <style name="Ashen.DialogWindowTitle" parent="RtlOverlay.DialogWindowTitle.AppCompat">
+        <item name="android:textAppearance">@style/TextAppearance.Ashen.DialogTitle</item>
+    </style>
+
+    <style name="Ashen.MaterialDialogTitle" parent="MaterialAlertDialog.MaterialComponents.Title.Text">
+        <item name="android:textAppearance">@style/TextAppearance.Ashen.DialogTitle</item>
+    </style>
+
+    <style name="TextAppearance.Ashen.DialogTitle" parent="TextAppearance.AppCompat.Title">
+        <item name="android:fontFamily">@font/cinzel</item>
+        <item name="fontFamily">@font/cinzel</item>
+        <item name="android:textColor">@color/ae_amber</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:letterSpacing">0.06</item>
+    </style>
+
+    <style name="Widget.Ashen.DialogButton" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/ae_amber</item>
+        <item name="android:fontFamily">@font/cinzel</item>
+        <item name="fontFamily">@font/cinzel</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0.04</item>
+        <item name="rippleColor">#33F2A541</item>
+    </style>
+
+    <!-- Action buttons (normal / primary / danger). Corners are 2dp everywhere. -->
     <style name="Widget.DnD.ActionButton" parent="Widget.MaterialComponents.Button">
         <item name="android:background">@drawable/bg_action_btn</item>
-        <item name="android:textColor">@color/gold</item>
+        <item name="android:textColor">@color/ae_btn_text</item>
+        <item name="android:fontFamily">@font/cinzel</item>
+        <item name="fontFamily">@font/cinzel</item>
+        <item name="android:stateListAnimator">@animator/ae_btn_press</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:textSize">11sp</item>
         <item name="android:minWidth">0dp</item>
@@ -27,37 +103,57 @@
         <item name="android:paddingBottom">6dp</item>
         <item name="android:gravity">center</item>
         <item name="android:maxLines">2</item>
-        <item name="android:letterSpacing">0.01</item>
+        <item name="android:letterSpacing">0.04</item>
         <item name="backgroundTint">@null</item>
+        <item name="rippleColor">@android:color/transparent</item>
+    </style>
+
+    <style name="Widget.DnD.ActionButton.Primary">
+        <item name="android:background">@drawable/bg_action_btn_primary</item>
+        <item name="android:textColor">@color/ae_btn_text_primary</item>
+        <item name="android:drawableStart">@drawable/ic_btn_diamond</item>
+        <item name="android:drawableEnd">@drawable/ic_btn_diamond</item>
+        <item name="android:drawablePadding">6dp</item>
+    </style>
+
+    <style name="Widget.DnD.ActionButton.Danger">
+        <item name="android:background">@drawable/bg_action_btn_danger</item>
+        <item name="android:textColor">@color/ae_btn_text_danger</item>
     </style>
 
     <style name="Widget.DnD.HudChip" parent="Widget.MaterialComponents.Button">
         <item name="android:background">@drawable/bg_hud_chip</item>
-        <item name="android:textColor">@color/gold</item>
+        <item name="android:textColor">@color/ae_chip_text</item>
+        <item name="android:fontFamily">@font/cinzel</item>
+        <item name="fontFamily">@font/cinzel</item>
+        <item name="android:stateListAnimator">@animator/ae_btn_press</item>
         <item name="android:textAllCaps">false</item>
-        <item name="android:textSize">11sp</item>
+        <item name="android:textSize">10sp</item>
         <item name="android:minWidth">0dp</item>
-        <item name="android:minHeight">40dp</item>
+        <item name="android:minHeight">36dp</item>
         <item name="android:paddingStart">8dp</item>
         <item name="android:paddingEnd">8dp</item>
-        <item name="android:paddingTop">4dp</item>
-        <item name="android:paddingBottom">4dp</item>
+        <item name="android:paddingTop">0dp</item>
+        <item name="android:paddingBottom">0dp</item>
         <item name="android:gravity">center</item>
         <item name="android:maxLines">1</item>
+        <item name="android:letterSpacing">0.03</item>
         <item name="backgroundTint">@null</item>
+        <item name="rippleColor">@android:color/transparent</item>
     </style>
 
     <!-- Dotted style names require the full parent chain for AAPT (Text → Text.DnD → …). -->
     <style name="Text" parent="TextAppearance.AppCompat" />
     <style name="Text.DnD" parent="Text">
-        <item name="android:textColor">@color/parchment</item>
+        <item name="android:textColor">@color/ae_bone</item>
+        <item name="android:fontFamily">@font/cormorant</item>
     </style>
 
     <style name="Text.DnD.SectionLabel" parent="Text.DnD">
-        <item name="android:textColor">@color/gold</item>
-        <item name="android:textStyle">bold</item>
-        <item name="android:textSize">12sp</item>
-        <item name="android:letterSpacing">0.06</item>
+        <item name="android:textColor">@color/ae_amber</item>
+        <item name="android:fontFamily">@font/cinzel</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:letterSpacing">0.12</item>
         <item name="android:textAllCaps">true</item>
         <item name="android:paddingBottom">6dp</item>
         <item name="android:paddingTop">4dp</item>

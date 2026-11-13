@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Narration card (replaces bg_parchment): soot panel, no ornaments, 3dp amber left bar. -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/ae_soot_panel"/>
+            <stroke android:width="1dp" android:color="@color/ae_rim"/>
+            <corners android:radius="2dp"/>
+        </shape>
+    </item>
+    <item android:gravity="start|fill_vertical" android:width="3dp" android:top="1dp" android:bottom="1dp" android:left="1dp">
+        <shape android:shape="rectangle"><solid android:color="@color/ae_amber"/></shape>
+    </item>
+</layer-list>

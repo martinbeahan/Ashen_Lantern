@@ -1,17 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_pressed="true">
-        <shape android:shape="rectangle">
-            <solid android:color="#FF4E342E"/>
-            <stroke android:width="1.5dp" android:color="@color/gold_bright"/>
-            <corners android:radius="10dp"/>
+<inset xmlns:android="http://schemas.android.com/apk/res/android" android:insetTop="6dp" android:insetBottom="6dp">
+    <!-- HUD chip: button look at ~24dp visual height; the 36dp view keeps a usable touch target. -->
+    <selector>
+        <item android:state_enabled="false">
+            <shape android:shape="rectangle">
+            <solid android:color="#991C1A1E"/>
+            <stroke android:width="1dp" android:color="@color/ae_ash" android:dashWidth="3dp" android:dashGap="2.5dp"/>
+            <corners android:radius="2dp"/>
         </shape>
-    </item>
-    <item>
-        <shape android:shape="rectangle">
-            <solid android:color="#CC3A2A20"/>
-            <stroke android:width="1dp" android:color="@color/gold_dim"/>
-            <corners android:radius="10dp"/>
-        </shape>
-    </item>
-</selector>
+        </item>
+        <item android:state_pressed="true">
+            <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/ae_far_soot"/>
+                    <stroke android:width="1.6dp" android:color="@color/ae_amber"/>
+                    <corners android:radius="2dp"/>
+                </shape>
+            </item>
+            <!-- amber@10% inner fill -->
+            <item android:left="1.6dp" android:top="1.6dp" android:right="1.6dp" android:bottom="1.6dp">
+                <shape android:shape="rectangle"><solid android:color="#1AF2A541"/><corners android:radius="1dp"/></shape>
+            </item>
+        </layer-list>
+        </item>
+        <item android:state_activated="true">
+            <shape android:shape="rectangle">
+                <solid android:color="@color/ae_far_soot"/>
+                <stroke android:width="1dp" android:color="@color/ae_amber"/>
+                <corners android:radius="2dp"/>
+            </shape>
+        </item>
+        <item>
+            <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/ae_wax"/>
+                    <stroke android:width="1.2dp" android:color="@color/ae_rim"/>
+                    <corners android:radius="2dp"/>
+                </shape>
+            </item>
+            <!-- 1dp white@6% top lip -->
+            <item android:gravity="top|fill_horizontal" android:height="1dp" android:top="1.5dp" android:left="1.5dp" android:right="1.5dp">
+                <shape android:shape="rectangle"><solid android:color="#0FFFFFFF"/></shape>
+            </item>
+            <!-- 2dp void@45% bottom lip -->
+            <item android:gravity="bottom|fill_horizontal" android:height="2dp" android:bottom="1.2dp" android:left="1.2dp" android:right="1.2dp">
+                <shape android:shape="rectangle"><solid android:color="#730B0A0C"/></shape>
+            </item>
+        </layer-list>
+        </item>
+    </selector>
+</inset>

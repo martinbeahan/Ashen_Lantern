@@ -55,63 +55,52 @@ When **DM voice** is enabled in Settings (default **off**), notable `[DM]:` narr
 We intentionally avoid Mixkit Music, FreePD, and any D&D / Wizards of the Coast / Critical Role / film / commercial game OST material.
 
 
-## 2D graphics pack (v1.6 + layer 2 / v1.9)
+## 2D graphics
 
-All bundled battle art ships under **Creative Commons Zero (CC0 / public domain)** or is original UI chrome (XML shapes). No Wizards of the Coast / D&D product art is used.
+As of v2.22 **all bundled battle art, backgrounds and UI chrome are original** to Ashen Lantern;
+the remaining CC0 third-party art (LuizMelo hero sprites, Nidhoggn / quantumelle / ansimuz
+battlebacks and the dimmed menu backdrop) was removed. No Wizards of the Coast / D&D product art is used.
 
-### Character sprites (LuizMelo — itch.io, CC0)
+**Retired third-party art (history):** v1.6–v2.21 used LuizMelo CC0 hero sprites (Fantasy Warrior,
+Wizard Pack, Huntress, Medieval King Pack; `sprite_*.png` / `sprite_*_atk.png`) and CC0
+battlebacks by Nidhoggn (*Backgrounds*), quantumelle (*Dark forest path*) and ansimuz
+(*Phantasy Dungeon Entrance*) as `bg_battle_*.webp` / `bg_menu_backdrop.webp`. All of those
+files are gone from the app in v2.22; we thank their authors.
 
-Idle frames extracted from free CC0 packs, padded to 256×256 PNGs for Android drawables. The
-former CC0 monster bitmaps (`sprite_skeleton`, `sprite_wolf`, `sprite_ogre` and their `_atk`
-frames — LuizMelo Monsters Creatures Fantasy / Pet Dogs Pack, Clint Bellanger Tiny Creatures)
-were removed in v2.21: every enemy now uses original Ash & Ember art (below).
+### Ash & Ember hero art (v2.22) — original
 
-| Asset in app | Source pack | Author | License | Link |
-|---|---|---|---|---|
-| `sprite_fighter.png` | Fantasy Warrior (Idle) | LuizMelo | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://luizmelo.itch.io/fantasy-warrior |
-| `sprite_wizard.png` | Wizard Pack (Idle) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/wizard-pack |
-| `sprite_rogue.png` | Huntress (Idle) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/huntress |
-| `sprite_cleric.png` | Medieval King Pack (Idle) | LuizMelo | CC0 1.0 | https://luizmelo.itch.io/medieval-king-pack |
+Hand-authored for Ashen Lantern. **Original work, owned by the project** — not CC0 third-party art.
+Sources live in `docs/art/ash_ember/heroes/` (SVG + contact sheets); `tools/svg2vd.py` converts them
+to VectorDrawables and `--calm` makes the Reduce-flashing attack frames.
 
-### Battle backgrounds
+| Asset in app | Source | Author | License |
+|---|---|---|---|
+| `sprite_fighter.xml`, `sprite_fighter_atk.xml` | `docs/art/ash_ember/heroes/sprite_fighter.svg`, `sprite_fighter_atk.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `sprite_wizard.xml`, `sprite_wizard_atk.xml` | `docs/art/ash_ember/heroes/sprite_wizard.svg`, `sprite_wizard_atk.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `sprite_rogue.xml`, `sprite_rogue_atk.xml` | `docs/art/ash_ember/heroes/sprite_rogue.svg`, `sprite_rogue_atk.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `sprite_cleric.xml`, `sprite_cleric_atk.xml` | `docs/art/ash_ember/heroes/sprite_cleric.svg`, `sprite_cleric_atk.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `sprite_bard.xml`, `sprite_bard_atk.xml` | `docs/art/ash_ember/heroes/sprite_bard.svg`, `sprite_bard_atk.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `sprite_*_atk_calm.xml` (all five classes) | Same `_atk` SVGs via `tools/svg2vd.py --calm` (Reduce flashing) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
 
-| Asset in app | Source | Author | License | Link |
-|---|---|---|---|---|
-| `bg_battle_road.webp` | Dark forest path | quantumelle | CC0 1.0 | https://opengameart.org/content/dark-forest-path |
-| `bg_battle_woods.webp` | Backgrounds (battleback6) | Nidhoggn | CC0 1.0 | https://opengameart.org/content/backgrounds-3 |
-| `bg_battle_crypt.webp` | Backgrounds (battleback8) | Nidhoggn | CC0 1.0 | https://opengameart.org/content/backgrounds-3 |
-| `bg_battle_dungeon.webp` | Backgrounds (battleback5) | Nidhoggn | CC0 1.0 | https://opengameart.org/content/backgrounds-3 |
-| `bg_battle_vault.webp` | Phantasy Dungeon Entrance (skull layer) | ansimuz | CC0 1.0 | https://opengameart.org/content/phantasy-dungeon-entrance |
+### Ash & Ember backgrounds and UI kit (v2.22) — original
 
-Runtime wiring picks road / woods / crypt / vault / dungeon stage chrome from Solo quest beat names (and room text heuristics). HUD parchment, HP bars, and dice panel strokes are original XML drawables.
+| Asset in app | Source | Author | License |
+|---|---|---|---|
+| `drawable-nodpi/bg_stage_*.webp` (15 stages) and their `_hd` 1080×1350 renders; `drawable/bg_stage_boss_overlay.xml` (boss vignette) | `docs/art/ash_ember/phase3/backgrounds/*.svg` (rendered to WebP) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| `drawable-nodpi/bg_menu_backdrop.webp` / `_hd` | `docs/art/ash_ember/phase3/backgrounds/menu_backdrop.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
+| Panels, corner ornaments, buttons, HUD chips, narration card, dialog window, rarity rows / sockets / pips, target and selection rings, sprite backlights, ember XP pips, die faces, damage floats (XML drawables), `WickBarView`, `EmberXpView` | `docs/art/ash_ember/phase3/ui_kit_sheet.svg` | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
 
-### Graphics layer 2 (v1.9)
+### Fonts (v2.22) — SIL Open Font License 1.1
 
-Expanded Act 2 / crawl stage chrome and combat feedback. Still **CC0 / original UI only** — no WotC art.
+| Asset in app | Font | Copyright | License |
+|---|---|---|---|
+| `res/font/cinzel_semibold.ttf`, `cinzel_bold.ttf` | Cinzel | Copyright 2020 The Cinzel Project Authors (https://github.com/NDISCOVER/Cinzel); Copyright © 2012 Natanael Gama (www.ndiscovered.com), with Reserved Font Name “Cinzel Decorative” | [SIL OFL 1.1](https://openfontlicense.org) — full text in `app/src/main/assets/licenses/OFL-Cinzel.txt` and below |
+| `res/font/cormorant_garamond_medium.ttf`, `cormorant_garamond_medium_italic.ttf`, `cormorant_garamond_bold.ttf` | Cormorant Garamond | Copyright 2015 the Cormorant Project Authors (github.com/CatharsisFonts/Cormorant) | [SIL OFL 1.1](https://openfontlicense.org) — full text in `app/src/main/assets/licenses/OFL-CormorantGaramond.txt` and below |
 
-| Asset in app | Source | Author | License | Link |
-|---|---|---|---|---|
-| `bg_battle_weir.webp` | Backgrounds (battleback10) | Nidhoggn | CC0 1.0 | https://opengameart.org/content/backgrounds-3 |
-| `bg_battle_hall.webp` | Backgrounds (battleback7) | Nidhoggn | CC0 1.0 | https://opengameart.org/content/backgrounds-3 |
-| `bg_battle_loft.webp` | Backgrounds (battleback9) | Nidhoggn | CC0 1.0 | https://opengameart.org/content/backgrounds-3 |
-| `bg_battle_cave.webp` | Backgrounds (battleback2) | Nidhoggn | CC0 1.0 | https://opengameart.org/content/backgrounds-3 |
-| `bg_battle_ruins.webp` | Backgrounds (battleback3) | Nidhoggn | CC0 1.0 | https://opengameart.org/content/backgrounds-3 |
-| `bg_battle_flooded.webp` | battleback8 + blue wash (Flooded Cellar) | Nidhoggn | CC0 1.0 | https://opengameart.org/content/backgrounds-3 |
-| `bg_menu_backdrop.webp` | Backgrounds (battleback5, dimmed) | Nidhoggn | CC0 1.0 | https://opengameart.org/content/backgrounds-3 |
-| `sprite_*_atk.png` | Attack sheet mid-frames (same LuizMelo CC0 packs as idle) | LuizMelo | CC0 1.0 | itch.io packs listed above |
-
-Layered stage XML adds a cheap top/bottom shade (pseudo-depth) over the battlebacks. Portrait frames, menu/settings panels, screen flash, and floating damage numbers are original UI chrome.
-
-### Richer 2D / UI polish (v2.5)
-
-Visual-only pass — same CC0 sources, higher encode quality and cleaner chrome. No WotC art.
-
-| Asset in app | Change | License |
-|---|---|---|
-| `bg_battle_*.webp` | Re-encoded Nidhoggn / quantumelle / ansimuz battlebacks at 960×540, higher WebP quality | CC0 (sources above) |
-| `bg_battle_boss.webp` | New boss-room stage from Nidhoggn battleback4 | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) — https://opengameart.org/content/backgrounds-3 |
-| `sprite_*.png` / `*_atk.png` | Re-extracted LuizMelo / Tiny Creatures / Pet Dogs frames with readability outline | CC0 (packs above) |
-| HUD / panels / HP / XP / selection / damage float XML | Original UI chrome (double-frame stages, turn banner, crit float) | Original |
+The bundled files are **modified versions** under the OFL: subset to Latin and unhinted to save
+APK size, and `cinzel_semibold.ttf` is a static weight-600 instance made from the upstream Cinzel
+variable font. They are not sold on their own and keep their original family names; neither uses the
+Reserved Font Name “Cinzel Decorative”.
 
 ### Ash & Ember enemy art (v2.20, completed v2.21) — original
 
@@ -188,9 +177,100 @@ Originally these reused LuizMelo CC0 frames; since v2.21 each boss has its own o
 
 ## Endgame / Act 3 / Boss Raids (v2.6)
 
-No new third-party art or audio. Act 3 / endgame / raid encounters reuse existing CC0 battle stages listed above (monster sprites: original Ash & Ember art since v2.21) (boss stage, cave, dungeon). Original names and flavor text only — not from any WotC module.
+No new third-party art or audio. Act 3 / endgame / raid encounters originally reused the CC0 battle stages; since v2.22 every mode uses an original Ash & Ember background (Ember Ring, Cinder Crucible, Ashen Deep and one stage per Boss Raid), and monster sprites are original Ash & Ember art since v2.21. Original names and flavor text only — not from any WotC module.
 
 ## Temporary sprite mapping
 
-- **Bard (v2.7):** UI battle portrait and GL player model temporarily reuse the Wizard sprite/model until dedicated Bard CC0 art is added.
+- **Bard (v2.7) — retired in v2.22 for the Android UI:** the Bard now has its own original `sprite_bard` / `sprite_bard_atk` art. The legacy GL layer (dead code, see `docs/ASH_EMBER_PHASE3.md`) still reuses the Wizard model.
 - **Placeholder enemy sprites (v2.20) — retired in v2.21:** every one of the 27 enemy IDs now maps to its own same-named Ash & Ember drawable (`MainActivity.enemySprites`; checked by `tools/check_enemy_sprites.py`). No enemy borrows another's art; `enemy_unknown.xml` is only for IDs from a newer host.
+
+## SIL Open Font License, Version 1.1 (Cinzel, Cormorant Garamond)
+
+```
+-----------------------------------------------------------
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+-----------------------------------------------------------
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and
+open framework in which fonts may be shared and improved in partnership
+with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded, 
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply
+to any document created using the fonts or their derivatives.
+
+DEFINITIONS
+"Font Software" refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+"Reserved Font Name" refers to any names specified as such after the
+copyright statement(s).
+
+"Original Version" refers to the collection of Font Software components as
+distributed by the Copyright Holder(s).
+
+"Modified Version" refers to any derivative made by adding to, deleting,
+or substituting -- in part or in whole -- any of the components of the
+Original Version, by changing formats or by porting the Font Software to a
+new environment.
+
+"Author" refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION & CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components,
+in Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the corresponding
+Copyright Holder. This restriction only applies to the primary font name as
+presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created
+using the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.
+```

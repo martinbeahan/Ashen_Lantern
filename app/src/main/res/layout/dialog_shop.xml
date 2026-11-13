@@ -3,10 +3,10 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/bg_dungeon_panel"
     android:padding="12dp">
 
     <TextView
+        android:fontFamily="@font/cinzel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="MERCHANT"
@@ -17,6 +17,7 @@
         android:paddingBottom="2dp" />
 
     <TextView
+        android:fontFamily="@font/cinzel"
         android:id="@+id/shopGoldText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

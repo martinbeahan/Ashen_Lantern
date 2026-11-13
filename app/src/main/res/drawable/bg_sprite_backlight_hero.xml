@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <!-- Sprite backlight (warm #8A7A6A @30%) so dark silhouettes read on dark floors. Static. -->
+    <gradient android:type="radial" android:gradientRadius="50%p" android:centerX="0.5" android:centerY="0.55"
+        android:startColor="#4D8A7A6A" android:endColor="#008A7A6A"/>
+</shape>

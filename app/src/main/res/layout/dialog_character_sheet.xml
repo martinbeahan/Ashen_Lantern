@@ -8,7 +8,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@drawable/bg_dungeon_panel"
         android:padding="14dp">
 
         <LinearLayout
@@ -34,6 +33,7 @@
                 android:layout_marginStart="10dp">
 
                 <TextView
+                    android:fontFamily="@font/cinzel"
                     android:id="@+id/sheetName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -44,25 +44,28 @@
                     android:ellipsize="end" />
 
                 <TextView
+                    android:fontFamily="@font/cormorant"
                     android:id="@+id/sheetClass"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textColor="@color/parchment"
-                    android:textSize="12sp"
+                    android:textSize="14sp"
                     android:maxLines="1"
                     android:ellipsize="end" />
 
                 <TextView
+                    android:fontFamily="@font/cormorant"
                     android:id="@+id/sheetGold"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textColor="@color/gold"
-                    android:textSize="12sp"
+                    android:textSize="14sp"
                     android:layout_marginTop="2dp" />
             </LinearLayout>
         </LinearLayout>
 
         <TextView
+            android:fontFamily="@font/cinzel"
             android:id="@+id/sheetHpLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -72,25 +75,23 @@
             android:textSize="11sp"
             android:textStyle="bold" />
 
-        <ProgressBar
+        <com.fintrack.dndbeginnerremote.WickBarView
             android:id="@+id/sheetHpBar"
-            style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
-            android:layout_height="14dp"
-            android:layout_marginTop="3dp"
-            android:max="100"
-            android:progress="100"
-            android:progressDrawable="@drawable/bg_hp_bar" />
+            android:layout_height="20dp"
+            android:layout_marginTop="2dp" />
 
         <TextView
+            android:fontFamily="@font/cormorant"
             android:id="@+id/sheetResources"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:textColor="@color/parchment"
-            android:textSize="12sp" />
+            android:textSize="14sp" />
 
         <TextView
+            android:fontFamily="@font/cinzel"
             android:id="@+id/sheetXpLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -100,25 +101,23 @@
             android:textSize="11sp"
             android:textStyle="bold" />
 
-        <ProgressBar
+        <com.fintrack.dndbeginnerremote.EmberXpView
             android:id="@+id/sheetXpBar"
-            style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
-            android:layout_height="12dp"
-            android:layout_marginTop="3dp"
-            android:max="100"
-            android:progress="0"
-            android:progressDrawable="@drawable/bg_xp_bar" />
+            android:layout_height="16dp"
+            android:layout_marginTop="3dp" />
 
         <TextView
+            android:fontFamily="@font/cormorant"
             android:id="@+id/sheetClassTip"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:textColor="@color/gold"
-            android:textSize="11sp" />
+            android:textSize="13sp" />
 
         <TextView
+            android:fontFamily="@font/cinzel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
@@ -134,9 +133,9 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_marginTop="6dp">
-            <TextView android:id="@+id/sheetStatStr" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_stat_chip" android:textColor="@color/parchment" android:textSize="11sp" android:gravity="center" android:layout_marginEnd="4dp" />
-            <TextView android:id="@+id/sheetStatDex" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_stat_chip" android:textColor="@color/parchment" android:textSize="11sp" android:gravity="center" android:layout_marginEnd="4dp" />
-            <TextView android:id="@+id/sheetStatCon" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_stat_chip" android:textColor="@color/parchment" android:textSize="11sp" android:gravity="center" />
+            <TextView android:fontFamily="@font/cormorant" android:id="@+id/sheetStatStr" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_stat_chip" android:textColor="@color/parchment" android:textSize="13sp" android:gravity="center" android:layout_marginEnd="4dp" />
+            <TextView android:fontFamily="@font/cormorant" android:id="@+id/sheetStatDex" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_stat_chip" android:textColor="@color/parchment" android:textSize="13sp" android:gravity="center" android:layout_marginEnd="4dp" />
+            <TextView android:fontFamily="@font/cormorant" android:id="@+id/sheetStatCon" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_stat_chip" android:textColor="@color/parchment" android:textSize="13sp" android:gravity="center" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sheetStatsRow2"
@@ -144,29 +143,32 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_marginTop="4dp">
-            <TextView android:id="@+id/sheetStatInt" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_stat_chip" android:textColor="@color/parchment" android:textSize="11sp" android:gravity="center" android:layout_marginEnd="4dp" />
-            <TextView android:id="@+id/sheetStatWis" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_stat_chip" android:textColor="@color/parchment" android:textSize="11sp" android:gravity="center" android:layout_marginEnd="4dp" />
-            <TextView android:id="@+id/sheetStatCha" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_stat_chip" android:textColor="@color/parchment" android:textSize="11sp" android:gravity="center" />
+            <TextView android:fontFamily="@font/cormorant" android:id="@+id/sheetStatInt" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_stat_chip" android:textColor="@color/parchment" android:textSize="13sp" android:gravity="center" android:layout_marginEnd="4dp" />
+            <TextView android:fontFamily="@font/cormorant" android:id="@+id/sheetStatWis" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_stat_chip" android:textColor="@color/parchment" android:textSize="13sp" android:gravity="center" android:layout_marginEnd="4dp" />
+            <TextView android:fontFamily="@font/cormorant" android:id="@+id/sheetStatCha" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/bg_stat_chip" android:textColor="@color/parchment" android:textSize="13sp" android:gravity="center" />
         </LinearLayout>
 
         <TextView
+            android:fontFamily="@font/cormorant"
             android:id="@+id/sheetStatTips"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:textColor="@color/parchment_dark"
-            android:textSize="11sp"
+            android:textSize="13sp"
             android:lineSpacingExtra="2dp" />
 
         <TextView
+            android:fontFamily="@font/cormorant"
             android:id="@+id/sheetEquipped"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:textColor="@color/parchment"
-            android:textSize="12sp" />
+            android:textSize="14sp" />
 
         <TextView
+            android:fontFamily="@font/cinzel"
             android:id="@+id/sheetPointsHint"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

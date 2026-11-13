@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/ae_far_soot"/>
+            <stroke android:width="1dp" android:color="@color/rarity_epic"/>
+            <corners android:radius="2dp"/>
+        </shape>
+    </item>
+    <item android:gravity="center" android:width="12dp" android:height="12dp">
+        <rotate android:fromDegrees="45" android:toDegrees="45" android:pivotX="50%" android:pivotY="50%">
+            <shape android:shape="rectangle">
+                <solid android:color="#59A676D6"/>
+                <stroke android:width="1dp" android:color="@color/rarity_epic"/>
+            </shape>
+        </rotate>
+    </item>
+</layer-list>

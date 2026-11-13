@@ -1,27 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Normal button: wax fill, 1.2dp ash stroke, lips; pressed = far-soot + amber stroke; disabled = dashed ash. -->
     <item android:state_enabled="false">
         <shape android:shape="rectangle">
-            <solid android:color="#553A322C"/>
-            <stroke android:width="1dp" android:color="#558B5A2B"/>
-            <corners android:radius="12dp"/>
+            <solid android:color="#991C1A1E"/>
+            <stroke android:width="1dp" android:color="@color/ae_ash" android:dashWidth="3dp" android:dashGap="2.5dp"/>
+            <corners android:radius="2dp"/>
         </shape>
     </item>
     <item android:state_pressed="true">
-        <shape android:shape="rectangle">
-            <solid android:color="#FF5D4037"/>
-            <stroke android:width="2dp" android:color="@color/gold_bright"/>
-            <corners android:radius="12dp"/>
-        </shape>
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/ae_far_soot"/>
+                    <stroke android:width="1.6dp" android:color="@color/ae_amber"/>
+                    <corners android:radius="2dp"/>
+                </shape>
+            </item>
+            <!-- amber@10% inner fill -->
+            <item android:left="1.6dp" android:top="1.6dp" android:right="1.6dp" android:bottom="1.6dp">
+                <shape android:shape="rectangle"><solid android:color="#1AF2A541"/><corners android:radius="1dp"/></shape>
+            </item>
+        </layer-list>
+    </item>
+    <item android:state_activated="true">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/ae_far_soot"/>
+                    <stroke android:width="1.6dp" android:color="@color/ae_amber"/>
+                    <corners android:radius="2dp"/>
+                </shape>
+            </item>
+            <!-- amber@10% inner fill -->
+            <item android:left="1.6dp" android:top="1.6dp" android:right="1.6dp" android:bottom="1.6dp">
+                <shape android:shape="rectangle"><solid android:color="#1AF2A541"/><corners android:radius="1dp"/></shape>
+            </item>
+        </layer-list>
     </item>
     <item>
-        <shape android:shape="rectangle">
-            <gradient
-                android:angle="270"
-                android:startColor="#FF5A4036"
-                android:endColor="#FF3E2A22" />
-            <stroke android:width="1.5dp" android:color="@color/gold"/>
-            <corners android:radius="12dp"/>
-        </shape>
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/ae_wax"/>
+                    <stroke android:width="1.2dp" android:color="#FF4A4650"/>
+                    <corners android:radius="2dp"/>
+                </shape>
+            </item>
+            <!-- 1dp white@6% top lip -->
+            <item android:gravity="top|fill_horizontal" android:height="1dp" android:top="1.5dp" android:left="1.5dp" android:right="1.5dp">
+                <shape android:shape="rectangle"><solid android:color="#0FFFFFFF"/></shape>
+            </item>
+            <!-- 2dp void@45% bottom lip -->
+            <item android:gravity="bottom|fill_horizontal" android:height="2dp" android:bottom="1.2dp" android:left="1.2dp" android:right="1.2dp">
+                <shape android:shape="rectangle"><solid android:color="#730B0A0C"/></shape>
+            </item>
+        </layer-list>
     </item>
 </selector>

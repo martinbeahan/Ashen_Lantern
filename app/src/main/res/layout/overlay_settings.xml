@@ -3,7 +3,7 @@
     android:id="@+id/settingsRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#E014100C"
+    android:background="@color/ae_scrim"
     android:clickable="true"
     android:focusable="true"
     android:visibility="gone">
@@ -25,6 +25,7 @@
             android:layout_marginBottom="16dp">
 
             <TextView
+                android:fontFamily="@font/cinzel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
@@ -36,17 +37,19 @@
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="2dp"
+                android:layout_height="8dp"
                 android:layout_marginBottom="8dp"
                 android:background="@drawable/bg_section_rule" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 style="@style/Text.DnD.SectionLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Coach" />
 
             <CheckBox
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/chkBeginnerTips"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -57,12 +60,14 @@
                 android:paddingBottom="2dp" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 style="@style/Text.DnD.SectionLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Audio" />
 
             <CheckBox
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/chkMusic"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -73,6 +78,7 @@
                 android:paddingBottom="2dp" />
 
             <CheckBox
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/chkSfx"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -83,6 +89,7 @@
                 android:paddingBottom="2dp" />
 
             <CheckBox
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/chkDmVoice"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -93,12 +100,14 @@
                 android:paddingBottom="4dp" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 style="@style/Text.DnD.SectionLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Accessibility" />
 
             <CheckBox
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/chkReduceFlash"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -109,12 +118,14 @@
                 android:paddingBottom="4dp" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 style="@style/Text.DnD.SectionLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Run" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/settingsDifficultyText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -122,7 +133,7 @@
                 android:gravity="center_vertical"
                 android:text="Difficulty: Easy (locked for current run)"
                 android:textColor="@color/parchment"
-                android:textSize="13sp"
+                android:textSize="15sp"
                 android:paddingBottom="6dp" />
 
             <Button
@@ -158,12 +169,13 @@
                 android:visibility="gone" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/settingsRaidHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:textColor="@color/parchment_dark"
-                android:textSize="11sp"
+                android:textSize="13sp"
                 android:paddingBottom="6dp"
                 android:visibility="gone"
                 android:text="" />
@@ -180,12 +192,13 @@
                 android:visibility="gone" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/settingsChallengeHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:textColor="@color/parchment_dark"
-                android:textSize="11sp"
+                android:textSize="13sp"
                 android:paddingBottom="6dp"
                 android:visibility="gone"
                 android:text="" />
@@ -202,12 +215,13 @@
                 android:visibility="gone" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/settingsArenaHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:textColor="@color/parchment_dark"
-                android:textSize="11sp"
+                android:textSize="13sp"
                 android:paddingBottom="6dp"
                 android:visibility="gone"
                 android:text="" />
@@ -224,12 +238,13 @@
                 android:visibility="gone" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/settingsEndlessHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:textColor="@color/parchment_dark"
-                android:textSize="11sp"
+                android:textSize="13sp"
                 android:paddingBottom="6dp"
                 android:visibility="gone"
                 android:text="" />
@@ -247,7 +262,7 @@
 
             <Button
                 android:id="@+id/btnSettingsAbandon"
-                style="@style/Widget.DnD.ActionButton"
+                style="@style/Widget.DnD.ActionButton.Danger"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="44dp"
@@ -257,18 +272,20 @@
                 android:visibility="gone" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 style="@style/Text.DnD.SectionLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Daily Quests" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/settingsDailyQuests"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:textColor="@color/parchment_dark"
-                android:textSize="11sp"
+                android:textSize="13sp"
                 android:paddingBottom="4dp"
                 android:text="Daily Quests" />
 
@@ -284,19 +301,21 @@
                 android:visibility="gone" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 style="@style/Text.DnD.SectionLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="About" />
 
             <TextView
+                android:fontFamily="@font/cormorant"
                 android:id="@+id/settingsAboutText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingBottom="10dp"
                 android:gravity="center"
                 android:textColor="@color/parchment_dark"
-                android:textSize="11sp"
+                android:textSize="13sp"
                 android:lineSpacingExtra="2dp"
                 android:text="About" />
 

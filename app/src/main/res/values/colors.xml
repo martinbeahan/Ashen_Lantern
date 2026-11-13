@@ -1,33 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFD4A017</color>
-    <color name="purple_500">#FF8B5A2B</color>
-    <color name="purple_700">#FF3E2723</color>
-    <color name="teal_200">#FFC9A227</color>
-    <color name="teal_700">#FF6D4C41</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFF5F0E6</color>
+    <!-- Ash & Ember palette (Phase 3 UI kit, docs/art/ash_ember/phase3/ui_kit_sheet.png). -->
+    <color name="ae_void">#FF0B0A0C</color>
+    <color name="ae_far_soot">#FF141216</color>
+    <color name="ae_soot">#FF1C1A1E</color>
+    <color name="ae_wax">#FF2A262C</color>
+    <color name="ae_rim">#FF3A3640</color>
+    <color name="ae_ash">#FF4A4650</color>
+    <color name="ae_fog">#FF6E6872</color>
+    <color name="ae_bone">#FFD9D2C3</color>
+    <color name="ae_amber">#FFF2A541</color>
+    <color name="ae_amber_core">#FFFFD27A</color>
+    <color name="ae_ember">#FFE0532B</color>
+    <color name="ae_gloam">#FF5FD3C6</color>
+    <color name="ae_old_blood">#FF7A1E22</color>
+    <!-- Derived tokens -->
+    <color name="ae_soot_panel">#F21C1A1E</color>
+    <color name="ae_lichen">#FF8DBF6A</color>
+    <color name="ae_danger_stroke">#FF8A2A2E</color>
+    <color name="ae_danger_text">#FFE3A39A</color>
+    <color name="ae_wax_fill">#FFC9A98A</color>
+    <color name="ae_wax_low">#FFC77A5A</color>
+    <color name="ae_char">#FF2A1E18</color>
+    <color name="ae_hero_glow">#FF8A7A6A</color>
+    <color name="ae_epic_violet">#FFA676D6</color>
+    <color name="ae_scrim">#E60B0A0C</color>
+    <color name="ae_fog_55">#8C6E6872</color>
 
-    <color name="dungeon_bg">#FF14100C</color>
-    <color name="dungeon_panel">#F02A2118</color>
-    <color name="parchment">#FFE8D5A3</color>
-    <color name="parchment_dark">#FFC4A574</color>
-    <color name="ink">#FF2C1810</color>
-    <color name="gold">#FFE0C060</color>
-    <color name="gold_bright">#FFFFE08A</color>
-    <color name="gold_dim">#99C9A227</color>
-    <color name="blood">#FF8B1E1E</color>
-    <color name="hp_fill">#FF2E7D32</color>
-    <color name="hp_fill_hi">#FF7CF0A0</color>
-    <color name="hp_fill_mid">#FF3DCC6A</color>
-    <color name="hp_fill_lo">#FFC62828</color>
-    <color name="stone">#FF3A322C</color>
-    <color name="panel_inner">#CC1A1410</color>
-    <color name="hud_scrim">#E61A1410</color>
+    <!-- Rarity (colour + pip shape, colour-blind safe) -->
+    <color name="rarity_common">#FFA39D94</color>
+    <color name="rarity_uncommon">#FF8DBF6A</color>
+    <color name="rarity_rare">#FF78B4EA</color>
+    <color name="rarity_epic">#FFA676D6</color>
+    <color name="rarity_legendary">#FFF2A541</color>
 
-    <color name="rarity_common">#FFB0B0B0</color>
-    <color name="rarity_uncommon">#FF4CAF50</color>
-    <color name="rarity_rare">#FF42A5F5</color>
-    <color name="rarity_epic">#FFAB47BC</color>
-    <color name="rarity_legendary">#FFFFB300</color>
+    <!-- Legacy names kept so existing code/layouts compile; all now point at ae_* tokens. -->
+    <color name="black">@color/ae_void</color>
+    <color name="white">@color/ae_bone</color>
+    <color name="dungeon_bg">@color/ae_void</color>
+    <color name="dungeon_panel">@color/ae_soot_panel</color>
+    <color name="parchment">@color/ae_bone</color>
+    <color name="parchment_dark">@color/ae_fog</color>
+    <!-- "ink" was dark text on light parchment; parchment surfaces are gone, so it is bone now. -->
+    <color name="ink">@color/ae_bone</color>
+    <color name="gold">@color/ae_amber</color>
+    <color name="gold_bright">@color/ae_amber_core</color>
+    <color name="gold_dim">#99F2A541</color>
+    <color name="blood">@color/ae_old_blood</color>
+    <color name="hp_fill">@color/ae_wax_fill</color>
+    <color name="hp_fill_hi">@color/ae_wax_fill</color>
+    <color name="hp_fill_mid">@color/ae_wax_fill</color>
+    <color name="hp_fill_lo">@color/ae_wax_low</color>
+    <color name="stone">@color/ae_rim</color>
+    <color name="panel_inner">#CC141216</color>
+    <color name="hud_scrim">@color/ae_scrim</color>
 </resources>

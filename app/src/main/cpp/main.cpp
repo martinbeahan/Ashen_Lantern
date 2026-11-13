@@ -429,6 +429,13 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getSoloPlayMode(JNIEnv *env, jo
     return static_cast<jint>(g_Game.getSoloPlayMode());
 }
 
+/** Current SoloQuestBeat (QuestScript.h); 0 for crawl / online. Drives the stage background. */
+JNIEXPORT jint JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getQuestBeat(JNIEnv *env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_RendererMutex);
+    return static_cast<jint>(g_Game.getQuestBeat());
+}
+
 JNIEXPORT jboolean JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_isStoryFullyComplete(JNIEnv *env, jobject thiz) {
     std::lock_guard<std::mutex> lock(g_RendererMutex);
