@@ -6,7 +6,17 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.28 / 67) — Save slots
+## What's new (v2.29 / 68) — Combat curve
+
+- **Fights scale with you** — every solo fight now has an **Encounter Level (EL)** worked out from your party's level and gear. Foes get their AC, to-hit, HP and damage from EL and their role (*Minion, Skirmisher, Caster, Support, Brute, Elite, Boss*), so a Medium room feels about the same at level 3 or 30. Gear still counts, at half weight: +20 gear makes fights easier, not trivial. Level tables now run to 50
+- **Room budgets** — each room gets a threat budget for your difficulty (Easy 0.85×, Medium 1×, Hard 1.12×, Nightmare 1.25×) and the foes are fitted to it. At most 4 foes (5 on Nightmare), ±15% variety, and never two over-budget rooms in a row. The status line shows **EL 7 · ◆◆◇◇**
+- **Fair dice** — hits land between 15% and 90% of the time, so you never need a 20 and never hit on a 2. One non-boss hit can take at most **45%** of a hero's max HP. The log says when either rule kicked in
+- **Comeback and Pressure** — after a party wipe the dark draws back: the next room (3 on Hard) is 20% lighter (story bosses never below 90%). Rooms cleared above 70% HP raise **Pressure** (up to 4 pips, +5% threat each), which pays +5% XP and gold per pip. A hero dropping resets it; two rooms in a row ending below 25% HP reset it and light a one-room Rekindle
+- **Surprise bosses are warned** — the Ossuary Prior at the Bone Gallery and the Wick King at the Weir now come in as Elites capped at 1.5× the room budget, with a one-turn **WARNING!** before they strike. With *Reduce flashing* on, the warning is text only
+- **Fixes** — foe AC is kept when you reload mid-fight; HP from odd CON points and the story +2 HP are kept through level-ups; one big XP award can give several levels; Legendary stats now count for HP, initiative, Search and Healing Word
+- Old saves load straight away (new fields are appended; a mid-fight v2.28 save keeps its foe's old rules until the fight ends). Host / Join and the online Keeper table are unchanged. See [`docs/COMBAT_CURVE.md`](docs/COMBAT_CURVE.md)
+
+## Previous (v2.28 / 67) — Save slots
 
 - **Three adventures** — keep up to three heroes at once, each in its own *lantern*. The new **Adventures** screen (main menu, or Settings) shows each hero's class, level, where they are in the story or crawl, when you last played and total playtime. The last one you played is marked **LAST**
 - **Continue** on the main menu still loads the last hero you played. **New Story** and **Dungeon Crawl** now open Adventures and start in an empty lantern. They **never overwrite** a hero; if all three are lit you're asked to delete one first
@@ -144,6 +154,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Save slots** — three adventures (lanterns) side by side on an *Adventures* screen; Continue loads the last one played, New Story / Crawl never overwrite a hero, and Delete / Abandon clear only that hero. Keys, Crucible pity, Ring / Deep bests, the Ledger and the story unlock are per hero; settings, Daily Quests and the daily Raid Key cap are shared
 - **Dungeon Crawl** — procedural rooms from the start (skip the scripted quest)
 - **Difficulty** — Easy / Medium / Hard / Nightmare (locked for the run; wipe rules differ by tier)
+- **How combat scales** — solo fights use an Encounter Level from your level and gear (gear at 50%), foe roles and per-room threat budgets, a 15–90% hit clamp, a 45% one-hit guard, Pressure / Rekindle comeback rules and warned surprise bosses. Levels to 50
 - **Classes** — Fighter, Wizard, Rogue, Cleric, and **Bard** (CHA-based; Cutting Quip special)
 - **Companion** — AI or player-controlled ally; change class in-run where supported
 - **Inventory & loot** — rarity tiers, class-tagged gear, shop, sell, gold upgrades; early bosses (The Wick King, The Ossuary Prior, Ashen Drake)
@@ -247,6 +258,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`docs/ACT2_CRAWL_DIFFICULTY.md`](docs/ACT2_CRAWL_DIFFICULTY.md) | Act 2, crawl, difficulty |
 | [`docs/ENDGAME_ACT3_RAIDS.md`](docs/ENDGAME_ACT3_RAIDS.md) | Act 3, Boss Raids, Legendary rules |
 | [`docs/ACT4_ASHWAKE_VIGIL.md`](docs/ACT4_ASHWAKE_VIGIL.md) | Act 4 Ashwake Vigil |
+| [`docs/COMBAT_CURVE.md`](docs/COMBAT_CURVE.md) | Combat curve: Encounter Level, roles, budgets, hit clamp, Pressure / Rekindle, save fields, `tools/combat_sim` |
 | [`docs/DAILY_QUESTS.md`](docs/DAILY_QUESTS.md) | Daily Quests |
 | [`docs/CHALLENGE_DUNGEON.md`](docs/CHALLENGE_DUNGEON.md) | Challenge Dungeon / Cinder Crucible |
 | [`docs/ARENA.md`](docs/ARENA.md) | Arena / Ember Ring |

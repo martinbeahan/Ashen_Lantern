@@ -4,6 +4,7 @@
 #include "Game.h"
 #include "AndroidOut.h"
 #include "SaveCodec.h"
+#include "CombatCurve.h"
 #include <sstream>
 #include <algorithm>
 #include <memory>
@@ -12,6 +13,9 @@
 namespace dnd {
 
 namespace {
+/** v2.29 header field 37: marks the combat-curve fields that follow. */
+constexpr const char* kCurveSchemaTag = "S3";
+
 /** Split keeping empty tokens (unlike getline, a trailing delimiter yields a final ""). */
 std::vector<std::string> splitAll(const std::string& s, char delim) {
     std::vector<std::string> out;
@@ -94,7 +98,13 @@ std::string Game::serialize() {
        << "," << savecodec::kEncodedMarker
        // v2.25: story choices go AFTER the E2 marker (index 34 stays the marker, so v2.23/v2.24
        // readers still detect encoding and simply ignore the extra fields).
-       << "," << vennChoice_ << "," << wellChoice_ << "|";
+       << "," << vennChoice_ << "," << wellChoice_
+       // v2.29 combat curve (append-only): 37 schema tag, 38 pressure, 39 Rekindle rooms,
+       // 40 reserved for the Drowned Vigil chamber (PR 6), 41 low-HP streak, 42 last room over
+       // budget, 43 a hero dropped this room.
+       << "," << kCurveSchemaTag << "," << pressure_ << "," << rekindleRooms_ << ",0"
+       << "," << lowHpStreak_ << "," << (lastRoomOverBudget_ ? 1 : 0) << "," << (heroDroppedThisRoom_ ? 1 : 0)
+       << "|";
     // Section 1: Descriptions
     ss << encode(roomDescription_) << "~" << encode(lastEvent_) << "|";
     // Section 2: Players
@@ -113,13 +123,20 @@ std::string Game::serialize() {
             if (ii) ss << "^";
             if (p->inventory[ii]) ss << p->inventory[ii]->toToken();
         }
+        // v2.29: 27 prestige rank (0 until PR 5), 28 kept bonus max HP (story padding + CON points).
+        ss << "," << p->prestigeRank << "," << p->bonusMaxHp;
         ss << ";";
     }
     ss << "|";
     // Section 3: Enemies
     for (const auto& e : enemies_) {
         writeRecordHead(ss, *e);
-        ss << "," << e->enemyId << ";"; // v2.20+: stable enemy ID (older readers ignore it)
+        ss << "," << e->enemyId; // v2.20+: stable enemy ID (older readers ignore it)
+        // v2.29 (audit bug a): 19 AC (spawn bonuses survive a mid-fight reload), 20 role,
+        // 21 EL, 22 to-hit, 23 avg damage x10, 24 boss phase (PR 2; 0 now), 25 telegraph turns
+        // left, 26 surprise-boss flag.
+        ss << "," << e->armorClass << "," << e->curveRole << "," << e->curveEL << "," << e->curveToHit
+           << "," << e->curveAvgDmgX10 << ",0," << e->curveWarnTurns << "," << (e->curveSurprise ? 1 : 0) << ";";
     }
     ss << "|";
     // Section 4: Chat History
@@ -244,6 +261,12 @@ bool Game::deserialize(const std::string& data, std::string* error) {
     longRestProgress_ = tmp.longRestProgress_;
     vennChoice_ = tmp.vennChoice_;
     wellChoice_ = tmp.wellChoice_;
+    pressure_ = tmp.pressure_;
+    rekindleRooms_ = tmp.rekindleRooms_;
+    lowHpStreak_ = tmp.lowHpStreak_;
+    lastRoomOverBudget_ = tmp.lastRoomOverBudget_;
+    heroDroppedThisRoom_ = tmp.heroDroppedThisRoom_;
+    pendingSurprise_ = false;
 
     rebuildTurnOrder();
     return true;
@@ -318,6 +341,18 @@ bool Game::parseSave(const std::string& data) {
         wellChoice_ = questAct3Complete_ ? WELL_SEALED_IN : WELL_UNDECIDED;
     }
 
+    // v2.29 combat curve fields (37+). Older saves: all zero — fresh curve state.
+    if (has(37) && h[37] == kCurveSchemaTag) {
+        pressure_ = savecodec::clampInt(num(38, 0, "pressure"), 0, curve::kPressureMaxSteps);
+        rekindleRooms_ = savecodec::clampInt(num(39, 0, "rekindle"), 0, 9);
+        lowHpStreak_ = savecodec::clampInt(num(41, 0, "lowHpStreak"), 0, 9);
+        lastRoomOverBudget_ = flag(42);
+        heroDroppedThisRoom_ = flag(43);
+    } else {
+        pressure_ = 0; rekindleRooms_ = 0; lowHpStreak_ = 0;
+        lastRoomOverBudget_ = false; heroDroppedThisRoom_ = false;
+    }
+
     // Section 1: Descriptions
     bool hasDescriptions = false;
     if (!std::getline(ss, section, '|')) throw ParseError("missing descriptions section");
@@ -379,6 +414,23 @@ bool Game::parseSave(const std::string& data) {
                 p->currentHp = 0;
             }
             p->calculateAC();
+            // v2.29: prestige rank (27) and kept bonus HP (28). Legacy saves have neither: the
+            // bonus is whatever the saved max HP holds above the level formula (story padding,
+            // odd CON points), so the next level-up no longer drops it (audit bug b). Max HP is
+            // never lowered by the upgrade (it can rise: Legendary CON, level-1 floor).
+            int pv = 0;
+            p->prestigeRank = (f.size() > 27 && savecodec::tryParseInt(f[27], pv)) ? savecodec::clampInt(pv, 0, 10) : 0;
+            const int savedMax = p->maxHp;
+            if (f.size() > 28 && savecodec::tryParseInt(f[28], pv)) {
+                p->bonusMaxHp = savecodec::clampInt(pv, 0, 100000);
+            } else {
+                p->bonusMaxHp = std::max(0, savedMax - p->formulaMaxHp());
+            }
+            p->recomputeMaxHp();
+            if (p->maxHp < savedMax) { // never shrink a hero on load; keep the difference
+                p->bonusMaxHp += savedMax - p->maxHp;
+                p->recomputeMaxHp();
+            }
             players_.push_back(std::move(p));
         }
     }
@@ -400,6 +452,25 @@ bool Game::parseSave(const std::string& data) {
             }
             if (bestiary::find(e->enemyId)) e->name = bestiary::displayName(e->enemyId);
             e->calculateAC();
+            // v2.29 (audit bug a): the saved AC keeps every spawn bonus. Older saves have no
+            // field 19 and fall back to the class formula, as before.
+            // Lenient: only a record whose field 19 is a number carries the v2.29 block (very old
+            // hosts wrote other shapes there — those keep the legacy behaviour, never an error).
+            auto intAt = [&f](size_t i, int& out) { return f.size() > i && savecodec::tryParseInt(f[i], out); };
+            int v = 0;
+            if (intAt(19, v)) {
+                e->armorClass = savecodec::clampInt(v, 1, 200);
+                if (intAt(20, v)) e->curveRole = savecodec::clampInt(v, 0, 7);
+                int el = 0, hit = 0, dmg = 0;
+                if (intAt(21, el) && intAt(22, hit) && intAt(23, dmg) && el > 0) {
+                    e->curveEL = savecodec::clampInt(el, 1, curve::kMaxEL);
+                    e->curveToHit = savecodec::clampInt(hit, -20, 200);
+                    e->curveAvgDmgX10 = savecodec::clampInt(dmg, 0, 100000);
+                }
+                if (intAt(25, v)) e->curveWarnTurns = savecodec::clampInt(v, 0, 3);
+                e->curveSurprise = (f.size() > 26 && f[26] == "1");
+            }
+            e->curvePending = false; // a loaded foe is never re-fitted
             enemies_.push_back(std::move(e));
         }
     }

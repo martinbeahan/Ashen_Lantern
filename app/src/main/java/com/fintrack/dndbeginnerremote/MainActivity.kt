@@ -4649,9 +4649,12 @@ class MainActivity : AppCompatActivity() {
             else -> "$whose acts…"
         }
         val roomBit = roomLine.substringBefore("|").trim().ifBlank { roomLine }
+        // v2.29: Encounter Level + Pressure pips (solo only — the core never sends it online).
+        val curveBadge = CombatCurveUi.parse(status)?.let { CombatCurveUi.roomBadge(it) }
         statusText.text = when {
             isOnlineHost && onlineSessionId.isNotBlank() -> "$roomBit · ID $onlineSessionId"
             isOnlineClient && onlineSessionId.isNotBlank() -> "$roomBit · joined $onlineSessionId"
+            curveBadge != null -> "$roomBit · $curveBadge"
             else -> roomBit
         }
 
@@ -4779,6 +4782,7 @@ class MainActivity : AppCompatActivity() {
                 || lastEv.startsWith("SET-PIECE!")) {
                 Toast.makeText(this, lastEv, Toast.LENGTH_LONG).show()
             }
+            if (CombatCurveUi.isWarning(lastEv)) showSurpriseBossWarning(lastEv)
             maybeKillPop(lastEv)
             maybeRareLootAccent(lastEv)
             maybeSpecialAbilityJuice(lastEv)
@@ -5167,6 +5171,21 @@ class MainActivity : AppCompatActivity() {
         }
         paint(partyColumn, selectedAllyIndex, pulse = false)
         paint(enemyColumn, selectedEnemyIndex, pulse = true)
+    }
+
+    /**
+     * v2.29 surprise-boss wind-up ("WARNING! … strikes next turn"). Always a toast; the enemy
+     * column gets two slow, soft alpha dips (no flashes) only when Reduce flashing is off.
+     */
+    private fun showSurpriseBossWarning(text: String) {
+        Toast.makeText(this, text.removePrefix("WARNING!").trim(), Toast.LENGTH_LONG).show()
+        if (!CombatCurveUi.warningAnimates(reduceFlashEnabled)) return
+        enemyColumn.animate().cancel()
+        val anim = android.animation.ObjectAnimator.ofFloat(enemyColumn, "alpha", 1f, 0.7f, 1f).apply {
+            duration = 900
+            repeatCount = 1
+        }
+        anim.start()
     }
 
     private fun startTargetPulse(column: LinearLayout) {
