@@ -14,7 +14,11 @@ add_library(dndbeginnerremote SHARED
         Shader.cpp
         TextureAsset.cpp
         Utility.cpp
-        Game.cpp)
+        Game.cpp
+        GameSave.cpp)
+
+# L4: keep the warning set the audit used visible in every build (warnings, not errors).
+target_compile_options(dndbeginnerremote PRIVATE -Wall -Wextra)
 
 # Searches for a package provided by the game activity dependency
 find_package(game-activity REQUIRED CONFIG)

@@ -13,6 +13,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Smaller, tidier release build** — release APKs are now code-shrunk (R8), and the unused legacy textures from the old graphics layer were removed
 - **Ability modifiers fixed** — odd scores below 10 now round down like the tabletop rules (9 → −1, 7 → −2); previously they rounded toward zero. Starting heroes use even scores, so most characters see no change
 - **Stability** — safer graphics shutdown, no crash on a zero-height window during resize, a capped animation queue, clearer shader error logs, and damaged loot entries are logged instead of silently ignored
+- **Under the hood** — the native code now builds with no compiler warnings, save/sync code has its own file with one shared reader/writer for heroes and foes, loot tables are named data instead of magic numbers (same drop rates), the graphics layer looks up its shader settings once instead of every frame, and the sprite tables moved out of the main screen code. No gameplay change
 - Unchanged: Long Rest every 5 rooms, Short Rest once per clear, duplicate foes selectable by slot (`#2`), old saves load fine, Host/Join never touches the solo save
 
 ## Previous (v2.23 / 62) — save & online safety fixes

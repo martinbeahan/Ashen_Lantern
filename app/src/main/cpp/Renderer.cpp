@@ -126,7 +126,7 @@ void Renderer::updateAnimations() {
                 if (s.flashIntensity > 0.01f) {
                     s.flashIntensity *= 0.88f;
                     // Hit shake
-                    s.xOffset += (dnd::rng::below(11) - 5) * 0.012f;
+                    s.xOffset += static_cast<float>(dnd::rng::below(11) - 5) * 0.012f;
                 }
                 if (s.framesRemaining == 0) {
                     s.xOffset = 0;
@@ -185,12 +185,11 @@ void Renderer::render() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     if (!models_.empty()) {
-        auto program = shader_->getProgram();
-        auto uOffset = glGetUniformLocation(program, "uOffset");
-        auto uTint = glGetUniformLocation(program, "uTint");
-        auto uScale = glGetUniformLocation(program, "uScale");
-        auto uFlash = glGetUniformLocation(program, "uFlash");
-        auto uUseTexture = glGetUniformLocation(program, "uUseTexture");
+        const GLint uOffset = uniforms_.offset;
+        const GLint uTint = uniforms_.tint;
+        const GLint uScale = uniforms_.scale;
+        const GLint uFlash = uniforms_.flash;
+        const GLint uUseTexture = uniforms_.useTexture;
 
         auto drawHealthBar = [&](float x, float y, float healthPerc) {
             glUniform1i(uUseTexture, 0);
@@ -213,12 +212,12 @@ void Renderer::render() {
         dnd::Character* activeActor = game_.getCurrentActor();
 
         const auto& players = game_.getPlayers();
-        float pyStart = (players.empty() ? 0.0f : (players.size() - 1) * 0.55f);
+        float pyStart = (players.empty() ? 0.0f : static_cast<float>(players.size() - 1) * 0.55f);
         for (size_t i = 0; i < players.size(); ++i) {
             const AnimationState& anim = playerAnims_[(int)i];
             float idleBob = 0.03f * sinf(totalTime_ * 3.0f + (float)i);
             float xPos = -1.35f + anim.xOffset;
-            float yPos = pyStart - (i * 1.05f) + anim.yOffset + idleBob;
+            float yPos = pyStart - (static_cast<float>(i) * 1.05f) + anim.yOffset + idleBob;
 
             float pulse = 1.0f + anim.scaleBoost;
             if (activeActor == players[i].get()) {
@@ -239,12 +238,12 @@ void Renderer::render() {
         }
 
         const auto& enemies = game_.getEnemies();
-        float eyStart = (enemies.empty() ? 0.0f : (enemies.size() - 1) * 0.55f);
+        float eyStart = (enemies.empty() ? 0.0f : static_cast<float>(enemies.size() - 1) * 0.55f);
         for (size_t i = 0; i < enemies.size(); ++i) {
             const AnimationState& anim = enemyAnims_[(int)i];
             float idleBob = 0.03f * sinf(totalTime_ * 3.2f + (float)i + 1.0f);
             float xPos = 1.35f + anim.xOffset;
-            float yPos = eyStart - (i * 1.05f) + anim.yOffset + idleBob;
+            float yPos = eyStart - (static_cast<float>(i) * 1.05f) + anim.yOffset + idleBob;
 
             float pulse = 1.0f + anim.scaleBoost;
             if (activeActor == enemies[i].get()) {
@@ -350,6 +349,14 @@ bool Renderer::initRenderer() {
         return false;
     }
     shader_->activate();
+    {
+        const GLuint program = shader_->getProgram();
+        uniforms_.offset = glGetUniformLocation(program, "uOffset");
+        uniforms_.tint = glGetUniformLocation(program, "uTint");
+        uniforms_.scale = glGetUniformLocation(program, "uScale");
+        uniforms_.flash = glGetUniformLocation(program, "uFlash");
+        uniforms_.useTexture = glGetUniformLocation(program, "uUseTexture");
+    }
 
     glClearColor(DUNGEON_BG);
     glEnable(GL_BLEND);
@@ -375,10 +382,11 @@ void Renderer::updateRenderArea() {
 void Renderer::createModels() {
     // Slightly taller quad for character sprites
     std::vector<Vertex> vertices = {
-            Vertex(Vector3{0.45f, 0.55f, 0}, Vector2{0, 0}),
-            Vertex(Vector3{-0.45f, 0.55f, 0}, Vector2{1, 0}),
-            Vertex(Vector3{-0.45f, -0.55f, 0}, Vector2{1, 1}),
-            Vertex(Vector3{0.45f, -0.55f, 0}, Vector2{0, 1})
+            // Inner braces initialise the union's {x, y, z} / {u, v} struct member (L4).
+            Vertex(Vector3{{0.45f, 0.55f, 0}}, Vector2{{0, 0}}),
+            Vertex(Vector3{{-0.45f, 0.55f, 0}}, Vector2{{1, 0}}),
+            Vertex(Vector3{{-0.45f, -0.55f, 0}}, Vector2{{1, 1}}),
+            Vertex(Vector3{{0.45f, -0.55f, 0}}, Vector2{{0, 1}})
     };
     std::vector<Index> indices = {0, 1, 2, 0, 2, 3};
 

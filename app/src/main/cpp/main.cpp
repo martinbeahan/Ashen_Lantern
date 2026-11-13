@@ -56,7 +56,7 @@ void handle_cmd(android_app *pApp, int32_t cmd) {
     }
 }
 
-bool motion_event_filter_func(const GameActivityMotionEvent *motionEvent) {
+bool motion_event_filter_func(const GameActivityMotionEvent * /*motionEvent*/) {
     return false; // Allow Android UI to handle touches
 }
 
@@ -190,7 +190,7 @@ extern "C" {
 // These now use g_Game directly, so they work even if the Renderer is null.
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getPlayerStatus(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getPlayerStatus([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "getPlayerStatus", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return env->NewStringUTF(g_Game.getPartyStatus().c_str());
@@ -198,7 +198,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getPlayerStatus(JNIEnv *env, jo
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getDetailedSheet(JNIEnv *env, jobject thiz, jstring playerName) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getDetailedSheet([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName) {
     return jniGuardStr(env, "getDetailedSheet", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -215,7 +215,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getDetailedSheet(JNIEnv *env, j
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getJournal(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getJournal([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "getJournal", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return env->NewStringUTF(g_Game.getJournal().c_str());
@@ -223,7 +223,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getJournal(JNIEnv *env, jobject
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getLastEvent(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getLastEvent([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "getLastEvent", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return env->NewStringUTF(g_Game.getLastEvent().c_str());
@@ -231,7 +231,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getLastEvent(JNIEnv *env, jobje
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getRoomDescription(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getRoomDescription([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "getRoomDescription", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return env->NewStringUTF(g_Game.getRoomDescription().c_str());
@@ -239,7 +239,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getRoomDescription(JNIEnv *env,
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getSpecialName(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getSpecialName([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "getSpecialName", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return env->NewStringUTF(g_Game.getSpecialActionName().c_str());
@@ -247,7 +247,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getSpecialName(JNIEnv *env, job
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getChatHistory(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getChatHistory([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "getChatHistory", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return env->NewStringUTF(g_Game.getChatHistory().c_str());
@@ -255,7 +255,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getChatHistory(JNIEnv *env, job
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getSessionId(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getSessionId([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "getSessionId", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return env->NewStringUTF(g_Game.getSessionId().c_str());
@@ -263,7 +263,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getSessionId(JNIEnv *env, jobje
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getShopManifest(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getShopManifest([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "getShopManifest", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return env->NewStringUTF(g_Game.getShopManifest().c_str());
@@ -271,7 +271,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getShopManifest(JNIEnv *env, jo
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_isMerchantRoom(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_isMerchantRoom([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("isMerchantRoom", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return (jboolean)g_Game.isMerchantRoom();
@@ -279,7 +279,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_isMerchantRoom(JNIEnv *env, job
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_isInCombat(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_isInCombat([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("isInCombat", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.isInCombat() ? JNI_TRUE : JNI_FALSE;
@@ -287,7 +287,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_isInCombat(JNIEnv *env, jobject
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_isRoomCleared(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_isRoomCleared([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("isRoomCleared", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.isRoomCleared() ? JNI_TRUE : JNI_FALSE;
@@ -295,7 +295,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_isRoomCleared(JNIEnv *env, jobj
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_hasSearchedRoom(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_hasSearchedRoom([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("hasSearchedRoom", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.hasSearchedRoom() ? JNI_TRUE : JNI_FALSE;
@@ -303,7 +303,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_hasSearchedRoom(JNIEnv *env, jo
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_hasUsedRoomRest(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_hasUsedRoomRest([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("hasUsedRoomRest", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.hasUsedRoomRest() ? JNI_TRUE : JNI_FALSE;
@@ -311,7 +311,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_hasUsedRoomRest(JNIEnv *env, jo
 }
 
 JNIEXPORT jint JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getLongRestCooldownRooms(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getLongRestCooldownRooms([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getLongRestCooldownRooms", static_cast<jint>(0), [&]() -> jint {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return static_cast<jint>(g_Game.getLongRestCooldownRooms());
@@ -319,7 +319,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getLongRestCooldownRooms(JNIEnv
 }
 
 JNIEXPORT jint JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getCurrentActorResources(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getCurrentActorResources([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getCurrentActorResources", static_cast<jint>(0), [&]() -> jint {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         dnd::Character* actor = g_Game.getCurrentActor();
@@ -328,7 +328,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getCurrentActorResources(JNIEnv
 }
 
 JNIEXPORT jint JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getCurrentActorMaxResources(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getCurrentActorMaxResources([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getCurrentActorMaxResources", static_cast<jint>(0), [&]() -> jint {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         dnd::Character* actor = g_Game.getCurrentActor();
@@ -337,7 +337,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getCurrentActorMaxResources(JNI
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doAdvanceRoom(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doAdvanceRoom([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     jniGuardVoid("doAdvanceRoom", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.playerAdvanceFromCleared();
@@ -345,7 +345,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doAdvanceRoom(JNIEnv *env, jobj
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doAttack(JNIEnv *env, jobject thiz, jint targetIndex) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doAttack([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint targetIndex) {
     jniGuardVoid("doAttack", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.playerAttack(targetIndex);
@@ -353,7 +353,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doAttack(JNIEnv *env, jobject t
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doHeal(JNIEnv *env, jobject thiz, jint targetIndex) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doHeal([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint targetIndex) {
     jniGuardVoid("doHeal", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.playerHeal(targetIndex);
@@ -361,7 +361,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doHeal(JNIEnv *env, jobject thi
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doSpecial(JNIEnv *env, jobject thiz, jint targetIndex) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doSpecial([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint targetIndex) {
     jniGuardVoid("doSpecial", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.playerSpecialAction(targetIndex);
@@ -369,7 +369,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doSpecial(JNIEnv *env, jobject 
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doInteract(JNIEnv *env, jobject thiz, jstring playerName) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doInteract([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName) {
     jniGuardVoid("doInteract", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -379,7 +379,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doInteract(JNIEnv *env, jobject
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doRest(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doRest([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     jniGuardVoid("doRest", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.playerRest();
@@ -387,7 +387,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doRest(JNIEnv *env, jobject thi
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doLongRest(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doLongRest([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     jniGuardVoid("doLongRest", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.playerLongRest();
@@ -395,7 +395,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doLongRest(JNIEnv *env, jobject
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doUseInventoryPotion(JNIEnv *env, jobject thiz, jstring playerName, jint invIndex) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doUseInventoryPotion([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName, jint invIndex) {
     return jniGuard("doUseInventoryPotion", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -406,7 +406,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doUseInventoryPotion(JNIEnv *en
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doIncreaseStat(JNIEnv *env, jobject thiz, jstring playerName, jint statIndex) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doIncreaseStat([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName, jint statIndex) {
     jniGuardVoid("doIncreaseStat", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -416,7 +416,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doIncreaseStat(JNIEnv *env, job
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doBuyItem(JNIEnv *env, jobject thiz, jstring playerName, jint itemIndex) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doBuyItem([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName, jint itemIndex) {
     return jniGuard("doBuyItem", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -427,7 +427,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doBuyItem(JNIEnv *env, jobject 
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getInventoryManifest(JNIEnv *env, jobject thiz, jstring playerName) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getInventoryManifest([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName) {
     return jniGuardStr(env, "getInventoryManifest", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -438,7 +438,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getInventoryManifest(JNIEnv *en
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doEquipItem(JNIEnv *env, jobject thiz, jstring playerName, jint invIndex) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doEquipItem([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName, jint invIndex) {
     return jniGuard("doEquipItem", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -449,7 +449,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doEquipItem(JNIEnv *env, jobjec
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doUnequipItem(JNIEnv *env, jobject thiz, jstring playerName, jint slot) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doUnequipItem([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName, jint slot) {
     return jniGuard("doUnequipItem", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -460,7 +460,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doUnequipItem(JNIEnv *env, jobj
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doUpgradeInventoryItem(JNIEnv *env, jobject thiz, jstring playerName, jint invIndex) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doUpgradeInventoryItem([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName, jint invIndex) {
     return jniGuard("doUpgradeInventoryItem", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -471,7 +471,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doUpgradeInventoryItem(JNIEnv *
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doUpgradeEquippedItem(JNIEnv *env, jobject thiz, jstring playerName, jint slot) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doUpgradeEquippedItem([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName, jint slot) {
     return jniGuard("doUpgradeEquippedItem", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -482,7 +482,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doUpgradeEquippedItem(JNIEnv *e
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doSellInventoryItem(JNIEnv *env, jobject thiz, jstring playerName, jint invIndex) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doSellInventoryItem([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName, jint invIndex) {
     return jniGuard("doSellInventoryItem", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -493,7 +493,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doSellInventoryItem(JNIEnv *env
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doSellEquippedItem(JNIEnv *env, jobject thiz, jstring playerName, jint slot) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doSellEquippedItem([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName, jint slot) {
     return jniGuard("doSellEquippedItem", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -504,7 +504,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doSellEquippedItem(JNIEnv *env,
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doTransferInventoryItemToAlly(JNIEnv *env, jobject thiz, jstring playerName, jint invIndex) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doTransferInventoryItemToAlly([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName, jint invIndex) {
     return jniGuard("doTransferInventoryItemToAlly", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -515,7 +515,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doTransferInventoryItemToAlly(J
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_doTransferEquippedItemToAlly(JNIEnv *env, jobject thiz, jstring playerName, jint slot) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_doTransferEquippedItemToAlly([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName, jint slot) {
     return jniGuard("doTransferEquippedItemToAlly", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -527,7 +527,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doTransferEquippedItemToAlly(JN
 
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_setHost(JNIEnv *env, jobject thiz, jboolean isHost) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_setHost([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jboolean isHost) {
     jniGuardVoid("setHost", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.setAsHost(isHost);
@@ -535,7 +535,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_setHost(JNIEnv *env, jobject th
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_processGameTurn(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_processGameTurn([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     jniGuardVoid("processGameTurn", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.processTurn();
@@ -543,7 +543,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_processGameTurn(JNIEnv *env, jo
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_resetGame(JNIEnv *env, jobject thiz, jint characterClass, jstring playerName, jint soloPlayMode, jint difficulty, jint companionClass, jboolean companionAutoAi) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_resetGame([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint characterClass, jstring playerName, jint soloPlayMode, jint difficulty, jint companionClass, jboolean companionAutoAi) {
     jniGuardVoid("resetGame", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -558,7 +558,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_resetGame(JNIEnv *env, jobject 
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getCompanionName(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getCompanionName([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "getCompanionName", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return env->NewStringUTF(g_Game.getCompanionName().c_str());
@@ -566,7 +566,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getCompanionName(JNIEnv *env, j
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_isCompanionAutoAi(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_isCompanionAutoAi([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("isCompanionAutoAi", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.isCompanionAutoAi() ? JNI_TRUE : JNI_FALSE;
@@ -574,7 +574,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_isCompanionAutoAi(JNIEnv *env, 
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_setCompanionAutoAi(JNIEnv *env, jobject thiz, jboolean autoAi) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_setCompanionAutoAi([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jboolean autoAi) {
     jniGuardVoid("setCompanionAutoAi", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.setCompanionAutoAi(autoAi == JNI_TRUE);
@@ -582,7 +582,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_setCompanionAutoAi(JNIEnv *env,
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_setCompanionClass(JNIEnv *env, jobject thiz, jint characterClass) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_setCompanionClass([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint characterClass) {
     return jniGuard("setCompanionClass", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         if (!dnd::savecodec::isValidClassId(static_cast<int>(characterClass))) return static_cast<jboolean>(JNI_FALSE);
@@ -591,7 +591,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_setCompanionClass(JNIEnv *env, 
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_setDifficulty(JNIEnv *env, jobject thiz, jint difficulty) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_setDifficulty([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint difficulty) {
     jniGuardVoid("setDifficulty", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.setDifficulty(static_cast<int>(difficulty));
@@ -599,7 +599,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_setDifficulty(JNIEnv *env, jobj
 }
 
 JNIEXPORT jint JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getDifficulty(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getDifficulty([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getDifficulty", static_cast<jint>(0), [&]() -> jint {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return static_cast<jint>(g_Game.getDifficulty());
@@ -607,7 +607,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getDifficulty(JNIEnv *env, jobj
 }
 
 JNIEXPORT jint JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getSoloPlayMode(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getSoloPlayMode([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getSoloPlayMode", static_cast<jint>(0), [&]() -> jint {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return static_cast<jint>(g_Game.getSoloPlayMode());
@@ -616,7 +616,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getSoloPlayMode(JNIEnv *env, jo
 
 /** Current SoloQuestBeat (QuestScript.h); 0 for crawl / online. Drives the stage background. */
 JNIEXPORT jint JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getQuestBeat(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getQuestBeat([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getQuestBeat", static_cast<jint>(0), [&]() -> jint {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return static_cast<jint>(g_Game.getQuestBeat());
@@ -624,7 +624,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getQuestBeat(JNIEnv *env, jobje
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_isStoryFullyComplete(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_isStoryFullyComplete([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("isStoryFullyComplete", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.isStoryFullyComplete() ? JNI_TRUE : JNI_FALSE;
@@ -632,7 +632,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_isStoryFullyComplete(JNIEnv *en
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_consumePendingRaidKeyDrop(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_consumePendingRaidKeyDrop([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("consumePendingRaidKeyDrop", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.consumePendingRaidKeyDrop() ? JNI_TRUE : JNI_FALSE;
@@ -640,7 +640,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_consumePendingRaidKeyDrop(JNIEn
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_beginBossRaidFromCurrent(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_beginBossRaidFromCurrent([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("beginBossRaidFromCurrent", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.beginBossRaidFromCurrent() ? JNI_TRUE : JNI_FALSE;
@@ -648,7 +648,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_beginBossRaidFromCurrent(JNIEnv
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_finishBossRaidKeepParty(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_finishBossRaidKeepParty([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     jniGuardVoid("finishBossRaidKeepParty", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.finishBossRaidKeepParty();
@@ -656,7 +656,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_finishBossRaidKeepParty(JNIEnv 
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_beginChallengeDungeonFromCurrent(JNIEnv *env, jobject thiz, jint legendaryChancePercent) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_beginChallengeDungeonFromCurrent([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint legendaryChancePercent) {
     return jniGuard("beginChallengeDungeonFromCurrent", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.beginChallengeDungeonFromCurrent(static_cast<int>(legendaryChancePercent)) ? JNI_TRUE : JNI_FALSE;
@@ -664,7 +664,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_beginChallengeDungeonFromCurren
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_finishChallengeDungeonKeepParty(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_finishChallengeDungeonKeepParty([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     jniGuardVoid("finishChallengeDungeonKeepParty", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.finishChallengeDungeonKeepParty();
@@ -672,7 +672,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_finishChallengeDungeonKeepParty
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_consumePendingChallengeLegendaryFound(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_consumePendingChallengeLegendaryFound([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("consumePendingChallengeLegendaryFound", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.consumePendingChallengeLegendaryFound() ? JNI_TRUE : JNI_FALSE;
@@ -680,7 +680,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_consumePendingChallengeLegendar
 }
 
 JNIEXPORT jint JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getChallengeLegendaryChance(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getChallengeLegendaryChance([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getChallengeLegendaryChance", static_cast<jint>(0), [&]() -> jint {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return static_cast<jint>(g_Game.getChallengeLegendaryChance());
@@ -688,7 +688,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getChallengeLegendaryChance(JNI
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_setChallengeLegendaryChance(JNIEnv *env, jobject thiz, jint percent) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_setChallengeLegendaryChance([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint percent) {
     jniGuardVoid("setChallengeLegendaryChance", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.setChallengeLegendaryChance(static_cast<int>(percent));
@@ -696,7 +696,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_setChallengeLegendaryChance(JNI
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_beginArenaFromCurrent(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_beginArenaFromCurrent([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("beginArenaFromCurrent", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.beginArenaFromCurrent() ? JNI_TRUE : JNI_FALSE;
@@ -704,7 +704,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_beginArenaFromCurrent(JNIEnv *e
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_finishArenaKeepParty(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_finishArenaKeepParty([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     jniGuardVoid("finishArenaKeepParty", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.finishArenaKeepParty();
@@ -712,7 +712,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_finishArenaKeepParty(JNIEnv *en
 }
 
 JNIEXPORT jint JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaWave(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaWave([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getArenaWave", static_cast<jint>(0), [&]() -> jint {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return static_cast<jint>(g_Game.getArenaWave());
@@ -720,7 +720,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaWave(JNIEnv *env, jobje
 }
 
 JNIEXPORT jint JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaScore(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaScore([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getArenaScore", static_cast<jint>(0), [&]() -> jint {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return static_cast<jint>(g_Game.getArenaScore());
@@ -728,7 +728,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaScore(JNIEnv *env, jobj
 }
 
 JNIEXPORT jint JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaWavesCleared(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaWavesCleared([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getArenaWavesCleared", static_cast<jint>(0), [&]() -> jint {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return static_cast<jint>(g_Game.getArenaWavesCleared());
@@ -736,7 +736,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getArenaWavesCleared(JNIEnv *en
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_beginEndlessDeepFromCurrent(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_beginEndlessDeepFromCurrent([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("beginEndlessDeepFromCurrent", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.beginEndlessDeepFromCurrent() ? JNI_TRUE : JNI_FALSE;
@@ -744,7 +744,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_beginEndlessDeepFromCurrent(JNI
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_finishEndlessDeepKeepParty(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_finishEndlessDeepKeepParty([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     jniGuardVoid("finishEndlessDeepKeepParty", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.finishEndlessDeepKeepParty();
@@ -752,7 +752,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_finishEndlessDeepKeepParty(JNIE
 }
 
 JNIEXPORT jint JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getEndlessDepth(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getEndlessDepth([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getEndlessDepth", static_cast<jint>(0), [&]() -> jint {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return static_cast<jint>(g_Game.getEndlessDepth());
@@ -760,7 +760,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getEndlessDepth(JNIEnv *env, jo
 }
 
 JNIEXPORT jint JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getEndlessBestDepthThisRun(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getEndlessBestDepthThisRun([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getEndlessBestDepthThisRun", static_cast<jint>(0), [&]() -> jint {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return static_cast<jint>(g_Game.getEndlessBestDepthThisRun());
@@ -770,7 +770,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getEndlessBestDepthThisRun(JNIE
 
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_recoverFromPartyWipe(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_recoverFromPartyWipe([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("recoverFromPartyWipe", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.recoverFromPartyWipe() ? JNI_TRUE : JNI_FALSE;
@@ -778,7 +778,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_recoverFromPartyWipe(JNIEnv *en
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_addRemoteAlly(JNIEnv *env, jobject thiz, jint characterClass, jstring playerName) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_addRemoteAlly([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint characterClass, jstring playerName) {
     jniGuardVoid("addRemoteAlly", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -791,7 +791,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_addRemoteAlly(JNIEnv *env, jobj
 
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_startDmSession(JNIEnv *env, jobject thiz, jstring dmName) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_startDmSession([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring dmName) {
     jniGuardVoid("startDmSession", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, dmName);
@@ -801,7 +801,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_startDmSession(JNIEnv *env, job
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_dmBeginDungeon(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_dmBeginDungeon([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     jniGuardVoid("dmBeginDungeon", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.dmBeginDungeon();
@@ -809,7 +809,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_dmBeginDungeon(JNIEnv *env, job
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_dmAdvanceRoom(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_dmAdvanceRoom([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     jniGuardVoid("dmAdvanceRoom", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.dmAdvanceRoom();
@@ -817,7 +817,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_dmAdvanceRoom(JNIEnv *env, jobj
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_dmNarrate(JNIEnv *env, jobject thiz, jstring line) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_dmNarrate([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring line) {
     jniGuardVoid("dmNarrate", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeLineUtf(env, line);
@@ -827,7 +827,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_dmNarrate(JNIEnv *env, jobject 
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_dmGrantShortRest(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_dmGrantShortRest([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     jniGuardVoid("dmGrantShortRest", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.dmGrantShortRest();
@@ -835,7 +835,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_dmGrantShortRest(JNIEnv *env, j
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_prepareClientJoin(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_prepareClientJoin([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     jniGuardVoid("prepareClientJoin", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         g_Game.prepareClientJoin();
@@ -843,7 +843,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_prepareClientJoin(JNIEnv *env, 
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_isDmTable(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_isDmTable([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("isDmTable", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.isDmOnlyTable() ? JNI_TRUE : JNI_FALSE;
@@ -851,7 +851,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_isDmTable(JNIEnv *env, jobject 
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_saveGameState(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_saveGameState([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "saveGameState", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return env->NewStringUTF(g_Game.serialize().c_str());
@@ -859,7 +859,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_saveGameState(JNIEnv *env, jobj
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_loadGameState(JNIEnv *env, jobject thiz, jstring data) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_loadGameState([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring data) {
     // H1: deserialize() is transactional; on failure the current game is untouched and an
     // IllegalStateException reaches Kotlin so its discard-broken-save / remote-apply handlers run.
     std::string error;
@@ -876,7 +876,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_loadGameState(JNIEnv *env, jobj
 }
 
 JNIEXPORT void JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_sendChatMessage(JNIEnv *env, jobject thiz, jstring sender, jstring message) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_sendChatMessage([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring sender, jstring message) {
     jniGuardVoid("sendChatMessage", [&]() {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeSenderUtf(env, sender);
@@ -889,7 +889,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_sendChatMessage(JNIEnv *env, jo
 
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getBattleRoster(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getBattleRoster([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "getBattleRoster", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return env->NewStringUTF(g_Game.getBattleRoster().c_str());
@@ -898,7 +898,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getBattleRoster(JNIEnv *env, jo
 
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getXpProgress(JNIEnv *env, jobject thiz, jstring playerName) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getXpProgress([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName) {
     return jniGuardStr(env, "getXpProgress", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         JUtf nativeNameUtf(env, playerName);
@@ -920,7 +920,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getXpProgress(JNIEnv *env, jobj
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getPartyXpProgress(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getPartyXpProgress([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "getPartyXpProgress", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         std::stringstream ss;
@@ -939,7 +939,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getPartyXpProgress(JNIEnv *env,
 
 
 JNIEXPORT jstring JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_getDailyQuestCounters(JNIEnv *env, jobject thiz) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_getDailyQuestCounters([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuardStr(env, "getDailyQuestCounters", [&]() -> jstring {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return env->NewStringUTF(g_Game.getDailyQuestCounters().c_str());
@@ -947,7 +947,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_getDailyQuestCounters(JNIEnv *e
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_fintrack_dndbeginnerremote_MainActivity_grantDailyQuestSpoils(JNIEnv *env, jobject thiz, jint gold, jboolean giveLoot) {
+Java_com_fintrack_dndbeginnerremote_MainActivity_grantDailyQuestSpoils([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint gold, jboolean giveLoot) {
     return jniGuard("grantDailyQuestSpoils", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
         std::lock_guard<std::mutex> lock(g_RendererMutex);
         return g_Game.grantDailyQuestSpoils(static_cast<int>(gold), giveLoot == JNI_TRUE) ? JNI_TRUE : JNI_FALSE;

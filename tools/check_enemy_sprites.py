@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check that every Bestiary ID (app/src/main/cpp/Bestiary.h) resolves to its own drawable.
 
-Asserts, for MainActivity.enemySprites:
+Asserts, for SpriteTables.enemySprites:
   * every table ID has an entry, mapped to R.drawable.<same id>;
   * res/drawable/<id>.xml exists and all 27 files are distinct (by name AND by content);
   * calm (reduce-flash) variants exist, differ from their base art and from every other entry.
@@ -11,12 +11,12 @@ import hashlib, os, re, sys
 
 root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 bestiary = open(os.path.join(root, 'app/src/main/cpp/Bestiary.h')).read()
-kt = open(os.path.join(root, 'app/src/main/java/com/fintrack/dndbeginnerremote/MainActivity.kt')).read()
+kt = open(os.path.join(root, 'app/src/main/java/com/fintrack/dndbeginnerremote/SpriteTables.kt')).read()
 draw = os.path.join(root, 'app/src/main/res/drawable')
 
 ids = re.findall(r'^\s*\{"((?:enemy|boss)_[a-z_]+)",\s*"', bestiary, re.M)
 def kmap(name):
-    body = re.search(r'private val %s: Map<String, Int> = mapOf\((.*?)\n    \)' % name, kt, re.S).group(1)
+    body = re.search(r'(?:private )?val %s: Map<String, Int> = mapOf\((.*?)\n    \)' % name, kt, re.S).group(1)
     return dict(re.findall(r'"([a-z_]+)" to R\.drawable\.([a-z0-9_]+)', body))
 sprites, calm = kmap('enemySprites'), kmap('calmEnemySprites')
 

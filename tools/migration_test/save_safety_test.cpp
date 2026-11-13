@@ -185,6 +185,30 @@ int main() {
         auto bad = Item::fromToken("Plain Dagger:1:0:zz");
         CHECK(bad && bad->name == "Plain Dagger" && bad->rarity == ItemRarity::COMMON);
     }
+    // 12) v2.24 (L10): table-driven loot keeps the old contract — legendary only when allowed,
+    //     class tags in -1..4, armor of a known class gets its table bonus.
+    {
+        bool ok = true; int drops = 0, legendary = 0;
+        for (int i = 0; i < 20000; ++i) {
+            const bool allow = (i % 2) == 0;
+            auto it = LootSystem::generateLoot(10, 30, 0, 3, allow, 50);
+            if (!it) continue;
+            ++drops;
+            if (it->rarity == ItemRarity::LEGENDARY) { ++legendary; if (!allow) ok = false; }
+            if (it->classTag < -1 || it->classTag > 4 || it->name.empty()) ok = false;
+            if (it->name == "Bulwark Mail" && it->bonus != 2 + 2 + static_cast<int>(it->rarity)) ok = false;
+        }
+        CHECK(ok && drops > 0 && legendary > 0);
+        CHECK(!LootSystem::generateLoot(0, -1000)); // below the drop gate: never drops
+    }
+    // 13) v2.24 (L10): player/enemy records share one writer/reader — enemy IDs and stats survive.
+    {
+        Game g;
+        g.startNewGame(CharacterClass::BARD, "Wren");
+        Game h;
+        CHECK(h.deserialize(g.serialize()));
+        CHECK(h.serialize() == g.serialize());
+    }
     if (failures) { std::cerr << failures << " check(s) failed\n"; return 1; }
     std::cout << "save_safety_test OK\n";
     return 0;

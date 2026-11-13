@@ -430,23 +430,17 @@ struct Character {
     /** Recompute HP/resources from current level + attributes. Does NOT reset attributes. */
     void applyStatsForLevel() {
         switch (characterClass) {
-            case CharacterClass::FIGHTER:
-                maxResources = 1 + (level >= 17 ? 1 : 0); // Action Surge once (twice at 17+), shared with potions
-                break;
-            case CharacterClass::WIZARD:
-                maxResources = 2 + level; // spell slots (simplified)
-                break;
             case CharacterClass::ROGUE:
                 maxResources = 1 + (level / 3);
                 break;
+            case CharacterClass::WIZARD:  // spell slots (simplified)
             case CharacterClass::CLERIC:
+            case CharacterClass::BARD:    // Cutting Quip / performance uses
                 maxResources = 2 + level;
                 break;
-            case CharacterClass::BARD:
-                maxResources = 2 + level; // Cutting Quip / performance uses
-                break;
+            case CharacterClass::FIGHTER:
             default:
-                maxResources = 1 + (level >= 17 ? 1 : 0); // Fighter
+                maxResources = 1 + (level >= 17 ? 1 : 0); // Action Surge once (twice at 17+), shared with potions
                 break;
         }
         int conMod = Attributes::getModifier(attributes.constitution);
@@ -744,104 +738,116 @@ public:
      *   Arena Wave 5 uses flat 7% like Boss Raid — see docs/ARENA.md).
      * preferClass / preferClass2: party class tags (-1 = unused).
      */
+    /**
+     * Loot tuning (Code Auditor L10: named instead of magic numbers). Values are unchanged
+     * from the #46 hotfix; percentages are out of 100 on rng::below(100).
+     */
+    struct Tuning {
+        static constexpr int kDropGate = 58;            // drop if roll + luck >= 58 (~42% at luck 0)
+        static constexpr int kRarityLuckDivisor = 3;    // rarity roll only gets luck/3
+        static constexpr int kEpicAt = 98;              // #46: was shared-roll >= 95
+        static constexpr int kRareAt = 90;              // #46: was >= 82
+        static constexpr int kUncommonAt = 70;          // #46: was >= 68
+        static constexpr int kDepthPerBonus = 5;        // +1 bonus per 5 rooms of depth
+        static constexpr int kLegendaryExtraBonus = 2;
+        static constexpr int kPartyClassPct = 62;       // with a party: 62% party class,
+        static constexpr int kNeutralUntilPct = 92;     //   30% unclassed, 8% off-party class
+        static constexpr int kSoloClassPct = 40;        // no party info: 40% random class
+    };
+
+    /** Per-class item tables, indexed by class id 0..4 (Fighter, Wizard, Rogue, Cleric, Bard). */
+    struct NamedItem { const char* name; int armorExtra; };
+    static constexpr int kClassCount = 5;
+    static constexpr NamedItem kLegendaryWeapons[kClassCount] = {
+        {"Crownbreaker", 0}, {"Starfall Focus", 0}, {"Nightwhisper", 0}, {"Dawnward Mace", 0}, {"Songsteel Rapier", 0}};
+    static constexpr NamedItem kLegendaryArmor[kClassCount] = {
+        {"Aegis of Millhollow", 3}, {"Archsage Mantle", 1}, {"Veilwalker Hide", 2}, {"Sanctum Plate", 3}, {"Troubadour Coat", 1}};
+    static constexpr NamedItem kLegendaryWeaponAny = {"Emberdeep Relic Blade", 0};
+    static constexpr NamedItem kLegendaryArmorAny = {"Emberdeep Relic Mail", 2};
+    static constexpr NamedItem kClassWeapons[kClassCount] = {
+        {"Champion's Longsword", 0}, {"Focus Staff", 0}, {"Silent Shortsword", 0}, {"Hallowed Mace", 0}, {"Stage Rapier", 0}};
+    static constexpr NamedItem kClassArmor[kClassCount] = {
+        {"Bulwark Mail", 2}, {"Scholar Robes", 0}, {"Shadow Leathers", 1}, {"Temple Vestments", 2}, {"Performer's Leathers", 1}};
+    static constexpr const char* kGenericWeapons[kClassCount] = {
+        "Steel Blade", "Runed Blade", "Shadow Dirk", "War Maul", "Arcane Wand"};
+    static constexpr NamedItem kGenericArmor = {"Reinforced Mail", 1};
+
+    /**
+     * luckBonus: 0 normal; bosses add mild luck (see noteBossDefeat).
+     * Drop chance and rarity use separate rolls (#46 hotfix): trash stays nerfed;
+     * bosses better than trash but not BiS-guaranteed.
+     * allowLegendary: true ONLY for endgame boss / Boss Raid / Challenge Dungeon / Arena Wave-5 defeat loot.
+     *   Never from trash, Search, shop, early GK/SK/Ashen Drake, or pity.
+     * legendaryChancePercent: used when allowLegendary (normal endgame/raid = 7;
+     *   Challenge Dungeon uses a dynamic chance from prefs — see docs/CHALLENGE_DUNGEON.md;
+     *   Arena Wave 5 uses flat 7% like Boss Raid — see docs/ARENA.md).
+     * preferClass / preferClass2: party class tags (-1 = unused).
+     */
     static std::shared_ptr<Item> generateLoot(int roomDepth, int luckBonus = 0,
                                               int preferClass = -1, int preferClass2 = -1,
                                               bool allowLegendary = false,
                                               int legendaryChancePercent = 7) {
-        // Drop gate (shared luck) — ~42% item on luck=0
-        int dropRoll = (rng::below(100)) + luckBonus;
-        if (dropRoll < 58) return nullptr;
+        using T = Tuning;
+        if (rng::below(100) + luckBonus < T::kDropGate) return nullptr;
 
-        // Rarity: luck only adds luckBonus/3 so bosses stay better than trash, not BiS flood.
-        int rarityRoll = (rng::below(100)) + (luckBonus / 3);
+        // Rarity: luck only adds a fraction so bosses stay better than trash, not BiS flood.
+        const int rarityRoll = rng::below(100) + (luckBonus / T::kRarityLuckDivisor);
+        const int legChance = std::clamp(legendaryChancePercent, 0, 100);
         ItemRarity rarity = ItemRarity::COMMON;
-        // Legendary: explicit allow + chance% of successful drops (default 7; Challenge Dungeon higher/dynamic).
-        int legChance = legendaryChancePercent;
-        if (legChance < 0) legChance = 0;
-        if (legChance > 100) legChance = 100;
-        if (allowLegendary && (rng::below(100)) < legChance) {
-            rarity = ItemRarity::LEGENDARY;
-        } else if (rarityRoll >= 98) {
-            rarity = ItemRarity::EPIC;       // #46: was shared-roll >=95
-        } else if (rarityRoll >= 90) {
-            rarity = ItemRarity::RARE;      // #46: was >=82
-        } else if (rarityRoll >= 70) {
-            rarity = ItemRarity::UNCOMMON;  // #46: was >=68
-        }
-        if (!allowLegendary && rarity == ItemRarity::LEGENDARY) {
-            rarity = ItemRarity::EPIC;
-        }
+        if (allowLegendary && rng::below(100) < legChance) rarity = ItemRarity::LEGENDARY;
+        else if (rarityRoll >= T::kEpicAt) rarity = ItemRarity::EPIC;
+        else if (rarityRoll >= T::kRareAt) rarity = ItemRarity::RARE;
+        else if (rarityRoll >= T::kUncommonAt) rarity = ItemRarity::UNCOMMON;
 
-        int bonus = (roomDepth / 5) + static_cast<int>(rarity);
-        if (rarity == ItemRarity::LEGENDARY) bonus += 2;
+        int bonus = (roomDepth / T::kDepthPerBonus) + static_cast<int>(rarity);
+        if (rarity == ItemRarity::LEGENDARY) bonus += T::kLegendaryExtraBonus;
         if (bonus < 0) bonus = 0;
-        bool weapon = (rng::below(2)) == 0;
+        const bool weapon = rng::below(2) == 0;
+        const int cls = pickLootClass(preferClass, preferClass2);
 
-        int party[5];
+        auto make = [&](const NamedItem& it, int classTag) {
+            return weapon ? Item::make(it.name, ItemType::WEAPON, bonus, rarity, classTag)
+                          : Item::make(it.name, ItemType::ARMOR, bonus + it.armorExtra, rarity, classTag);
+        };
+        const bool classed = cls >= 0 && cls < kClassCount;
+        if (rarity == ItemRarity::LEGENDARY) {
+            if (classed) return make(weapon ? kLegendaryWeapons[cls] : kLegendaryArmor[cls], cls);
+            return make(weapon ? kLegendaryWeaponAny : kLegendaryArmorAny, -1);
+        }
+        if (weapon) {
+            const int ni = rng::below(kClassCount); // drawn before the class check, as before
+            if (classed) return make(kClassWeapons[cls], cls);
+            return make(NamedItem{kGenericWeapons[ni], 0}, -1);
+        }
+        if (classed) return make(kClassArmor[cls], cls);
+        return make(kGenericArmor, -1);
+    }
+
+    /** Class tag for a drop: biased toward the party's classes (-1 = usable by anyone). */
+    static int pickLootClass(int preferClass, int preferClass2) {
+        using T = Tuning;
+        int party[kClassCount];
         int partyN = 0;
         auto pushParty = [&](int c) {
-            if (c < 0 || c > 4) return;
+            if (c < 0 || c >= kClassCount) return;
             for (int i = 0; i < partyN; ++i) if (party[i] == c) return;
             party[partyN++] = c;
         };
         pushParty(preferClass);
         pushParty(preferClass2);
 
-        int cls = -1;
-        int pick = rng::below(100);
-        if (partyN > 0) {
-            if (pick < 62) cls = party[rng::below(partyN)];
-            else if (pick < 92) cls = -1;
-            else {
-                int off[5];
-                int offN = 0;
-                for (int c = 0; c < 5; ++c) {
-                    bool in = false;
-                    for (int i = 0; i < partyN; ++i) if (party[i] == c) { in = true; break; }
-                    if (!in) off[offN++] = c;
-                }
-                cls = (offN > 0) ? off[rng::below(offN)] : -1;
-            }
-        } else {
-            if (pick < 40) cls = rng::below(5);
-            else cls = -1;
+        const int pick = rng::below(100);
+        if (partyN == 0) return (pick < T::kSoloClassPct) ? rng::below(kClassCount) : -1;
+        if (pick < T::kPartyClassPct) return party[rng::below(partyN)];
+        if (pick < T::kNeutralUntilPct) return -1;
+        int off[kClassCount];
+        int offN = 0;
+        for (int c = 0; c < kClassCount; ++c) {
+            bool in = false;
+            for (int i = 0; i < partyN; ++i) if (party[i] == c) { in = true; break; }
+            if (!in) off[offN++] = c;
         }
-
-        if (rarity == ItemRarity::LEGENDARY) {
-            if (weapon) {
-                if (cls == 0) return Item::make("Crownbreaker", ItemType::WEAPON, bonus, rarity, 0);
-                if (cls == 1) return Item::make("Starfall Focus", ItemType::WEAPON, bonus, rarity, 1);
-                if (cls == 2) return Item::make("Nightwhisper", ItemType::WEAPON, bonus, rarity, 2);
-                if (cls == 3) return Item::make("Dawnward Mace", ItemType::WEAPON, bonus, rarity, 3);
-                if (cls == 4) return Item::make("Songsteel Rapier", ItemType::WEAPON, bonus, rarity, 4);
-                return Item::make("Emberdeep Relic Blade", ItemType::WEAPON, bonus, rarity, -1);
-            } else {
-                if (cls == 0) return Item::make("Aegis of Millhollow", ItemType::ARMOR, bonus + 3, rarity, 0);
-                if (cls == 1) return Item::make("Archsage Mantle", ItemType::ARMOR, bonus + 1, rarity, 1);
-                if (cls == 2) return Item::make("Veilwalker Hide", ItemType::ARMOR, bonus + 2, rarity, 2);
-                if (cls == 3) return Item::make("Sanctum Plate", ItemType::ARMOR, bonus + 3, rarity, 3);
-                if (cls == 4) return Item::make("Troubadour Coat", ItemType::ARMOR, bonus + 1, rarity, 4);
-                return Item::make("Emberdeep Relic Mail", ItemType::ARMOR, bonus + 2, rarity, -1);
-            }
-        }
-
-        if (weapon) {
-            const char* names[] = {"Steel Blade", "Runed Blade", "Shadow Dirk", "War Maul", "Arcane Wand"};
-            int ni = rng::below(5);
-            if (cls == 0) return Item::make("Champion's Longsword", ItemType::WEAPON, bonus, rarity, 0);
-            if (cls == 1) return Item::make("Focus Staff", ItemType::WEAPON, bonus, rarity, 1);
-            if (cls == 2) return Item::make("Silent Shortsword", ItemType::WEAPON, bonus, rarity, 2);
-            if (cls == 3) return Item::make("Hallowed Mace", ItemType::WEAPON, bonus, rarity, 3);
-            if (cls == 4) return Item::make("Stage Rapier", ItemType::WEAPON, bonus, rarity, 4);
-            return Item::make(names[ni], ItemType::WEAPON, bonus, rarity, -1);
-        } else {
-            if (cls == 0) return Item::make("Bulwark Mail", ItemType::ARMOR, bonus + 2, rarity, 0);
-            if (cls == 1) return Item::make("Scholar Robes", ItemType::ARMOR, bonus, rarity, 1);
-            if (cls == 2) return Item::make("Shadow Leathers", ItemType::ARMOR, bonus + 1, rarity, 2);
-            if (cls == 3) return Item::make("Temple Vestments", ItemType::ARMOR, bonus + 2, rarity, 3);
-            if (cls == 4) return Item::make("Performer's Leathers", ItemType::ARMOR, bonus + 1, rarity, 4);
-            return Item::make("Reinforced Mail", ItemType::ARMOR, bonus + 1, rarity, -1);
-        }
+        return (offN > 0) ? off[rng::below(offN)] : -1;
     }
 
     // Boss logic keys off the stable enemy ID (Bestiary.h), never the display name.
@@ -852,7 +858,7 @@ public:
 
 class SkillSystem {
 public:
-    static bool performCheck(const Character& c, int attributeScore, int dc) {
+    static bool performCheck(const Character& /*c*/, int attributeScore, int dc) {
         return (rng::below(20) + 1 + Attributes::getModifier(attributeScore)) >= dc;
     }
 };
