@@ -48,6 +48,7 @@ void handle_cmd(android_app *pApp, int32_t cmd) {
                     pApp->userData = nullptr;
                     delete pRenderer;
                 }
+                g_Game.clearVisualEvents(); // L5: nothing renders until the next INIT_WINDOW
             }
             break;
         default:

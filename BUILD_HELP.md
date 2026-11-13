@@ -3,7 +3,7 @@
 This branch makes the project easier to build on a typical Android Studio install.
 
 ## What we changed
-1. **Gradle / AGP** — moved from bleeding-edge AGP 9 to **AGP 8.7.3 + Gradle 8.11.1 + Kotlin 2.0**, which works with more Android Studio versions.
+1. **Gradle / AGP** — moved from bleeding-edge AGP 9 to AGP 8.x + Kotlin 2.0, which works with more Android Studio versions. Since v2.24: **AGP 8.13.2 + Gradle 8.13**, compile/target **SDK 36** (Android 16) — see [`docs/ANDROID16.md`](docs/ANDROID16.md).
 2. **Internet permission** — added so Firebase multiplayer can talk to the network once configured.
 3. **Theme** — switched to `NoActionBar` to avoid window conflicts with `GameActivity`.
 4. **Safer native load** — if the C++ library fails to load, you get a Toast instead of a silent crash.
@@ -77,15 +77,14 @@ Always paste the **exact** `adb install` / installer error string when reporting
 
 ### Packaging notes
 
-- Release **minify is off** (`isMinifyEnabled = false`) — ProGuard/R8 is **not** the cause of current install failures.
+- Release **minify is on** since v2.24 (`isMinifyEnabled = true`, R8; resource shrinking off). After a release build, run `tools/check_release_jni.sh` to confirm every `external fun` still has its `Java_…` symbol in the `.so` and is still a native method in the dex.
 - ABI/density **splits are disabled** so `assembleRelease` / signed APK is a **universal** APK for testers.
 - Do not add `ndk.abiFilters` unless you intentionally ship per-ABI artifacts.
 
-## Enabling minify safely (optional, later)
+## Minify (R8) checklist
 
-When you want a smaller release APK:
+Minify is enabled for release builds (v2.24). Keep rules live in `app/proguard-rules.pro` (whole app package, JNI natives, Game Activity, Firebase, AndroidX/Material).
 
-1. Confirm `app/proguard-rules.pro` keep rules cover MainActivity JNI, Game Activity, Firebase, and Kotlin (already present).
-2. In `app/build.gradle.kts` release: set `isMinifyEnabled = true` (optionally `isShrinkResources = true` after a smoke test).
-3. Install the minified release on a physical device; exercise solo play, Continue save, Host/Join (with `google-services.json`), and Settings.
-4. If something crashes with `ClassNotFoundException` / `NoSuchMethodError` / JNI `UnsatisfiedLinkError`, add a keep rule and retry — do **not** ship minify to testers until that pass is green.
+1. `./gradlew assembleRelease`, then `tools/check_release_jni.sh` (static check of JNI names / native methods).
+2. Install the minified release on a physical device; exercise solo play, Continue save, Host/Join (with `google-services.json`), and Settings.
+3. If something crashes with `ClassNotFoundException` / `NoSuchMethodError` / JNI `UnsatisfiedLinkError`, add a keep rule and retry. `isShrinkResources` is still off — enable it only after its own smoke test.

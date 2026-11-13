@@ -22,6 +22,10 @@ import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.google.firebase.FirebaseApp
 
 class MainActivity : AppCompatActivity() {
@@ -318,6 +322,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setContentView(R.layout.activity_main)
+        applyEdgeToEdgeInsets()
 
         if (!nativeReady) {
             Toast.makeText(
@@ -5862,12 +5867,31 @@ class MainActivity : AppCompatActivity() {
         postCoach(tip)
     }
 
+    /**
+     * M8: immersive full screen through WindowInsetsControllerCompat (the View.systemUiVisibility
+     * flags are deprecated since API 30). Bars come back as transient overlays on a swipe.
+     */
     private fun hideSystemUi() {
-        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_FULLSCREEN)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    /**
+     * Android 15/16 edge-to-edge (targetSdk 36 removes the opt-out): the app draws behind the
+     * hidden system bars, so keep content clear of display cutouts and of the keyboard (chat
+     * input) by padding the content root. The window background (ae_void) fills the margins.
+     */
+    private fun applyEdgeToEdgeInsets() {
+        val root = findViewById<View>(android.R.id.content) ?: return
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val cut = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            v.setPadding(cut.left, cut.top, cut.right, maxOf(cut.bottom, ime.bottom))
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
     }
 }

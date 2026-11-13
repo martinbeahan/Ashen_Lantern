@@ -395,7 +395,15 @@ private:
     int proficiencyBonus() const;
     void resolveEnemyDefeated(Character* actor, int targetEnemyIndex);
     bool performWeaponAttack(Character* actor, Character& target, int attackerVisualIndex, bool targetIsEnemy, int targetIndex, bool sneakAttack);
-    void pushVisualEvent(VisualEventType type, int index) { visualEvents_.push({type, index}); }
+    /** L5: bounded — with no Renderer (window destroyed / UI-only build) nothing drains it. */
+    static constexpr size_t kMaxVisualEvents = 64;
+    void pushVisualEvent(VisualEventType type, int index) {
+        while (visualEvents_.size() >= kMaxVisualEvents) visualEvents_.pop();
+        visualEvents_.push({type, index});
+    }
+public:
+    void clearVisualEvents() { while (!visualEvents_.empty()) visualEvents_.pop(); }
+private:
     Character* findCharacter(const std::string& name);
     bool isPartyMember(const Character* c) const {
         for (const auto& p : players_) if (p.get() == c) return true;

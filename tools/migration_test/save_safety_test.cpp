@@ -170,6 +170,21 @@ int main() {
         CHECK(rng::below(1) == 0 && rng::below(0) == 0);
     }
 
+    // 10) v2.24 (L6): ability modifiers floor like the rules — 9 -> -1, 7 -> -2, 1 -> -5.
+    {
+        CHECK(Attributes::getModifier(10) == 0 && Attributes::getModifier(11) == 0);
+        CHECK(Attributes::getModifier(9) == -1 && Attributes::getModifier(8) == -1);
+        CHECK(Attributes::getModifier(7) == -2 && Attributes::getModifier(1) == -5);
+        CHECK(Attributes::getModifier(20) == 5 && Attributes::getModifier(3) == -4);
+    }
+    // 11) v2.24 (L8): item names with ':' round-trip; a bad rarity falls back to Common.
+    {
+        Item it; it.name = "Key: Mill Hall"; it.type = ItemType::WEAPON; it.bonus = 1;
+        auto back = Item::fromToken(it.toToken());
+        CHECK(back && back->name == "Key: Mill Hall" && back->bonus == 1);
+        auto bad = Item::fromToken("Plain Dagger:1:0:zz");
+        CHECK(bad && bad->name == "Plain Dagger" && bad->rarity == ItemRarity::COMMON);
+    }
     if (failures) { std::cerr << failures << " check(s) failed\n"; return 1; }
     std::cout << "save_safety_test OK\n";
     return 0;

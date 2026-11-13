@@ -64,6 +64,13 @@ Renderer::Renderer(android_app *pApp, dnd::Game& game) :
 }
 
 Renderer::~Renderer() {
+    // M3: GL objects (textures in models_, the shader program) must be deleted while this
+    // context is still current — after eglDestroyContext their glDelete* calls are no-ops.
+    if (display_ != EGL_NO_DISPLAY && context_ != EGL_NO_CONTEXT && surface_ != EGL_NO_SURFACE) {
+        eglMakeCurrent(display_, surface_, surface_, context_);
+    }
+    models_.clear();
+    shader_.reset();
     if (display_ != EGL_NO_DISPLAY) {
         eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
         if (context_ != EGL_NO_CONTEXT) {
@@ -162,12 +169,13 @@ void Renderer::render() {
     updateAnimations();
     totalTime_ += 0.016f;
 
-    if (shaderNeedsNewProjectionMatrix_) {
+    // L3: a 0-height surface (mid-resize) would make the aspect ratio inf/NaN — wait for a real size.
+    if (shaderNeedsNewProjectionMatrix_ && width_ > 0 && height_ > 0) {
         float projectionMatrix[16] = {0};
         Utility::buildOrthographicMatrix(
                 projectionMatrix,
                 kProjectionHalfHeight,
-                float(width_) / height_,
+                static_cast<float>(width_) / static_cast<float>(height_),
                 kProjectionNearPlane,
                 kProjectionFarPlane);
         shader_->setProjectionMatrix(projectionMatrix);
@@ -374,16 +382,11 @@ void Renderer::createModels() {
     };
     std::vector<Index> indices = {0, 1, 2, 0, 2, 3};
 
-    auto assetManager = app_->activity->assetManager;
-    // Order must match modelIndexFor*() helpers below:
-    // 0 fighter, 1 wizard, 2 rogue, 3 cleric, 4 wickthief (legacy goblin tex), 5 ashbound (legacy skeleton tex)
-    const char* files[] = {
-        "fighter.png", "wizard.png", "rogue.png", "cleric.png",
-        "goblin.png", "skeleton.png"
-    };
-    for (const char* file : files) {
-        auto tex = TextureAsset::loadAsset(assetManager, file);
-        models_.emplace_back(vertices, indices, tex);
+    // Order must match modelIndexFor*() helpers: 0 fighter, 1 wizard, 2 rogue, 3 cleric,
+    // 4 wickthief, 5 ashbound. v2.24 removed the legacy CC0 textures (assets/*.png): this GL
+    // layer is not used by the shipped AppCompat UI, so it draws untextured placeholder quads.
+    for (int i = 0; i < 6; ++i) {
+        models_.emplace_back(vertices, indices, nullptr);
     }
 }
 

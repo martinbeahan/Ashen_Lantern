@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -7,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.fintrack.dndbeginnerremote"
-    compileSdk = 35
+    compileSdk = 36
 
     // NDK r28+ aligns 64-bit .so files for 16 KB page-size devices by default
     ndkVersion = "28.2.13676358"
@@ -15,22 +17,19 @@ android {
     defaultConfig {
         applicationId = "com.fintrack.dndbeginnerremote"
         minSdk = 30
-        targetSdk = 35
-        versionCode = 62
-        versionName = "2.23"
+        targetSdk = 36
+        versionCode = 63
+        versionName = "2.24"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         externalNativeBuild {
             cmake {
                 cppFlags += "-std=c++17"
-                // 16 KB page-size support (required on newer Android / Play)
+                // 16 KB page-size support (required on newer Android / Play). The only place
+                // this is configured (L7); NDK r28 already aligns 64-bit libs to 16 KB.
                 arguments += listOf(
                     "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
-                )
-                // Belt-and-suspenders linker flags for older cached toolchains
-                arguments += listOf(
-                    "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
                 )
             }
         }
@@ -42,9 +41,11 @@ android {
 
     buildTypes {
         release {
-            // Minify stays OFF until keep rules are validated on a real device.
-            // ProGuard/R8 rules in proguard-rules.pro are ready; see BUILD_HELP.md.
-            isMinifyEnabled = false
+            // R8 minify ON since v2.24 (Code Auditor L9). Keep rules for the JNI bridge
+            // (MainActivity external funs ↔ Java_com_fintrack_… in main.cpp), custom views and
+            // Firebase live in proguard-rules.pro. Resource shrinking stays off for now (separate
+            // change; needs its own device pass).
+            isMinifyEnabled = true
             isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -73,9 +74,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     buildFeatures {
         prefab = true
     }
@@ -92,6 +90,13 @@ android {
             // Avoid duplicate native libs from Game Activity prefab
             pickFirsts += listOf("**/libc++_shared.so")
         }
+    }
+}
+
+// M6: kotlinOptions {} is deprecated (an error from Kotlin 2.2); use the compilerOptions DSL.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 

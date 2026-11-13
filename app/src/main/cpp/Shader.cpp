@@ -91,7 +91,7 @@ GLuint Shader::loadShader(GLenum shaderType, const std::string &shaderSource) {
         // If the shader doesn't compile, log the result to the terminal for debugging
         if (!shaderCompiled) {
             GLint infoLength = 0;
-            glGetShaderiv(shader, GL_COMPILE_STATUS, &infoLength);
+            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLength); // L1: was GL_COMPILE_STATUS
 
             if (infoLength) {
                 auto *infoLog = new GLchar[infoLength];

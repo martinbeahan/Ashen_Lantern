@@ -8,6 +8,8 @@
 #include <sstream>
 #include <algorithm>
 #include "Bestiary.h"
+#include "SaveCodec.h"
+#include "AndroidOut.h"
 
 namespace dnd {
 
@@ -49,8 +51,10 @@ struct Attributes {
     int wisdom = 10;
     int charisma = 10;
 
+    /** 5e ability modifier: floor((score - 10) / 2), so 9 -> -1 and 8 -> -1 (L6: was truncating). */
     static int getModifier(int score) {
-        return (score - 10) / 2;
+        const int d = score - 10;
+        return (d >= 0) ? d / 2 : -((1 - d) / 2);
     }
 };
 
@@ -245,7 +249,8 @@ struct Item {
         if (type == ItemType::ARMOR) t = 'A';
         else if (type == ItemType::POTION) t = 'P';
         std::stringstream ss;
-        ss << name << ":" << bonus << ":" << t << ":"
+        // Name is percent-encoded (L8): a ':' in a name would otherwise shift every field.
+        ss << savecodec::encode(name) << ":" << bonus << ":" << t << ":"
            << static_cast<int>(rarity) << ":" << classTag << ":" << upgradeLevel
            << ":" << legStat0 << ":" << legStat1 << ":" << legStat2 << ":" << subEffect;
         return ss.str();
@@ -262,14 +267,21 @@ struct Item {
         parts.push_back(cur);
         if (parts.size() < 3) return nullptr;
         auto item = std::make_shared<Item>();
-        item->name = parts[0];
+        item->name = savecodec::decode(parts[0]); // no-op for names without '%'
+
         try { item->bonus = std::stoi(parts[1]); } catch (...) { item->bonus = 0; }
         char t = parts[2].empty() ? 'W' : parts[2][0];
         if (t == 'A') item->type = ItemType::ARMOR;
         else if (t == 'P') item->type = ItemType::POTION;
         else item->type = ItemType::WEAPON;
         if (parts.size() >= 4) {
-            try { item->rarity = static_cast<ItemRarity>(std::stoi(parts[3])); } catch (...) {}
+            int r = 0;
+            if (savecodec::tryParseInt(parts[3], r)) {
+                item->rarity = static_cast<ItemRarity>(savecodec::clampInt(r, 0, 4));
+            } else {
+                // L8: was an empty catch(...) — keep Common, but say so instead of hiding it.
+                aout << "Item::fromToken: bad rarity '" << parts[3] << "' for " << item->name << ", using Common" << std::endl;
+            }
         }
         if (parts.size() >= 5) {
             try { item->classTag = std::stoi(parts[4]); } catch (...) { item->classTag = -1; }
