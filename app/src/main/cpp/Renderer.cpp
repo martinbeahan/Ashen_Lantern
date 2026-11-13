@@ -64,6 +64,13 @@ Renderer::Renderer(android_app *pApp, dnd::Game& game) :
 }
 
 Renderer::~Renderer() {
+    // M3: GL objects (textures in models_, the shader program) must be deleted while this
+    // context is still current — after eglDestroyContext their glDelete* calls are no-ops.
+    if (display_ != EGL_NO_DISPLAY && context_ != EGL_NO_CONTEXT && surface_ != EGL_NO_SURFACE) {
+        eglMakeCurrent(display_, surface_, surface_, context_);
+    }
+    models_.clear();
+    shader_.reset();
     if (display_ != EGL_NO_DISPLAY) {
         eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
         if (context_ != EGL_NO_CONTEXT) {
@@ -119,7 +126,7 @@ void Renderer::updateAnimations() {
                 if (s.flashIntensity > 0.01f) {
                     s.flashIntensity *= 0.88f;
                     // Hit shake
-                    s.xOffset += (dnd::rng::below(11) - 5) * 0.012f;
+                    s.xOffset += static_cast<float>(dnd::rng::below(11) - 5) * 0.012f;
                 }
                 if (s.framesRemaining == 0) {
                     s.xOffset = 0;
@@ -162,12 +169,13 @@ void Renderer::render() {
     updateAnimations();
     totalTime_ += 0.016f;
 
-    if (shaderNeedsNewProjectionMatrix_) {
+    // L3: a 0-height surface (mid-resize) would make the aspect ratio inf/NaN — wait for a real size.
+    if (shaderNeedsNewProjectionMatrix_ && width_ > 0 && height_ > 0) {
         float projectionMatrix[16] = {0};
         Utility::buildOrthographicMatrix(
                 projectionMatrix,
                 kProjectionHalfHeight,
-                float(width_) / height_,
+                static_cast<float>(width_) / static_cast<float>(height_),
                 kProjectionNearPlane,
                 kProjectionFarPlane);
         shader_->setProjectionMatrix(projectionMatrix);
@@ -177,12 +185,11 @@ void Renderer::render() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     if (!models_.empty()) {
-        auto program = shader_->getProgram();
-        auto uOffset = glGetUniformLocation(program, "uOffset");
-        auto uTint = glGetUniformLocation(program, "uTint");
-        auto uScale = glGetUniformLocation(program, "uScale");
-        auto uFlash = glGetUniformLocation(program, "uFlash");
-        auto uUseTexture = glGetUniformLocation(program, "uUseTexture");
+        const GLint uOffset = uniforms_.offset;
+        const GLint uTint = uniforms_.tint;
+        const GLint uScale = uniforms_.scale;
+        const GLint uFlash = uniforms_.flash;
+        const GLint uUseTexture = uniforms_.useTexture;
 
         auto drawHealthBar = [&](float x, float y, float healthPerc) {
             glUniform1i(uUseTexture, 0);
@@ -205,12 +212,12 @@ void Renderer::render() {
         dnd::Character* activeActor = game_.getCurrentActor();
 
         const auto& players = game_.getPlayers();
-        float pyStart = (players.empty() ? 0.0f : (players.size() - 1) * 0.55f);
+        float pyStart = (players.empty() ? 0.0f : static_cast<float>(players.size() - 1) * 0.55f);
         for (size_t i = 0; i < players.size(); ++i) {
             const AnimationState& anim = playerAnims_[(int)i];
             float idleBob = 0.03f * sinf(totalTime_ * 3.0f + (float)i);
             float xPos = -1.35f + anim.xOffset;
-            float yPos = pyStart - (i * 1.05f) + anim.yOffset + idleBob;
+            float yPos = pyStart - (static_cast<float>(i) * 1.05f) + anim.yOffset + idleBob;
 
             float pulse = 1.0f + anim.scaleBoost;
             if (activeActor == players[i].get()) {
@@ -231,12 +238,12 @@ void Renderer::render() {
         }
 
         const auto& enemies = game_.getEnemies();
-        float eyStart = (enemies.empty() ? 0.0f : (enemies.size() - 1) * 0.55f);
+        float eyStart = (enemies.empty() ? 0.0f : static_cast<float>(enemies.size() - 1) * 0.55f);
         for (size_t i = 0; i < enemies.size(); ++i) {
             const AnimationState& anim = enemyAnims_[(int)i];
             float idleBob = 0.03f * sinf(totalTime_ * 3.2f + (float)i + 1.0f);
             float xPos = 1.35f + anim.xOffset;
-            float yPos = eyStart - (i * 1.05f) + anim.yOffset + idleBob;
+            float yPos = eyStart - (static_cast<float>(i) * 1.05f) + anim.yOffset + idleBob;
 
             float pulse = 1.0f + anim.scaleBoost;
             if (activeActor == enemies[i].get()) {
@@ -342,6 +349,14 @@ bool Renderer::initRenderer() {
         return false;
     }
     shader_->activate();
+    {
+        const GLuint program = shader_->getProgram();
+        uniforms_.offset = glGetUniformLocation(program, "uOffset");
+        uniforms_.tint = glGetUniformLocation(program, "uTint");
+        uniforms_.scale = glGetUniformLocation(program, "uScale");
+        uniforms_.flash = glGetUniformLocation(program, "uFlash");
+        uniforms_.useTexture = glGetUniformLocation(program, "uUseTexture");
+    }
 
     glClearColor(DUNGEON_BG);
     glEnable(GL_BLEND);
@@ -367,23 +382,19 @@ void Renderer::updateRenderArea() {
 void Renderer::createModels() {
     // Slightly taller quad for character sprites
     std::vector<Vertex> vertices = {
-            Vertex(Vector3{0.45f, 0.55f, 0}, Vector2{0, 0}),
-            Vertex(Vector3{-0.45f, 0.55f, 0}, Vector2{1, 0}),
-            Vertex(Vector3{-0.45f, -0.55f, 0}, Vector2{1, 1}),
-            Vertex(Vector3{0.45f, -0.55f, 0}, Vector2{0, 1})
+            // Inner braces initialise the union's {x, y, z} / {u, v} struct member (L4).
+            Vertex(Vector3{{0.45f, 0.55f, 0}}, Vector2{{0, 0}}),
+            Vertex(Vector3{{-0.45f, 0.55f, 0}}, Vector2{{1, 0}}),
+            Vertex(Vector3{{-0.45f, -0.55f, 0}}, Vector2{{1, 1}}),
+            Vertex(Vector3{{0.45f, -0.55f, 0}}, Vector2{{0, 1}})
     };
     std::vector<Index> indices = {0, 1, 2, 0, 2, 3};
 
-    auto assetManager = app_->activity->assetManager;
-    // Order must match modelIndexFor*() helpers below:
-    // 0 fighter, 1 wizard, 2 rogue, 3 cleric, 4 wickthief (legacy goblin tex), 5 ashbound (legacy skeleton tex)
-    const char* files[] = {
-        "fighter.png", "wizard.png", "rogue.png", "cleric.png",
-        "goblin.png", "skeleton.png"
-    };
-    for (const char* file : files) {
-        auto tex = TextureAsset::loadAsset(assetManager, file);
-        models_.emplace_back(vertices, indices, tex);
+    // Order must match modelIndexFor*() helpers: 0 fighter, 1 wizard, 2 rogue, 3 cleric,
+    // 4 wickthief, 5 ashbound. v2.24 removed the legacy CC0 textures (assets/*.png): this GL
+    // layer is not used by the shipped AppCompat UI, so it draws untextured placeholder quads.
+    for (int i = 0; i < 6; ++i) {
+        models_.emplace_back(vertices, indices, nullptr);
     }
 }
 

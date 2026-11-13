@@ -6,7 +6,17 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.23 / 62) — save & online safety fixes
+## What's new (v2.24 / 63) — Android 16 & play readiness
+
+- **Ready for Android 16** — the app now targets Android 16 (API 36) with the current build tools (Android Gradle Plugin 8.13, Gradle 8.13), so it meets Google Play's upcoming target-API requirement. Details: [`docs/ANDROID16.md`](docs/ANDROID16.md)
+- **Full-screen that behaves** — the game hides the status and navigation bars with the modern Android API; swipe from an edge to peek at them. On phones with a camera notch or punch-hole, and when the keyboard is open for chat, the screen now stays clear of them
+- **Smaller, tidier release build** — release APKs are now code-shrunk (R8), and the unused legacy textures from the old graphics layer were removed
+- **Ability modifiers fixed** — odd scores below 10 now round down like the tabletop rules (9 → −1, 7 → −2); previously they rounded toward zero. Starting heroes use even scores, so most characters see no change
+- **Stability** — safer graphics shutdown, no crash on a zero-height window during resize, a capped animation queue, clearer shader error logs, and damaged loot entries are logged instead of silently ignored
+- **Under the hood** — the native code now builds with no compiler warnings, save/sync code has its own file with one shared reader/writer for heroes and foes, loot tables are named data instead of magic numbers (same drop rates), the graphics layer looks up its shader settings once instead of every frame, and the sprite tables moved out of the main screen code. No gameplay change
+- Unchanged: Long Rest every 5 rooms, Short Rest once per clear, duplicate foes selectable by slot (`#2`), old saves load fine, Host/Join never touches the solo save
+
+## Previous (v2.23 / 62) — save & online safety fixes
 
 - **Names with commas no longer break your save** — a hero called *Bob, Jr* (or any name or chat line with `, ; | ~`) used to wipe the party on Continue or corrupt an online table. Save and sync text is now encoded safely, and old saves still load
 - **Cleaner names** — hero, Lanternkeeper and joining-player names skip the few separator characters (`, ; | ~ ^ : %`) and are capped at 24 characters
@@ -123,7 +133,7 @@ Distinct from normal Dungeon Crawl: depth rises forever; foe density/HP scale wi
 
 - [Android Studio](https://developer.android.com/studio) (recent stable)
 - **JDK 17** (bundled with Android Studio is fine)
-- **SDK Platform 35**, **minSdk 30** (Android **11+** only — older phones get `INSTALL_FAILED_OLDER_SDK`)
+- **SDK Platform 36** (Android 16), **minSdk 30** (Android **11+** only — older phones get `INSTALL_FAILED_OLDER_SDK`)
 - **NDK** `28.2.13676358` and **CMake** (SDK Manager → SDK Tools → Show Package Details)
 - Device or emulator **API 30+**
 

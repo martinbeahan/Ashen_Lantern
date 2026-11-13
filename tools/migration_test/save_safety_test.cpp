@@ -170,6 +170,45 @@ int main() {
         CHECK(rng::below(1) == 0 && rng::below(0) == 0);
     }
 
+    // 10) v2.24 (L6): ability modifiers floor like the rules — 9 -> -1, 7 -> -2, 1 -> -5.
+    {
+        CHECK(Attributes::getModifier(10) == 0 && Attributes::getModifier(11) == 0);
+        CHECK(Attributes::getModifier(9) == -1 && Attributes::getModifier(8) == -1);
+        CHECK(Attributes::getModifier(7) == -2 && Attributes::getModifier(1) == -5);
+        CHECK(Attributes::getModifier(20) == 5 && Attributes::getModifier(3) == -4);
+    }
+    // 11) v2.24 (L8): item names with ':' round-trip; a bad rarity falls back to Common.
+    {
+        Item it; it.name = "Key: Mill Hall"; it.type = ItemType::WEAPON; it.bonus = 1;
+        auto back = Item::fromToken(it.toToken());
+        CHECK(back && back->name == "Key: Mill Hall" && back->bonus == 1);
+        auto bad = Item::fromToken("Plain Dagger:1:0:zz");
+        CHECK(bad && bad->name == "Plain Dagger" && bad->rarity == ItemRarity::COMMON);
+    }
+    // 12) v2.24 (L10): table-driven loot keeps the old contract — legendary only when allowed,
+    //     class tags in -1..4, armor of a known class gets its table bonus.
+    {
+        bool ok = true; int drops = 0, legendary = 0;
+        for (int i = 0; i < 20000; ++i) {
+            const bool allow = (i % 2) == 0;
+            auto it = LootSystem::generateLoot(10, 30, 0, 3, allow, 50);
+            if (!it) continue;
+            ++drops;
+            if (it->rarity == ItemRarity::LEGENDARY) { ++legendary; if (!allow) ok = false; }
+            if (it->classTag < -1 || it->classTag > 4 || it->name.empty()) ok = false;
+            if (it->name == "Bulwark Mail" && it->bonus != 2 + 2 + static_cast<int>(it->rarity)) ok = false;
+        }
+        CHECK(ok && drops > 0 && legendary > 0);
+        CHECK(!LootSystem::generateLoot(0, -1000)); // below the drop gate: never drops
+    }
+    // 13) v2.24 (L10): player/enemy records share one writer/reader — enemy IDs and stats survive.
+    {
+        Game g;
+        g.startNewGame(CharacterClass::BARD, "Wren");
+        Game h;
+        CHECK(h.deserialize(g.serialize()));
+        CHECK(h.serialize() == g.serialize());
+    }
     if (failures) { std::cerr << failures << " check(s) failed\n"; return 1; }
     std::cout << "save_safety_test OK\n";
     return 0;

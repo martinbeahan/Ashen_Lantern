@@ -53,6 +53,8 @@ private:
     bool shaderNeedsNewProjectionMatrix_;
 
     std::unique_ptr<Shader> shader_;
+    /** L10: uniform locations, looked up once after the program links (was 5x per frame). */
+    struct Uniforms { GLint offset = -1, tint = -1, scale = -1, flash = -1, useTexture = -1; } uniforms_;
     std::vector<Model> models_;
 
     std::map<int, AnimationState> playerAnims_;

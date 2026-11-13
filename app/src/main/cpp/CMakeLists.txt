@@ -14,19 +14,23 @@ add_library(dndbeginnerremote SHARED
         Shader.cpp
         TextureAsset.cpp
         Utility.cpp
-        Game.cpp)
+        Game.cpp
+        GameSave.cpp)
+
+# L4: keep the warning set the audit used visible in every build (warnings, not errors).
+target_compile_options(dndbeginnerremote PRIVATE -Wall -Wextra)
 
 # Searches for a package provided by the game activity dependency
 find_package(game-activity REQUIRED CONFIG)
 
-# 16 KB page-size ELF alignment (required for Android 15+ / Play)
-# Apply both flags — max alone is not always enough on some NDK toolchains.
-set(CMAKE_SHARED_LINKER_FLAGS
-        "${CMAKE_SHARED_LINKER_FLAGS} -u Java_com_google_androidgamesdk_GameActivity_initializeNativeCode -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384")
-
-target_link_options(dndbeginnerremote PRIVATE
-        "-Wl,-z,max-page-size=16384"
-        "-Wl,-z,common-page-size=16384")
+# 16 KB page-size ELF alignment (required for Android 15+ / Play) comes from NDK r28's default
+# plus -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON in app/build.gradle.kts — set in one place only
+# (Code Auditor L7).
+# M7: the old "-u Java_com_google_androidgamesdk_GameActivity_initializeNativeCode" linker
+# workaround is gone. games-activity 4.x registers its natives with RegisterNatives
+# (GameActivity_register) instead of relying on that exported name, and the shipped app never
+# launches GameActivity anyway — the only activity is the AppCompat MainActivity. If the
+# GameActivity path is ever revived, add a JNI_OnLoad that calls GameActivity_register(env).
 
 # Configure libraries CMake uses to link your target library.
 target_link_libraries(dndbeginnerremote

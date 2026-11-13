@@ -141,9 +141,10 @@ v2.21 all 27 enemy IDs have their own silhouette (`res/drawable/<enemyId>.xml`).
 | `boss_ember_hydra_calm.xml`, `boss_warden_calm.xml`, `boss_prior_calm.xml`, `boss_nightfang_calm.xml` | Same SVGs via `tools/svg2vd.py --calm` (Reduce flashing variants, v2.21) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
 | `enemy_unknown.xml` | Hand-written VectorDrawable (neutral shadow) | Ashen Lantern (original) | Original, project-owned (see `LICENSE`) |
 
-The LuizMelo goblin sprite (`sprite_goblin*.png`) was removed from the Android UI in v2.20; the
-GL layer's legacy `assets/goblin.png` / `skeleton.png` remain. `assets/android_robot.png`
-(Android template texture) was removed.
+The LuizMelo goblin sprite (`sprite_goblin*.png`) was removed from the Android UI in v2.20.
+The GL layer's legacy textures (`assets/fighter.png`, `wizard.png`, `rogue.png`, `cleric.png`,
+`goblin.png`, `skeleton.png`) were removed in v2.24 — that layer now draws untextured
+placeholders. `assets/android_robot.png` (Android template texture) was removed earlier.
 
 ### Not used
 

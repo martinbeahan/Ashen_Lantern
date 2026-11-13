@@ -1,6 +1,9 @@
 # Ashen Lantern — ProGuard / R8 rules
-# release isMinifyEnabled is currently false; these rules are ready when minify is turned on.
-# See BUILD_HELP.md ("Enabling minify safely") before flipping isMinifyEnabled.
+# Release builds run R8 (isMinifyEnabled = true since v2.24, Code Auditor L9).
+# The JNI contract is name-based: every `external fun` in MainActivity must keep its exact name
+# and signature to match Java_com_fintrack_dndbeginnerremote_MainActivity_* in cpp/main.cpp, and
+# the native layer looks up java/lang/IllegalStateException (always present). Check after a
+# release build: tools/check_release_jni.sh.
 
 # ---- General / Kotlin ----
 -keepattributes Signature, InnerClasses, EnclosingMethod
