@@ -258,7 +258,7 @@
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"
                 android:layout_marginBottom="6dp"
-                android:text="Host online (DM)"
+                android:text="Host online (Lanternkeeper)"
                 android:textSize="14sp" />
 
             <Button

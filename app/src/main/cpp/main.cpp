@@ -558,7 +558,7 @@ JNIEXPORT void JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_startDmSession(JNIEnv *env, jobject thiz, jstring dmName) {
     std::lock_guard<std::mutex> lock(g_RendererMutex);
     const char *nativeName = env->GetStringUTFChars(dmName, nullptr);
-    g_Game.startDmSession(nativeName ? nativeName : "Dungeon Master");
+    g_Game.startDmSession(nativeName ? nativeName : "The Lanternkeeper");
     env->ReleaseStringUTFChars(dmName, nativeName);
 }
 

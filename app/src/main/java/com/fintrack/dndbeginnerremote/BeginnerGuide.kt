@@ -13,7 +13,7 @@ object BeginnerGuide {
         Page(
             "Welcome, adventurer",
             "This is a simple tabletop fantasy dungeon crawl, compatible with 5e SRD concepts.\n\n" +
-                "You play a hero. The Dungeon Master (DM) describes the world, " +
+                "You play a hero. The Lanternkeeper (your narrator) describes the world, " +
                 "runs monsters, and helps you learn the buttons.\n\n" +
                 "You do not need to know the rulebooks to start."
         ),
@@ -146,10 +146,10 @@ object BeginnerGuide {
         classId: Int
     ): String? {
         if (isShop) {
-            return "DM: Safe room. Tap Shop to buy gear, or Leave/Short Rest area controls to move on."
+            return "Keeper: Safe room. Tap Shop to buy gear, or Leave/Short Rest area controls to move on."
         }
         if (status.contains("Game Over", ignoreCase = true)) {
-            return "DM: The party has fallen. Tap Menu, then Solo adventure to begin again (this save is cleared)."
+            return "Keeper: The party has fallen. Tap Menu, then Solo adventure to begin again (this save is cleared)."
         }
         val turnMarker = "Turn: "
         val turnLine = status.lineSequence().firstOrNull { it.contains(turnMarker) } ?: return null
@@ -162,10 +162,10 @@ object BeginnerGuide {
             companionLine.contains(whose)
         val myTurn = whose.equals(localPlayerName, true) || whose.equals("You", true) || companionPlayer
         if (!myTurn) {
-            return "DM: It's $whose's turn. Watch the log — enemies and Auto allies act automatically."
+            return "Keeper: It's $whose's turn. Watch the log — enemies and Auto allies act automatically."
         }
         if (companionPlayer && !whose.equals(localPlayerName, true)) {
-            return "DM: $whose's turn (you control them). Use Attack / Special / Potion just like your hero."
+            return "Keeper: $whose's turn (you control them). Use Attack / Special / Potion just like your hero."
         }
 
         val hurt = status.lineSequence().any { line ->
@@ -181,7 +181,7 @@ object BeginnerGuide {
         }
 
         return buildString {
-            append("DM: Your turn, $localPlayerName. ")
+            append("Keeper: Your turn, $localPlayerName. ")
             append("Attack = weapon swing vs their AC. ")
             append("Special ($specialName) = ${specialBlurb(classId)} ")
             if (hurt) append("You're bloodied — consider Potion or Healing Word if you have it. ")

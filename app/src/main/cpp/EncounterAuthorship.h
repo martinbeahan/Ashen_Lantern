@@ -38,18 +38,18 @@ inline const TemplateInfo* table(size_t& outCount) {
     static const TemplateInfo kTable[] = {
         { TemplateId::SHADOW_AMBUSH, "shadow_ambush", "Shadow Ambush",
           "SET-PIECE — Shadow Ambush: scrap-iron blades flash from the dark. Watch your flanks!",
-          "Torchlight catches scrap shields — goblin blades wait in the shadows.",
+          "Torchlight catches scrap shields — wickthief hooks wait in the shadows.",
           "Shadow Ambush cleared! Cache coin and a gear scrap for your trouble.",
           /*min*/ 3, /*xp*/ 35, /*gold*/ 18, /*post*/ false },
 
         { TemplateId::BONEBOUND_DUO, "bonebound_duo", "Bonebound Duo",
-          "SET-PIECE — Bonebound Duo: two linked skeletons rise as one. Break the pair!",
-          "Twin bone piles rattle in sync. An elite pair claims this ossuary niche.",
+          "SET-PIECE — Bonebound Duo: two linked Ashbound rise as one. Break the pair!",
+          "Twin heaps of burnt-paper bone rattle in sync. An elite pair claims this ossuary niche.",
           "Bonebound Duo shattered! Heavier purse and a solid find.",
           5, 45, 22, false },
 
         { TemplateId::RELIC_SNATCH, "relic_snatch", "Relic Snatch",
-          "SET-PIECE — Relic Snatch: wolves and a goblin pack-leader guard a sealed cache. Clear them to claim it!",
+          "SET-PIECE — Relic Snatch: gloamhounds and a wickthief pack-leader guard a sealed cache. Clear them to claim it!",
           "A wax-sealed cache sits on a cracked plinth — guardians pace the chamber.",
           "Relic Snatch won! The cache yields coin, XP, and a guaranteed Common or Uncommon.",
           4, 40, 28, true },
@@ -61,7 +61,7 @@ inline const TemplateInfo* table(size_t& outCount) {
           6, 50, 25, true },
 
         { TemplateId::WOLF_PACK, "wolf_pack", "Howl Corridor",
-          "SET-PIECE — Howl Corridor: a wolf pack closes from both ends. Hold the line!",
+          "SET-PIECE — Howl Corridor: a gloamhound pack closes from both ends. Hold the line!",
           "Wet pawprints and a low chorus of howls fill the corridor.",
           "Howl Corridor survived! Pack trophies and a better haul.",
           4, 38, 20, false },

@@ -1,0 +1,647 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1840 1320" width="1840" height="1320">
+<rect width="1840" height="1320" fill="#0B0A0C"/>
+<rect x="16" y="16" width="1808" height="1288" fill="none" stroke="#3A3640" stroke-width="1.5"/>
+<path fill="none" stroke="#F2A541" stroke-width="2" stroke-linecap="round"
+      d="M24 58 L24 24 L58 24 M30 46 L30 30 L46 30 M58 24 Q68 24 68 32 M24 58 Q24 68 32 68"/>
+    <circle cx="30" cy="30" r="2.5" fill="#F2A541"/>
+<path fill="none" stroke="#F2A541" stroke-width="2" stroke-linecap="round"
+      d="M1816 58 L1816 24 L1782 24 M1810 46 L1810 30 L1794 30 M1782 24 Q1772 24 1772 32 M1816 58 Q1816 68 1808 68"/>
+    <circle cx="1810" cy="30" r="2.5" fill="#F2A541"/>
+<path fill="none" stroke="#F2A541" stroke-width="2" stroke-linecap="round"
+      d="M24 1262 L24 1296 L58 1296 M30 1274 L30 1290 L46 1290 M58 1296 Q68 1296 68 1288 M24 1262 Q24 1252 32 1252"/>
+    <circle cx="30" cy="1290" r="2.5" fill="#F2A541"/>
+<path fill="none" stroke="#F2A541" stroke-width="2" stroke-linecap="round"
+      d="M1816 1262 L1816 1296 L1782 1296 M1810 1274 L1810 1290 L1794 1290 M1782 1296 Q1772 1296 1772 1288 M1816 1262 Q1816 1252 1808 1252"/>
+    <circle cx="1810" cy="1290" r="2.5" fill="#F2A541"/>
+<text x="60" y="84" font-family="Cinzel" font-size="44" fill="#D9D2C3" letter-spacing="6">ASH &amp; EMBER</text>
+<text x="430" y="84" font-family="Cormorant Garamond" font-style="italic" font-size="28" fill="#F2A541">Ashen Lantern · 2D style sheet v0.1 · original art, hand-authored SVG</text>
+<rect x="60" y="104" width="1720" height="1" fill="#3A3640"/>
+<text x="60" y="146" font-family="Cinzel" font-size="20" fill="#8D8794" letter-spacing="4">PALETTE</text>
+<rect x="60" y="160" width="124" height="84" rx="4" fill="#0B0A0C" stroke="#3A3640" stroke-width="1.5"/>
+<text x="60" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Void</text>
+<text x="60" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#0B0A0C</text>
+<text x="60" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">deep shadow, voids</text>
+<rect x="193" y="160" width="124" height="84" rx="4" fill="#141216" stroke="#3A3640" stroke-width="1.5"/>
+<text x="193" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Far Soot</text>
+<text x="193" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#141216</text>
+<text x="193" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">back limbs, panels</text>
+<rect x="326" y="160" width="124" height="84" rx="4" fill="#1C1A1E" stroke="#3A3640" stroke-width="1.5"/>
+<text x="326" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Soot</text>
+<text x="326" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#1C1A1E</text>
+<text x="326" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">silhouette body</text>
+<rect x="459" y="160" width="124" height="84" rx="4" fill="#2A262C"/>
+<text x="459" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Wax</text>
+<text x="459" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#2A262C</text>
+<text x="459" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">candles, inner detail</text>
+<rect x="592" y="160" width="124" height="84" rx="4" fill="#3A3640"/>
+<text x="592" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Rim</text>
+<text x="592" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#3A3640</text>
+<text x="592" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">lantern-side rim, rules</text>
+<rect x="725" y="160" width="124" height="84" rx="4" fill="#4A4650"/>
+<text x="725" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Ash</text>
+<text x="725" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#4A4650</text>
+<text x="725" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">far planes</text>
+<rect x="858" y="160" width="124" height="84" rx="4" fill="#6E6872"/>
+<text x="858" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Fog</text>
+<text x="858" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#6E6872</text>
+<text x="858" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">fog bands, sky low</text>
+<rect x="991" y="160" width="124" height="84" rx="4" fill="#D9D2C3"/>
+<text x="991" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Bone</text>
+<text x="991" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#D9D2C3</text>
+<text x="991" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">text, ribbons, wax bar</text>
+<rect x="1124" y="160" width="124" height="84" rx="4" fill="#F2A541"/>
+<text x="1124" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Lantern Amber</text>
+<text x="1124" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#F2A541</text>
+<text x="1124" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">light, flames, ornament</text>
+<rect x="1257" y="160" width="124" height="84" rx="4" fill="#FFD27A"/>
+<text x="1257" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Amber Core</text>
+<text x="1257" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#FFD27A</text>
+<text x="1257" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">flame hearts only</text>
+<rect x="1390" y="160" width="124" height="84" rx="4" fill="#E0532B"/>
+<text x="1390" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Ember</text>
+<text x="1390" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#E0532B</text>
+<text x="1390" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">low HP, fire, crits</text>
+<rect x="1523" y="160" width="124" height="84" rx="4" fill="#5FD3C6"/>
+<text x="1523" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Gloam Teal</text>
+<text x="1523" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#5FD3C6</text>
+<text x="1523" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">enemy eyes, souls, target</text>
+<rect x="1656" y="160" width="124" height="84" rx="4" fill="#7A1E22"/>
+<text x="1656" y="268" font-family="Cinzel" font-size="15" fill="#D9D2C3">Old Blood</text>
+<text x="1656" y="288" font-family="DejaVu Sans Mono" font-size="14" fill="#F2A541">#7A1E22</text>
+<text x="1656" y="306" font-family="Cormorant Garamond" font-style="italic" font-size="14" fill="#8D8794">boss accents, damage</text>
+<text x="60" y="352" font-family="Cinzel" font-size="20" fill="#8D8794" letter-spacing="4">TEST SILHOUETTES · IN CONTEXT</text>
+
+  <svg x="60" y="370" width="430" height="430" viewBox="0 0 512 512">
+  
+  <defs>
+    <linearGradient id="sky1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A2730"/>
+      <stop offset="0.65" stop-color="#5A5560"/>
+      <stop offset="1" stop-color="#6E6872"/>
+    </linearGradient>
+    <radialGradient id="lantern1" cx="0" cy="0.78" r="0.9">
+      <stop offset="0" stop-color="#F2A541" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#F2A541" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#F2A541" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gloam1" cx="1" cy="0.55" r="0.7">
+      <stop offset="0" stop-color="#5FD3C6" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#5FD3C6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#sky1)"/>
+  
+  <path fill="#4A4650" d="M0 330 L0 300 L18 296 L22 262 L26 296 L52 292 L60 250 L66 290 L96 286 L104 238 L110 284 L150 290 L160 276 L176 288 L214 284 L222 210 L226 200 L230 210 L238 284 L270 288 L284 270 L296 290 L330 286 L338 244 L344 286 L380 292 L392 264 L398 292 L436 288 L446 252 L452 288 L490 294 L500 270 L506 296 L512 296 L512 330 Z"/>
+  <rect x="0" y="318" width="512" height="18" fill="#6E6872" fill-opacity="0.35"/>
+  
+  <path fill="#35323B" d="M0 400 L0 352 L40 346 L40 330 L56 330 L56 344 L120 338 L136 336 L190 342 L250 340 L320 344 L340 330 L356 330 L362 342 L430 340 L470 348 L512 344 L512 400 Z"/>
+  <path fill="#2A2730" d="M150 342 C150 316 186 316 186 342 Z M394 342 C394 320 424 320 424 342 Z"/>
+  <path fill="#35323B" d="M466 348 L470 250 L476 250 L480 348 Z M458 252 L488 252 L488 258 L458 258 Z M464 258 L482 258 L480 282 L466 282 Z"/>
+  <rect x="0" y="384" width="512" height="22" fill="#6E6872" fill-opacity="0.22"/>
+  
+  <path fill="#1A181D" d="M0 512 L0 456 C80 446 160 452 256 448 C352 444 432 452 512 446 L512 512 Z"/>
+  <path fill="#141216" d="M0 512 L0 480 L30 476 L36 466 L44 476 L120 482 L400 480 L470 474 L476 462 L484 474 L512 472 L512 512 Z"/>
+  
+  <rect width="512" height="512" fill="url(#lantern1)"/>
+  <rect width="512" height="512" fill="url(#gloam1)"/>
+  
+  <g fill="#D9D2C3" fill-opacity="0.35">
+    <circle cx="60" cy="120" r="1.6"/><circle cx="140" cy="70" r="1.2"/><circle cx="300" cy="96" r="1.5"/>
+    <circle cx="420" cy="150" r="1.2"/><circle cx="470" cy="60" r="1.6"/><circle cx="210" cy="180" r="1.1"/>
+    <circle cx="360" cy="210" r="1.4"/><circle cx="90" cy="230" r="1.2"/><circle cx="250" cy="40" r="1.3"/>
+  </g>
+
+  
+
+  
+  <path fill="#141216" d="M322 346 L304 398 L334 444 L330 452 L300 462 L276 476 L262 476 L268 470 L292 456 L318 446 L292 404 L304 346 Z"/>
+  
+  <path fill="#141216" d="M350 236 L404 270 L428 258 L446 262 L432 268 L450 274 L430 278 L442 290 L424 284 L402 288 L344 256 Z"/>
+
+  
+  <path fill="#1C1A1E" d="M126 478 L136 478 L164 160 C166 136 156 118 136 112 C114 106 94 118 90 140 C88 152 92 162 98 168 L90 180 L112 176 L108 152 L104 160 C100 150 104 132 118 128 C132 124 148 132 150 150 L152 162 Z"/>
+  
+  <path fill="#1C1A1E" d="M99 178 L103 178 L103 196 L99 196 Z"/>
+  <path fill="#1C1A1E" fill-rule="evenodd" d="
+    M88 196 L114 196 L120 206 L120 240 L114 248 L88 248 L82 240 L82 206 Z
+    M88 208 L98 208 L98 238 L88 238 Z
+    M104 208 L114 208 L114 238 L104 238 Z"/>
+  <path fill="#1C1A1E" d="M86 248 L116 248 L110 256 L92 256 Z"/>
+
+  
+  <path fill="#1C1A1E" d="
+    M220 266
+    L242 222 Q270 198 306 196 Q342 196 362 222 Q378 246 380 280 Q382 304 376 322
+    L398 360 L374 352 L382 392 L360 364 L352 404 L336 368 L322 402 L310 366 L296 392 L288 362
+    L272 380 L266 352 L252 362 L252 342 Q228 318 220 266 Z"/>
+
+  
+  <path fill="#1C1A1E" d="
+    M284 214
+    Q296 190 318 170 L344 140 L316 160
+    Q296 168 280 176
+    Q266 164 244 164
+    Q222 164 206 180
+    L132 258
+    Q158 254 176 266
+    Q198 290 234 290
+    Q272 284 284 214 Z"/>
+  <path fill="none" stroke="#2E2B33" stroke-width="2.5" stroke-linecap="round" d="M284 214 Q278 256 252 278"/>
+  
+  <path fill="#0B0A0C" d="M154 256 L196 222 Q216 216 224 236 Q228 258 212 272 Q196 282 182 270 Q170 260 154 256 Z"/>
+
+  
+  <path fill="#1C1A1E" d="M270 344 L236 396 L262 438 L254 448 L222 464 L188 476 L170 478 L176 470 L212 458 L240 442 L218 400 L248 344 Z"/>
+  <path fill="#1C1A1E" d="M226 466 L202 480 L216 480 L234 470 Z"/>
+
+  
+  <path fill="#1C1A1E" d="M240 262 L212 318 L170 296 L160 290 L148 284 L162 294 L144 292 L162 302 L146 304 L166 308 L206 332 L224 330 L256 274 Z"/>
+
+  
+  <path fill="none" stroke="#3A3640" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M244 164 Q222 164 206 180 L132 258"/>
+  <path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" d="M164 160 L136 478"/>
+  <path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M248 344 L218 400 L240 442"/>
+
+  
+  <path fill="#2A262C" d="M232 176 L234 136 Q242 132 250 136 L252 178 Z"/>
+  <path fill="#2A262C" d="M234 148 Q226 160 222 182 L230 182 L234 160 Z"/>
+  <path fill="#2A262C" d="M250 144 Q258 156 258 170 L253 172 Z"/>
+  <path fill="#0B0A0C" d="M241 136 L243 136 L243 127 L241 127 Z"/>
+  
+  <circle cx="242" cy="110" r="36" fill="#F2A541" fill-opacity="0.07"/>
+  <circle cx="242" cy="112" r="20" fill="#F2A541" fill-opacity="0.15"/>
+  <path fill="#F2A541" d="M243 86 Q256 104 250 120 Q242 128 234 120 Q230 104 243 86 Z"/>
+  <path fill="#FFD27A" d="M242 102 Q248 110 245 120 Q241 124 238 119 Q237 110 242 102 Z"/>
+
+  
+  <circle cx="190" cy="246" r="13" fill="#5FD3C6" fill-opacity="0.13"/>
+  <circle cx="210" cy="240" r="13" fill="#5FD3C6" fill-opacity="0.13"/>
+  <path fill="#5FD3C6" d="M180 250 L198 240 L199 245 L184 253 Z"/>
+  <path fill="#5FD3C6" d="M204 240 L219 232 L220 237 L207 244 Z"/>
+</svg>
+  <rect x="60" y="370" width="430" height="430" fill="none" stroke="#3A3640" stroke-width="2"/>
+  <text x="60" y="834" font-family="Cinzel" font-size="24" fill="#D9D2C3" letter-spacing="3">WICKTHIEF</text>
+  <text x="60" y="860" font-family="Cormorant Garamond" font-style="italic" font-size="19" fill="#8D8794">lantern thief · hooked staff, stolen cage, candle crown</text>
+
+  <svg x="520" y="370" width="430" height="430" viewBox="0 0 512 512">
+  
+  <defs>
+    <linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A2730"/>
+      <stop offset="0.65" stop-color="#5A5560"/>
+      <stop offset="1" stop-color="#6E6872"/>
+    </linearGradient>
+    <radialGradient id="lantern2" cx="0" cy="0.78" r="0.9">
+      <stop offset="0" stop-color="#F2A541" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#F2A541" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#F2A541" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gloam2" cx="1" cy="0.55" r="0.7">
+      <stop offset="0" stop-color="#5FD3C6" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#5FD3C6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#sky2)"/>
+  
+  <path fill="#4A4650" d="M0 330 L0 300 L18 296 L22 262 L26 296 L52 292 L60 250 L66 290 L96 286 L104 238 L110 284 L150 290 L160 276 L176 288 L214 284 L222 210 L226 200 L230 210 L238 284 L270 288 L284 270 L296 290 L330 286 L338 244 L344 286 L380 292 L392 264 L398 292 L436 288 L446 252 L452 288 L490 294 L500 270 L506 296 L512 296 L512 330 Z"/>
+  <rect x="0" y="318" width="512" height="18" fill="#6E6872" fill-opacity="0.35"/>
+  
+  <path fill="#35323B" d="M0 400 L0 352 L40 346 L40 330 L56 330 L56 344 L120 338 L136 336 L190 342 L250 340 L320 344 L340 330 L356 330 L362 342 L430 340 L470 348 L512 344 L512 400 Z"/>
+  <path fill="#2A2730" d="M150 342 C150 316 186 316 186 342 Z M394 342 C394 320 424 320 424 342 Z"/>
+  <path fill="#35323B" d="M466 348 L470 250 L476 250 L480 348 Z M458 252 L488 252 L488 258 L458 258 Z M464 258 L482 258 L480 282 L466 282 Z"/>
+  <rect x="0" y="384" width="512" height="22" fill="#6E6872" fill-opacity="0.22"/>
+  
+  <path fill="#1A181D" d="M0 512 L0 456 C80 446 160 452 256 448 C352 444 432 452 512 446 L512 512 Z"/>
+  <path fill="#141216" d="M0 512 L0 480 L30 476 L36 466 L44 476 L120 482 L400 480 L470 474 L476 462 L484 474 L512 472 L512 512 Z"/>
+  
+  <rect width="512" height="512" fill="url(#lantern2)"/>
+  <rect width="512" height="512" fill="url(#gloam2)"/>
+  
+  <g fill="#D9D2C3" fill-opacity="0.35">
+    <circle cx="60" cy="120" r="1.6"/><circle cx="140" cy="70" r="1.2"/><circle cx="300" cy="96" r="1.5"/>
+    <circle cx="420" cy="150" r="1.2"/><circle cx="470" cy="60" r="1.6"/><circle cx="210" cy="180" r="1.1"/>
+    <circle cx="360" cy="210" r="1.4"/><circle cx="90" cy="230" r="1.2"/><circle cx="250" cy="40" r="1.3"/>
+  </g>
+
+  
+
+  
+  <path fill="#141216" d="
+    M246 150 Q290 150 318 186 Q350 228 362 282
+    L384 300 L360 304 L380 336 L352 322 L356 360 L334 330 L326 366 L312 326 L300 344 L296 300
+    Q290 240 262 200 Z"/>
+  <g fill="#141216">
+    <path d="M392 288 L402 284 L404 294 L394 296 Z"/>
+    <path d="M396 322 L408 316 L412 326 L400 330 Z"/>
+    <path d="M412 300 L418 298 L420 304 L414 306 Z"/>
+    <path d="M370 372 L380 368 L382 378 L372 380 Z"/>
+    <path d="M424 276 L430 274 L432 280 L426 282 Z"/>
+    <path d="M244 52 L250 50 L252 56 L246 58 Z"/>
+    <path d="M262 40 L270 38 L270 46 L264 46 Z"/>
+    <path d="M252 72 L256 70 L258 75 L254 76 Z"/>
+  </g>
+
+  
+  <path fill="#141216" d="M266 318 L282 318 L304 390 L298 464 L326 472 L328 480 L284 480 L286 466 L286 394 Z"/>
+  
+  <path fill="#141216" d="M282 188 L296 190 L314 272 L306 346 L314 382 L308 384 L302 356 L300 388 L294 388 L296 354 L288 384 L282 382 L294 344 L300 274 Z"/>
+
+  
+  <circle cx="256" cy="236" r="22" fill="#F2A541" fill-opacity="0.55"/>
+  <circle cx="256" cy="236" r="10" fill="#FFD27A"/>
+
+  
+  <path fill="#1C1A1E" fill-rule="evenodd" d="
+    M214 178 Q248 168 290 182 L284 220 Q278 262 270 300 L276 324 L232 324 L238 300 Q226 262 222 220 Z
+    M234 200 Q256 194 276 202 L274 208 Q256 201 235 206 Z
+    M236 218 Q256 212 274 220 L272 226 Q256 219 237 224 Z
+    M238 236 Q256 230 272 238 L270 244 Q256 237 239 242 Z
+    M240 254 Q256 249 268 256 L266 261 Q256 255 241 259 Z"/>
+  
+  <path fill="#1C1A1E" d="M252 196 L260 196 L258 270 L254 270 Z"/>
+
+  
+  <path fill="#1C1A1E" d="M238 318 L258 318 L232 392 L238 462 L250 470 L248 480 L200 480 L198 474 L212 470 L208 464 L216 470 L222 462 L212 390 Z"/>
+
+  
+  <path fill="#1C1A1E" d="
+    M222 184 L232 196 L178 238 L120 222
+    L82 232 L80 226 L114 214
+    L74 210 L76 204 L114 206
+    L86 190 L90 184 L120 200
+    L104 176 L110 172 L130 198
+    L172 224 Z"/>
+
+  
+  <path fill="#1C1A1E" d="M222 146 L240 146 L250 184 L230 184 Z"/>
+  
+  <path fill="#1C1A1E" fill-rule="evenodd" d="
+    M168 92 L176 74 L184 82 L192 62 L202 74 L212 56 L222 70 L232 62 L238 86
+    L240 138 L224 164 L210 160 L202 194 L194 194 L194 158 L178 146 L170 118 Z
+    M214 66 L210 90 L218 104 L218 82 Z"/>
+  
+  <path fill="#0B0A0C" d="M180 106 L196 100 L198 113 L184 117 Z"/>
+  <path fill="#0B0A0C" d="M206 98 L224 96 L222 108 L208 111 Z"/>
+  
+  <circle cx="190" cy="109" r="8" fill="#5FD3C6" fill-opacity="0.14"/>
+  <circle cx="215" cy="104" r="8" fill="#5FD3C6" fill-opacity="0.14"/>
+  <circle cx="190" cy="109" r="3.4" fill="#5FD3C6"/>
+  <circle cx="215" cy="104" r="2.6" fill="#5FD3C6"/>
+  
+  <path fill="#0B0A0C" d="M192 130 L204 128 L206 150 L200 160 L194 152 Z"/>
+
+  
+  <path fill="#D9D2C3" fill-opacity="0.6" d="M232 166 Q262 154 292 140 Q320 126 344 136 Q368 146 396 128 L398 134 Q370 154 344 143 Q320 134 296 148 Q266 164 236 174 Z"/>
+  <path fill="#D9D2C3" fill-opacity="0.42" d="M240 172 Q270 172 298 178 Q320 182 338 198 L334 202 Q316 188 296 185 Q268 180 242 178 Z"/>
+
+  
+  <path fill="none" stroke="#3A3640" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M168 92 L170 118 L178 146"/>
+  <path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M258 318 L232 392 L238 462"/>
+  <path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" d="M214 178 Q218 200 222 220"/>
+
+  
+  <circle cx="256" cy="236" r="40" fill="#F2A541" fill-opacity="0.05"/>
+</svg>
+  <rect x="520" y="370" width="430" height="430" fill="none" stroke="#3A3640" stroke-width="2"/>
+  <text x="520" y="834" font-family="Cinzel" font-size="24" fill="#D9D2C3" letter-spacing="3">ASHBOUND</text>
+  <text x="520" y="860" font-family="Cormorant Garamond" font-style="italic" font-size="19" fill="#8D8794">spent soul · burnt-paper crown, last ember between the ribs</text>
+
+  <svg x="980" y="370" width="430" height="430" viewBox="0 0 512 512">
+  
+  <defs>
+    <linearGradient id="sky3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A2730"/>
+      <stop offset="0.65" stop-color="#5A5560"/>
+      <stop offset="1" stop-color="#6E6872"/>
+    </linearGradient>
+    <radialGradient id="lantern3" cx="0" cy="0.78" r="0.9">
+      <stop offset="0" stop-color="#F2A541" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#F2A541" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#F2A541" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gloam3" cx="1" cy="0.55" r="0.7">
+      <stop offset="0" stop-color="#5FD3C6" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#5FD3C6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#sky3)"/>
+  
+  <path fill="#4A4650" d="M0 330 L0 300 L18 296 L22 262 L26 296 L52 292 L60 250 L66 290 L96 286 L104 238 L110 284 L150 290 L160 276 L176 288 L214 284 L222 210 L226 200 L230 210 L238 284 L270 288 L284 270 L296 290 L330 286 L338 244 L344 286 L380 292 L392 264 L398 292 L436 288 L446 252 L452 288 L490 294 L500 270 L506 296 L512 296 L512 330 Z"/>
+  <rect x="0" y="318" width="512" height="18" fill="#6E6872" fill-opacity="0.35"/>
+  
+  <path fill="#35323B" d="M0 400 L0 352 L40 346 L40 330 L56 330 L56 344 L120 338 L136 336 L190 342 L250 340 L320 344 L340 330 L356 330 L362 342 L430 340 L470 348 L512 344 L512 400 Z"/>
+  <path fill="#2A2730" d="M150 342 C150 316 186 316 186 342 Z M394 342 C394 320 424 320 424 342 Z"/>
+  <path fill="#35323B" d="M466 348 L470 250 L476 250 L480 348 Z M458 252 L488 252 L488 258 L458 258 Z M464 258 L482 258 L480 282 L466 282 Z"/>
+  <rect x="0" y="384" width="512" height="22" fill="#6E6872" fill-opacity="0.22"/>
+  
+  <path fill="#1A181D" d="M0 512 L0 456 C80 446 160 452 256 448 C352 444 432 452 512 446 L512 512 Z"/>
+  <path fill="#141216" d="M0 512 L0 480 L30 476 L36 466 L44 476 L120 482 L400 480 L470 474 L476 462 L484 474 L512 472 L512 512 Z"/>
+  
+  <rect width="512" height="512" fill="url(#lantern3)"/>
+  <rect width="512" height="512" fill="url(#gloam3)"/>
+  
+  <g fill="#D9D2C3" fill-opacity="0.35">
+    <circle cx="60" cy="120" r="1.6"/><circle cx="140" cy="70" r="1.2"/><circle cx="300" cy="96" r="1.5"/>
+    <circle cx="420" cy="150" r="1.2"/><circle cx="470" cy="60" r="1.6"/><circle cx="210" cy="180" r="1.1"/>
+    <circle cx="360" cy="210" r="1.4"/><circle cx="90" cy="230" r="1.2"/><circle cx="250" cy="40" r="1.3"/>
+  </g>
+
+  
+
+  
+  <path fill="#141216" d="M400 300 L404 300 L404 330 L400 330 Z M424 300 L428 300 L428 368 L424 368 Z M446 296 L450 296 L450 344 L446 344 Z"/>
+  <path fill="#141216" fill-rule="evenodd" d="
+    M390 330 L414 330 L418 338 L418 366 L412 372 L392 372 L386 366 L386 338 Z M392 340 L400 340 L400 362 L392 362 Z M404 340 L412 340 L412 362 L404 362 Z
+    M414 368 L438 368 L442 376 L442 404 L436 410 L416 410 L410 404 L410 376 Z M416 378 L424 378 L424 400 L416 400 Z M428 378 L436 378 L436 400 L428 400 Z
+    M436 344 L460 344 L464 352 L464 380 L458 386 L438 386 L432 380 L432 352 Z M438 354 L446 354 L446 376 L438 376 Z M450 354 L458 354 L458 376 L450 376 Z"/>
+  <path fill="#141216" d="M396 296 L454 290 L454 298 L396 304 Z"/>
+
+  
+  <path fill="#1C1A1E" d="
+    M196 196
+    Q250 178 316 196
+    Q352 206 372 232
+    L380 290 Q372 330 392 382 Q414 432 456 476
+    L430 470 L422 484 L402 468 L388 484 L368 468 L350 484 L332 468 L314 484 L296 468 L278 484 L260 468 L242 484 L224 468 L206 484 L188 468 L170 484 L154 468 L132 476 L112 470
+    Q146 424 158 372 Q168 330 160 290
+    L150 240
+    Q166 208 196 196 Z"/>
+  
+  <path fill="#1C1A1E" d="M150 240 L128 214 L156 222 L150 196 L176 212 L184 190 L196 200 Z"/>
+  <path fill="#1C1A1E" d="M372 232 L398 206 L388 236 L414 232 L390 254 Z"/>
+  
+  <path fill="#0B0A0C" d="M252 270 L260 270 L276 468 L250 468 Z"/>
+
+  
+  <path fill="#1C1A1E" d="M350 230 L392 268 L410 290 L420 284 L414 296 L426 300 L410 304 L404 314 L398 304 L378 296 L338 260 Z"/>
+
+  <path fill="none" stroke="#2E2B33" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M338 260 L378 296 L398 304"/>
+  
+  <path fill="#1C1A1E" d="M110 480 L122 480 L132 132 L120 132 Z"/>
+  <path fill="#1C1A1E" d="M126 132 C126 104 110 92 94 98 C80 104 78 120 88 128 L82 138 L102 134 L98 122 L94 126 C90 118 94 108 104 108 C114 108 120 118 120 132 Z"/>
+  <path fill="#1C1A1E" d="M124 108 L148 108 L148 112 L124 112 Z"/>
+  
+  <circle cx="148" cy="148" r="34" fill="#5FD3C6" fill-opacity="0.10"/>
+  <circle cx="148" cy="150" r="18" fill="#5FD3C6" fill-opacity="0.30"/>
+  <path fill="#5FD3C6" d="M148 132 Q160 146 154 160 Q148 166 142 160 Q136 146 148 132 Z"/>
+  <path fill="#1C1A1E" fill-rule="evenodd" d="
+    M130 120 L166 120 L172 130 L172 170 L164 180 L132 180 L124 170 L124 130 Z
+    M132 130 L142 130 L142 170 L132 170 Z
+    M146 130 L150 130 L150 170 L146 170 Z
+    M154 130 L164 130 L164 170 L154 170 Z"/>
+  <path fill="#1C1A1E" d="M138 180 L158 180 L152 190 L144 190 Z M146 112 L150 112 L150 120 L146 120 Z"/>
+  
+  <path fill="#1C1A1E" d="M168 214 L150 262 L132 248 L118 250 L120 240 L112 236 L124 232 L130 226 L144 236 L160 206 Z"/>
+
+  
+  <path fill="#1C1A1E" d="M200 196 Q196 140 222 116 Q250 96 282 112 Q306 132 302 196 Z"/>
+  <path fill="#0B0A0C" d="M212 196 Q210 150 232 132 Q254 120 276 134 Q292 152 290 196 Z"/>
+  
+  <path fill="#2A262C" d="
+    M214 176 L290 176 L288 186
+    L282 246 L276 190 L270 262 L262 192 L256 278 L248 192 L240 254 L232 190 L224 236 L218 188 Z"/>
+  
+  <circle cx="236" cy="160" r="12" fill="#5FD3C6" fill-opacity="0.15"/>
+  <circle cx="266" cy="158" r="12" fill="#5FD3C6" fill-opacity="0.15"/>
+  <path fill="#5FD3C6" d="M226 160 L244 154 L246 160 L230 165 Z"/>
+  <path fill="#5FD3C6" d="M258 154 L276 158 L274 163 L258 160 Z"/>
+
+  
+  <path fill="#2A262C" d="M206 128 Q250 104 298 126 L300 138 Q250 118 204 142 Z"/>
+  <g fill="#2A262C">
+    <path d="M210 134 L198 92 L210 88 L222 130 Z"/>
+    <path d="M226 122 L226 58 L238 58 L238 118 Z"/>
+    <path d="M244 116 L248 44 L260 46 L258 116 Z"/>
+    <path d="M264 118 L270 70 L282 72 L276 122 Z"/>
+    <path d="M284 126 L294 92 L304 96 L296 132 Z"/>
+    
+    <path d="M204 96 Q198 112 200 138 L206 138 Z"/>
+    <path d="M238 70 Q244 90 242 118 L238 118 Z"/>
+    <path d="M260 60 Q266 84 262 110 L258 112 Z"/>
+    <path d="M282 84 Q288 100 286 120 L280 122 Z"/>
+  </g>
+  
+  <path fill="#0B0A0C" d="M203 90 L205 90 L203 82 L201 82 Z M275 72 L277 72 L277 64 L275 64 Z "/>
+  <path fill="none" stroke="#3A3640" stroke-width="2" stroke-linecap="round" d="M202 80 Q196 70 204 62 Q210 54 204 44 M276 62 Q282 52 276 44 Q270 36 278 26"/>
+  
+  <circle cx="232" cy="44" r="20" fill="#F2A541" fill-opacity="0.12"/>
+  <circle cx="254" cy="30" r="22" fill="#F2A541" fill-opacity="0.12"/>
+  <circle cx="299" cy="80" r="14" fill="#F2A541" fill-opacity="0.10"/>
+  <path fill="#F2A541" d="M232 34 Q240 46 236 54 Q232 58 228 54 Q224 46 232 34 Z"/>
+  <path fill="#F2A541" d="M254 18 Q263 32 258 42 Q254 46 250 42 Q246 32 254 18 Z"/>
+  <path fill="#F2A541" d="M299 76 Q305 84 302 90 Q299 93 296 90 Q293 84 299 76 Z"/>
+  <path fill="#FFD27A" d="M254 30 Q257 36 255 41 Q253 42 252 40 Q251 36 254 30 Z"/>
+
+  
+  <path fill="none" stroke="#3A3640" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M200 196 Q196 140 222 116"/>
+  <path fill="none" stroke="#3A3640" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M150 240 L160 300 Q156 380 132 470"/>
+  <path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" d="M120 132 L110 480"/>
+</svg>
+  <rect x="980" y="370" width="430" height="430" fill="none" stroke="#3A3640" stroke-width="2"/>
+  <text x="980" y="834" font-family="Cinzel" font-size="24" fill="#D9D2C3" letter-spacing="3">THE WICK KING</text>
+  <text x="980" y="860" font-family="Cormorant Garamond" font-style="italic" font-size="19" fill="#8D8794">boss · melted-candle crown, wax beard, caged soul</text>
+<text x="1450" y="352" font-family="Cinzel" font-size="20" fill="#8D8794" letter-spacing="4">ENEMY CARD</text>
+
+  <rect x="1450" y="370" width="340" height="520" rx="6" fill="#141216"/>
+  <rect x="1458" y="378" width="324" height="504" rx="3" fill="none" stroke="#3A3640" stroke-width="1.5"/>
+  <path fill="none" stroke="#F2A541" stroke-width="2" stroke-linecap="round"
+      d="M1464 418 L1464 384 L1498 384 M1470 406 L1470 390 L1486 390 M1498 384 Q1508 384 1508 392 M1464 418 Q1464 428 1472 428"/>
+    <circle cx="1470" cy="390" r="2.5" fill="#F2A541"/><path fill="none" stroke="#F2A541" stroke-width="2" stroke-linecap="round"
+      d="M1776 418 L1776 384 L1742 384 M1770 406 L1770 390 L1754 390 M1742 384 Q1732 384 1732 392 M1776 418 Q1776 428 1768 428"/>
+    <circle cx="1770" cy="390" r="2.5" fill="#F2A541"/><path fill="none" stroke="#F2A541" stroke-width="2" stroke-linecap="round"
+      d="M1464 842 L1464 876 L1498 876 M1470 854 L1470 870 L1486 870 M1498 876 Q1508 876 1508 868 M1464 842 Q1464 832 1472 832"/>
+    <circle cx="1470" cy="870" r="2.5" fill="#F2A541"/><path fill="none" stroke="#F2A541" stroke-width="2" stroke-linecap="round"
+      d="M1776 842 L1776 876 L1742 876 M1770 854 L1770 870 L1754 870 M1742 876 Q1732 876 1732 868 M1776 842 Q1776 832 1768 832"/>
+    <circle cx="1770" cy="870" r="2.5" fill="#F2A541"/>
+  <svg x="1470" y="408" width="300" height="300" viewBox="0 0 512 512">
+  
+  <defs>
+    <linearGradient id="sky4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A2730"/>
+      <stop offset="0.65" stop-color="#5A5560"/>
+      <stop offset="1" stop-color="#6E6872"/>
+    </linearGradient>
+    <radialGradient id="lantern4" cx="0" cy="0.78" r="0.9">
+      <stop offset="0" stop-color="#F2A541" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#F2A541" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#F2A541" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gloam4" cx="1" cy="0.55" r="0.7">
+      <stop offset="0" stop-color="#5FD3C6" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#5FD3C6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#sky4)"/>
+  
+  <path fill="#4A4650" d="M0 330 L0 300 L18 296 L22 262 L26 296 L52 292 L60 250 L66 290 L96 286 L104 238 L110 284 L150 290 L160 276 L176 288 L214 284 L222 210 L226 200 L230 210 L238 284 L270 288 L284 270 L296 290 L330 286 L338 244 L344 286 L380 292 L392 264 L398 292 L436 288 L446 252 L452 288 L490 294 L500 270 L506 296 L512 296 L512 330 Z"/>
+  <rect x="0" y="318" width="512" height="18" fill="#6E6872" fill-opacity="0.35"/>
+  
+  <path fill="#35323B" d="M0 400 L0 352 L40 346 L40 330 L56 330 L56 344 L120 338 L136 336 L190 342 L250 340 L320 344 L340 330 L356 330 L362 342 L430 340 L470 348 L512 344 L512 400 Z"/>
+  <path fill="#2A2730" d="M150 342 C150 316 186 316 186 342 Z M394 342 C394 320 424 320 424 342 Z"/>
+  <path fill="#35323B" d="M466 348 L470 250 L476 250 L480 348 Z M458 252 L488 252 L488 258 L458 258 Z M464 258 L482 258 L480 282 L466 282 Z"/>
+  <rect x="0" y="384" width="512" height="22" fill="#6E6872" fill-opacity="0.22"/>
+  
+  <path fill="#1A181D" d="M0 512 L0 456 C80 446 160 452 256 448 C352 444 432 452 512 446 L512 512 Z"/>
+  <path fill="#141216" d="M0 512 L0 480 L30 476 L36 466 L44 476 L120 482 L400 480 L470 474 L476 462 L484 474 L512 472 L512 512 Z"/>
+  
+  <rect width="512" height="512" fill="url(#lantern4)"/>
+  <rect width="512" height="512" fill="url(#gloam4)"/>
+  
+  <g fill="#D9D2C3" fill-opacity="0.35">
+    <circle cx="60" cy="120" r="1.6"/><circle cx="140" cy="70" r="1.2"/><circle cx="300" cy="96" r="1.5"/>
+    <circle cx="420" cy="150" r="1.2"/><circle cx="470" cy="60" r="1.6"/><circle cx="210" cy="180" r="1.1"/>
+    <circle cx="360" cy="210" r="1.4"/><circle cx="90" cy="230" r="1.2"/><circle cx="250" cy="40" r="1.3"/>
+  </g>
+
+  
+
+  
+  <path fill="#141216" d="M322 346 L304 398 L334 444 L330 452 L300 462 L276 476 L262 476 L268 470 L292 456 L318 446 L292 404 L304 346 Z"/>
+  
+  <path fill="#141216" d="M350 236 L404 270 L428 258 L446 262 L432 268 L450 274 L430 278 L442 290 L424 284 L402 288 L344 256 Z"/>
+
+  
+  <path fill="#1C1A1E" d="M126 478 L136 478 L164 160 C166 136 156 118 136 112 C114 106 94 118 90 140 C88 152 92 162 98 168 L90 180 L112 176 L108 152 L104 160 C100 150 104 132 118 128 C132 124 148 132 150 150 L152 162 Z"/>
+  
+  <path fill="#1C1A1E" d="M99 178 L103 178 L103 196 L99 196 Z"/>
+  <path fill="#1C1A1E" fill-rule="evenodd" d="
+    M88 196 L114 196 L120 206 L120 240 L114 248 L88 248 L82 240 L82 206 Z
+    M88 208 L98 208 L98 238 L88 238 Z
+    M104 208 L114 208 L114 238 L104 238 Z"/>
+  <path fill="#1C1A1E" d="M86 248 L116 248 L110 256 L92 256 Z"/>
+
+  
+  <path fill="#1C1A1E" d="
+    M220 266
+    L242 222 Q270 198 306 196 Q342 196 362 222 Q378 246 380 280 Q382 304 376 322
+    L398 360 L374 352 L382 392 L360 364 L352 404 L336 368 L322 402 L310 366 L296 392 L288 362
+    L272 380 L266 352 L252 362 L252 342 Q228 318 220 266 Z"/>
+
+  
+  <path fill="#1C1A1E" d="
+    M284 214
+    Q296 190 318 170 L344 140 L316 160
+    Q296 168 280 176
+    Q266 164 244 164
+    Q222 164 206 180
+    L132 258
+    Q158 254 176 266
+    Q198 290 234 290
+    Q272 284 284 214 Z"/>
+  <path fill="none" stroke="#2E2B33" stroke-width="2.5" stroke-linecap="round" d="M284 214 Q278 256 252 278"/>
+  
+  <path fill="#0B0A0C" d="M154 256 L196 222 Q216 216 224 236 Q228 258 212 272 Q196 282 182 270 Q170 260 154 256 Z"/>
+
+  
+  <path fill="#1C1A1E" d="M270 344 L236 396 L262 438 L254 448 L222 464 L188 476 L170 478 L176 470 L212 458 L240 442 L218 400 L248 344 Z"/>
+  <path fill="#1C1A1E" d="M226 466 L202 480 L216 480 L234 470 Z"/>
+
+  
+  <path fill="#1C1A1E" d="M240 262 L212 318 L170 296 L160 290 L148 284 L162 294 L144 292 L162 302 L146 304 L166 308 L206 332 L224 330 L256 274 Z"/>
+
+  
+  <path fill="none" stroke="#3A3640" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M244 164 Q222 164 206 180 L132 258"/>
+  <path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" d="M164 160 L136 478"/>
+  <path fill="none" stroke="#3A3640" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M248 344 L218 400 L240 442"/>
+
+  
+  <path fill="#2A262C" d="M232 176 L234 136 Q242 132 250 136 L252 178 Z"/>
+  <path fill="#2A262C" d="M234 148 Q226 160 222 182 L230 182 L234 160 Z"/>
+  <path fill="#2A262C" d="M250 144 Q258 156 258 170 L253 172 Z"/>
+  <path fill="#0B0A0C" d="M241 136 L243 136 L243 127 L241 127 Z"/>
+  
+  <circle cx="242" cy="110" r="36" fill="#F2A541" fill-opacity="0.07"/>
+  <circle cx="242" cy="112" r="20" fill="#F2A541" fill-opacity="0.15"/>
+  <path fill="#F2A541" d="M243 86 Q256 104 250 120 Q242 128 234 120 Q230 104 243 86 Z"/>
+  <path fill="#FFD27A" d="M242 102 Q248 110 245 120 Q241 124 238 119 Q237 110 242 102 Z"/>
+
+  
+  <circle cx="190" cy="246" r="13" fill="#5FD3C6" fill-opacity="0.13"/>
+  <circle cx="210" cy="240" r="13" fill="#5FD3C6" fill-opacity="0.13"/>
+  <path fill="#5FD3C6" d="M180 250 L198 240 L199 245 L184 253 Z"/>
+  <path fill="#5FD3C6" d="M204 240 L219 232 L220 237 L207 244 Z"/>
+</svg>
+  <rect x="1470" y="408" width="300" height="300" fill="none" stroke="#3A3640" stroke-width="2"/>
+  <rect x="1470" y="408" width="300" height="300" fill="none" stroke="#0B0A0C" stroke-width="6" stroke-opacity="0.6"/>
+  <text x="1620.0" y="748" text-anchor="middle" font-family="Cinzel" font-size="26" fill="#D9D2C3" letter-spacing="4">WICKTHIEF</text>
+  <text x="1620.0" y="772" text-anchor="middle" font-family="Cormorant Garamond" font-style="italic" font-size="18" fill="#8D8794">Gloam-touched · lantern thief · #2</text>
+  <rect x="1490" y="784" width="260" height="1" fill="#3A3640"/>
+  
+  <rect x="1484" y="802" width="224" height="22" rx="4" fill="none" stroke="#2E2B33" stroke-width="2" stroke-dasharray="4 4"/>
+  <rect x="1484" y="802" width="138" height="22" rx="4" fill="#D9D2C3"/>
+  <rect x="1484" y="818" width="138" height="6" rx="3" fill="#000" fill-opacity="0.18"/>
+  <path fill="#D9D2C3" d="M1511 802 L1519 802 L1516 832 L1514 832 Z"/><path fill="#D9D2C3" d="M1559 802 L1567 802 L1564 829 L1562 829 Z"/><path fill="#D9D2C3" d="M1594 802 L1602 802 L1599 834 L1597 834 Z"/>
+  <path fill="#D9D2C3" d="M1616 802 Q1624 806 1622 824 L1616 824 Z"/>
+  <rect x="1622" y="810" width="7" height="3" fill="#0B0A0C"/>
+  <circle cx="1638" cy="811" r="22" fill="#F2A541" fill-opacity="0.12"/>
+  <circle cx="1638" cy="811" r="11" fill="#F2A541" fill-opacity="0.22"/>
+  <path fill="#F2A541" d="M1628 811 Q1638 799 1652 811 Q1638 821 1628 811 Z"/>
+  <path fill="#FFD27A" d="M1632 811 Q1638 806 1644 811 Q1638 816 1632 811 Z"/>
+  <text x="1756" y="819" text-anchor="end" font-family="Cinzel" font-size="15" fill="#D9D2C3">14/22</text>
+  <rect x="1484" y="840" width="84" height="26" rx="13" fill="#1C1A1E" stroke="#3A3640"/>
+  <text x="1526" y="858" text-anchor="middle" font-family="Cinzel" font-size="14" fill="#D9D2C3">AC 13</text>
+  <rect x="1578" y="840" width="84" height="26" rx="13" fill="#1C1A1E" stroke="#3A3640"/>
+  <text x="1620" y="858" text-anchor="middle" font-family="Cinzel" font-size="14" fill="#D9D2C3">ATK +3</text>
+  <rect x="1672" y="840" width="84" height="26" rx="13" fill="#1C1A1E" stroke="#5FD3C6" stroke-opacity="0.7"/>
+  <text x="1714" y="858" text-anchor="middle" font-family="Cinzel" font-size="14" fill="#5FD3C6">TARGET</text>
+<text x="60" y="990" font-family="Cinzel" font-size="20" fill="#8D8794" letter-spacing="4">WICK HEALTH BAR</text>
+
+  <rect x="60" y="1020" width="380" height="22" rx="4" fill="none" stroke="#2E2B33" stroke-width="2" stroke-dasharray="4 4"/>
+  <rect x="60" y="1020" width="380" height="22" rx="4" fill="#D9D2C3"/>
+  <rect x="60" y="1036" width="380" height="6" rx="3" fill="#000" fill-opacity="0.18"/>
+  <path fill="#D9D2C3" d="M136 1020 L144 1020 L141 1050 L139 1050 Z"/><path fill="#D9D2C3" d="M269 1020 L277 1020 L274 1047 L272 1047 Z"/><path fill="#D9D2C3" d="M364 1020 L372 1020 L369 1052 L367 1052 Z"/>
+  <path fill="#D9D2C3" d="M434 1020 Q442 1024 440 1042 L434 1042 Z"/>
+  <rect x="440" y="1028" width="7" height="3" fill="#0B0A0C"/>
+  <circle cx="456" cy="1029" r="22" fill="#F2A541" fill-opacity="0.12"/>
+  <circle cx="456" cy="1029" r="11" fill="#F2A541" fill-opacity="0.22"/>
+  <path fill="#F2A541" d="M446 1029 Q456 1017 470 1029 Q456 1039 446 1029 Z"/>
+  <path fill="#FFD27A" d="M450 1029 Q456 1024 462 1029 Q456 1034 450 1029 Z"/><text x="480" y="1038" font-family="Cinzel" font-size="18" fill="#D9D2C3">Full</text>
+
+  <rect x="60" y="1080" width="380" height="22" rx="4" fill="none" stroke="#2E2B33" stroke-width="2" stroke-dasharray="4 4"/>
+  <rect x="60" y="1080" width="209" height="22" rx="4" fill="#D9D2C3"/>
+  <rect x="60" y="1096" width="209" height="6" rx="3" fill="#000" fill-opacity="0.18"/>
+  <path fill="#D9D2C3" d="M101 1080 L109 1080 L106 1110 L104 1110 Z"/><path fill="#D9D2C3" d="M174 1080 L182 1080 L179 1107 L177 1107 Z"/><path fill="#D9D2C3" d="M227 1080 L235 1080 L232 1112 L230 1112 Z"/>
+  <path fill="#D9D2C3" d="M263 1080 Q271 1084 269 1102 L263 1102 Z"/>
+  <rect x="269" y="1088" width="7" height="3" fill="#0B0A0C"/>
+  <circle cx="285" cy="1089" r="22" fill="#F2A541" fill-opacity="0.12"/>
+  <circle cx="285" cy="1089" r="11" fill="#F2A541" fill-opacity="0.22"/>
+  <path fill="#F2A541" d="M275 1089 Q285 1077 299 1089 Q285 1099 275 1089 Z"/>
+  <path fill="#FFD27A" d="M279 1089 Q285 1084 291 1089 Q285 1094 279 1089 Z"/><text x="480" y="1098" font-family="Cinzel" font-size="18" fill="#D9D2C3">Wounded</text>
+
+  <rect x="60" y="1140" width="380" height="22" rx="4" fill="none" stroke="#2E2B33" stroke-width="2" stroke-dasharray="4 4"/>
+  <rect x="60" y="1140" width="68" height="22" rx="4" fill="#B9AFA0"/>
+  <rect x="60" y="1156" width="68" height="6" rx="3" fill="#000" fill-opacity="0.18"/>
+  <path fill="#B9AFA0" d="M73 1140 L81 1140 L78 1170 L76 1170 Z"/><path fill="#B9AFA0" d="M97 1140 L105 1140 L102 1167 L100 1167 Z"/><path fill="#B9AFA0" d="M114 1140 L122 1140 L119 1172 L117 1172 Z"/>
+  <path fill="#B9AFA0" d="M122 1140 Q130 1144 128 1162 L122 1162 Z"/>
+  <rect x="128" y="1148" width="7" height="3" fill="#0B0A0C"/>
+  <circle cx="144" cy="1149" r="22" fill="#E0532B" fill-opacity="0.12"/>
+  <circle cx="144" cy="1149" r="11" fill="#E0532B" fill-opacity="0.22"/>
+  <path fill="#E0532B" d="M134 1149 Q144 1137 158 1149 Q144 1159 134 1149 Z"/>
+  <path fill="#F2A541" d="M138 1149 Q144 1144 150 1149 Q144 1154 138 1149 Z"/><text x="480" y="1158" font-family="Cinzel" font-size="18" fill="#D9D2C3">Guttering</text>
+<text x="60" y="1220" font-family="Cinzel" font-size="16" fill="#8D8794" letter-spacing="3">EMBER XP ROW</text>
+<circle cx="74" cy="1252" r="13" fill="#F2A541" fill-opacity="0.15"/><path fill="#F2A541" d="M74 1242 L82 1252 L74 1262 L66 1252 Z"/><path fill="#FFD27A" d="M74 1248 L77 1252 L74 1256 L71 1252 Z"/>
+<circle cx="108" cy="1252" r="13" fill="#F2A541" fill-opacity="0.15"/><path fill="#F2A541" d="M108 1242 L116 1252 L108 1262 L100 1252 Z"/><path fill="#FFD27A" d="M108 1248 L111 1252 L108 1256 L105 1252 Z"/>
+<circle cx="142" cy="1252" r="13" fill="#F2A541" fill-opacity="0.15"/><path fill="#F2A541" d="M142 1242 L150 1252 L142 1262 L134 1252 Z"/><path fill="#FFD27A" d="M142 1248 L145 1252 L142 1256 L139 1252 Z"/>
+<circle cx="176" cy="1252" r="13" fill="#F2A541" fill-opacity="0.15"/><path fill="#F2A541" d="M176 1242 L184 1252 L176 1262 L168 1252 Z"/><path fill="#FFD27A" d="M176 1248 L179 1252 L176 1256 L173 1252 Z"/>
+<circle cx="210" cy="1252" r="13" fill="#F2A541" fill-opacity="0.15"/><path fill="#F2A541" d="M210 1242 L218 1252 L210 1262 L202 1252 Z"/><path fill="#FFD27A" d="M210 1248 L213 1252 L210 1256 L207 1252 Z"/>
+<circle cx="244" cy="1252" r="13" fill="#F2A541" fill-opacity="0.15"/><path fill="#F2A541" d="M244 1242 L252 1252 L244 1262 L236 1252 Z"/><path fill="#FFD27A" d="M244 1248 L247 1252 L244 1256 L241 1252 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="2" d="M278 1242 L286 1252 L278 1262 L270 1252 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="2" d="M312 1242 L320 1252 L312 1262 L304 1252 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="2" d="M346 1242 L354 1252 L346 1262 L338 1252 Z"/>
+<path fill="none" stroke="#3A3640" stroke-width="2" d="M380 1242 L388 1252 L380 1262 L372 1252 Z"/>
+<text x="760" y="990" font-family="Cinzel" font-size="20" fill="#8D8794" letter-spacing="4">RULES</text>
+<path fill="#F2A541" d="M764 1014 L770 1020 L764 1026 L758 1020 Z"/>
+<text x="782" y="1026" font-family="Cinzel" font-size="17" fill="#D9D2C3">Silhouette first.<tspan font-family="Cormorant Garamond" font-size="20" fill="#A49DAA">  Every foe must read as solid soot at 64 px: one big shape, one prop, one quirk.</tspan></text>
+<path fill="#F2A541" d="M764 1048 L770 1054 L764 1060 L758 1054 Z"/>
+<text x="782" y="1060" font-family="Cinzel" font-size="17" fill="#D9D2C3">Amber is light, never decoration.<tspan font-family="Cormorant Garamond" font-size="20" fill="#A49DAA">  Only flames, the lantern, ornament and crits. One to three warm points per enemy.</tspan></text>
+<path fill="#F2A541" d="M764 1082 L770 1088 L764 1094 L758 1088 Z"/>
+<text x="782" y="1094" font-family="Cinzel" font-size="17" fill="#D9D2C3">Teal is the Gloam.<tspan font-family="Cormorant Garamond" font-size="20" fill="#A49DAA">  Enemy eyes, caged souls, corruption and the target ring. Heroes never get teal.</tspan></text>
+<path fill="#F2A541" d="M764 1116 L770 1122 L764 1128 L758 1122 Z"/>
+<text x="782" y="1128" font-family="Cinzel" font-size="17" fill="#D9D2C3">Light comes from the party.<tspan font-family="Cormorant Garamond" font-size="20" fill="#A49DAA">  Rim-light (#3A3640) on lantern-facing (left) edges; enemies face left.</tspan></text>
+<path fill="#F2A541" d="M764 1150 L770 1156 L764 1162 L758 1156 Z"/>
+<text x="782" y="1162" font-family="Cinzel" font-size="17" fill="#D9D2C3">Cut-outs over lines.<tspan font-family="Cormorant Garamond" font-size="20" fill="#A49DAA">  Detail = negative space (ribs, cages, hood mouths), not thin outlines.</tspan></text>
+<path fill="#F2A541" d="M764 1184 L770 1190 L764 1196 L758 1190 Z"/>
+<text x="782" y="1196" font-family="Cinzel" font-size="17" fill="#D9D2C3">VectorDrawable-safe.<tspan font-family="Cormorant Garamond" font-size="20" fill="#A49DAA">  Paths, circles, flat fills + alpha, evenodd. No filters, masks or blur. 512×512 canvas, feet on y≈478.</tspan></text>
+<path fill="#F2A541" d="M764 1218 L770 1224 L764 1230 L758 1224 Z"/>
+<text x="782" y="1230" font-family="Cinzel" font-size="17" fill="#D9D2C3">Animate in code.<tspan font-family="Cormorant Garamond" font-size="20" fill="#A49DAA">  Idle bob/sway, lunge on attack, eye flare on hit, ash-dissolve on death. No frame sheets.</tspan></text>
+</svg>

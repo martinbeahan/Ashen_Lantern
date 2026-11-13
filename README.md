@@ -6,7 +6,17 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.19 / 58)
+## What's new (v2.20 / 59) — Ash & Ember, phase 1
+
+- **Act 1 rewritten: *The Kindling*** — opens on your mother's funeral ("In Millhollow, we do not bury our dead. We burn them into the light."). Wickthieves steal the Lantern mid-ceremony, the shadows stand up, and your sister **Wren** gives chase; first fight within a minute. Act 1 ends with Wren relighting the Lantern with her own soul, and a masked watcher writing in a ledger
+- **New original enemy art** — hand-authored *Ash & Ember* silhouettes (VectorDrawables) for the **Wickthief** (was goblins), **Ashbound** (was skeletons) and **The Wick King** (was Goblin King), animated in code: idle bob/sway, lunge on attack, ash-dissolve on death (Reduce flashing keeps them still and uses a plain fade)
+- **Bestiary names** — story bosses are now **The Lantern Sexton** (Act 1), **Collector Sallow Venn** (Act 2), **The First Lamplighter** (Act 3 Breach Warden) and **The Bell-Herald of the Tithe** (Act 4); also **Gloamhound** (was wolf) and **The Ossuary Prior** (was Skeleton King)
+- **Every enemy has its own sprite entry** — no more "everything unknown looks like a goblin"; foes without new art yet use a placeholder through their own entry
+- **Stable enemy IDs** — sprites, boss tiers, boss-seen flags and saves now key off an ID instead of the enemy's name. **Old Continue saves load fine** (names are migrated to IDs on load)
+- **Narrator renamed** — the narrator is now **the Lanternkeeper** (Host online: you play the Lanternkeeper); companion **Melf** is now **Corvin** (existing saves are renamed automatically)
+- Unchanged: Long Rest every 5 rooms, Short Rest once per clear, duplicate foes selectable by slot (`#2`), Host/Join never touches the solo save
+
+## Previous (v2.19 / 58)
 
 - **Duplicate foe targeting** — identical enemies are selectable by slot (not name-only); labels show `#2` when names match
 - **Gear stat flavor** — inventory, shop, and hero sheet explain Weapon/Armor bonuses (attack & damage vs Armor Class) for beginners; long-press item for the full tip
@@ -43,20 +53,21 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 ## Features
 
-- **Story adventure** — original scripted acts (Act 1 *Ashen Lantern*, Act 2 *Millhollow's Debt*, Act 3 *Emberdeep Breach*, Act 4 *Ashwake Vigil*), with Continue mid-quest
+- **Story adventure** — original scripted acts (Act 1 *The Kindling*, Act 2 *Millhollow's Debt*, Act 3 *Emberdeep Breach*, Act 4 *Ashwake Vigil*), with Continue mid-quest. You are the Lamplighter's child; your sister Wren and the Ashen Lantern are at the heart of it
+- **Ash & Ember art (in progress)** — original hand-authored enemy silhouettes (Wickthief, Ashbound, The Wick King) with code-driven idle / attack / ash-dissolve animation; remaining foes use placeholders until their art lands
 - **Dungeon Crawl** — procedural rooms from the start (skip the scripted quest)
 - **Difficulty** — Easy / Medium / Hard / Nightmare (locked for the run; wipe rules differ by tier)
 - **Classes** — Fighter, Wizard, Rogue, Cleric, and **Bard** (CHA-based; Cutting Quip special)
 - **Companion** — AI or player-controlled ally; change class in-run where supported
-- **Inventory & loot** — rarity tiers, class-tagged gear, shop, sell, gold upgrades; early bosses (Goblin King, Skeleton King, Ashen Drake)
+- **Inventory & loot** — rarity tiers, class-tagged gear, shop, sell, gold upgrades; early bosses (The Wick King, The Ossuary Prior, Ashen Drake)
 - **Boss Raids** — story-complete endgame mode; spends a Raid Key; focused boss fight with strong rewards (Legendary chance)
 - **Daily Quests** — local-midnight errands for story-complete Continue heroes (gold / tonic / optional Raid Key)
 - **Challenge Dungeon** — story-complete *Cinder Crucible* vault (no Raid Key cost; dynamic Legendary chance)
 - **Arena (Ember Ring)** — see Endgame modes below
 - **Endless Deep (Ashen Deep)** — see Endgame modes below
-- **Online multiplayer** — **Host online (DM)** / **Join session** via Firebase Realtime Database (host acts as DM)
+- **Online multiplayer** — **Host online (Lanternkeeper)** / **Join session** via Firebase Realtime Database (the host narrates as the Lanternkeeper)
 - **Settings** — music on/off, sound effects on/off, reduce flashing (photosensitive-friendly), tutorial, return to main menu, About
-- **Audio beds** — biome / combat / boss loops (CC0); optional DM voice via Android Text-to-Speech
+- **Audio beds** — biome / combat / boss loops (CC0); optional Lanternkeeper (narrator) voice via Android Text-to-Speech
 
 ## Endgame modes (story-complete)
 
@@ -138,6 +149,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | Document | Purpose |
 |----------|---------|
 | [`ATTRIBUTION.md`](ATTRIBUTION.md) | Trademarks notice, SRD credit, art & audio licenses |
+| [`docs/art/ash_ember/`](docs/art/ash_ember/) | Ash & Ember style sheet + original enemy SVG sources (`tools/svg2vd.py` converts them to VectorDrawables) |
 | [`LICENSE`](LICENSE) | MIT (source code & original adventure text) |
 | [`docs/STORE_LISTING_LEGAL.md`](docs/STORE_LISTING_LEGAL.md) | Paste-ready Play Store legal blurb |
 | [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md) | **3D v2 plan** (Unreal Engine) — desktop slice; 2D app remains production/tester track |

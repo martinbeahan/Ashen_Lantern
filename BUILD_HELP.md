@@ -33,7 +33,7 @@ Copy the **Build** output (the red error text) and share it. The most useful lin
 2. Put it in the `app/` folder (**required locally** — the Google Services plugin is already enabled).
 3. Enable Realtime Database (see `FIREBASE_SETUP.md`).
 4. Sync and rebuild.
-5. **Host**: enter your **DM name only** (no class pick) → share the session ID. Friends **Join**, pick a class, and wait in the lobby.
+5. **Host**: enter your **Lanternkeeper name only** (no class pick) → share the session ID. Friends **Join**, pick a class, and wait in the lobby.
 
 ## 16 KB page size (Android Studio warning)
 This project pins **NDK 28.2.13676358**, enables flexible page sizes in CMake, and packages JNI libs without legacy compression so 64-bit `.so` files are 16 KB-aligned.

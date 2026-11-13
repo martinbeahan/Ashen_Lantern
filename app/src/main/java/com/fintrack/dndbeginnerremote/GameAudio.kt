@@ -164,7 +164,7 @@ class GameAudio(private val context: Context) : TextToSpeech.OnInitListener {
     fun playUiClick() = playSfx(sfxUiClick)
 
     /**
-     * Speak new [DM]: chat lines when DM voice is enabled.
+     * Speak new [Keeper]: (narrator) chat lines when Lanternkeeper voice is enabled.
      * Silently no-ops if TTS is missing or not ready.
      */
     fun maybeSpeakDmFromChat(chatHistory: String) {
@@ -173,8 +173,8 @@ class GameAudio(private val context: Context) : TextToSpeech.OnInitListener {
         if (!ttsReady) return
         val lines = chatHistory.lineSequence()
             .map { it.trim() }
-            .filter { it.startsWith("[DM]:") }
-            .map { it.removePrefix("[DM]:").trim() }
+            .filter { it.startsWith("[Keeper]:") || it.startsWith("[DM]:") }
+            .map { it.removePrefix("[Keeper]:").removePrefix("[DM]:").trim() }
             .filter { it.isNotEmpty() }
             .toList()
         if (lines.isEmpty()) return
@@ -195,7 +195,7 @@ class GameAudio(private val context: Context) : TextToSpeech.OnInitListener {
     override fun onInit(status: Int) {
         ttsReady = status == TextToSpeech.SUCCESS
         if (!ttsReady) {
-            Log.i(TAG, "TTS unavailable; DM voice will be skipped")
+            Log.i(TAG, "TTS unavailable; Lanternkeeper voice will be skipped")
             return
         }
         try {

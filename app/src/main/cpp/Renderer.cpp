@@ -87,14 +87,12 @@ static int modelIndexForPlayer(dnd::CharacterClass c) {
         case dnd::CharacterClass::CLERIC:  return 3;
         case dnd::CharacterClass::BARD:    return 1; // reuse wizard model until Bard CC0 art
     }
-    return 6;
+    return 0;
 }
 
-static int modelIndexForEnemy(const std::string& name) {
-    std::string lower = name;
-    for (char& ch : lower) ch = (char)tolower((unsigned char)ch);
-    if (lower.find("skeleton") != std::string::npos) return 5;
-    if (lower.find("goblin") != std::string::npos) return 4;
+static int modelIndexForEnemy(const std::string& enemyId) {
+    // Stable enemy ID (Bestiary.h), not the display name. GL layer only has two foe textures.
+    if (enemyId.rfind("enemy_ashbound", 0) == 0 || enemyId == "boss_sexton" || enemyId == "boss_prior") return 5;
     return 4;
 }
 
@@ -248,7 +246,7 @@ void Renderer::render() {
             glUniform3f(uTint, 1.0f, 1.0f, 1.0f);
             glUniform1f(uFlash, anim.flashIntensity);
 
-            int mi = modelIndexForEnemy(enemies[i]->name);
+            int mi = modelIndexForEnemy(enemies[i]->enemyId);
             if (mi < 0 || mi >= (int)models_.size()) mi = (int)models_.size() - 1;
             glUniform1i(uUseTexture, models_[mi].hasTexture() ? 1 : 0);
             shader_->drawModel(models_[mi]);
@@ -346,10 +344,10 @@ void Renderer::createModels() {
 
     auto assetManager = app_->activity->assetManager;
     // Order must match modelIndexFor*() helpers below:
-    // 0 fighter, 1 wizard, 2 rogue, 3 cleric, 4 goblin, 5 skeleton, 6 fallback
+    // 0 fighter, 1 wizard, 2 rogue, 3 cleric, 4 wickthief (legacy goblin tex), 5 ashbound (legacy skeleton tex)
     const char* files[] = {
         "fighter.png", "wizard.png", "rogue.png", "cleric.png",
-        "goblin.png", "skeleton.png", "android_robot.png"
+        "goblin.png", "skeleton.png"
     };
     for (const char* file : files) {
         auto tex = TextureAsset::loadAsset(assetManager, file);
