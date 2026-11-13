@@ -372,6 +372,33 @@ struct Character {
     /** Fighter Action Surge (and similar): at most once per combat; cleared on initiative. */
     bool specialUsedThisCombat = false;
 
+    // --- v2.29 (combat curve, PR 1) ---------------------------------------------------------
+    /**
+     * Max HP earned outside the level formula, kept through every level-up (audit bug b):
+     * the story's +2 HP padding and the "+level HP" a CON point grants beyond what the formula
+     * gives (odd CON points). Saved as player field 28; legacy saves derive it on load.
+     */
+    int bonusMaxHp = 0;
+    /** Rekindling (prestige) rank. Always 0 until PR 5; saved as player field 27. EL counts 25%. */
+    int prestigeRank = 0;
+    /**
+     * Encounter-curve foe stats (CombatCurve.h). curveEL > 0 means this foe was built from the
+     * Reference Lamplighter: attacks use curveToHit and curveAvgDmgX10 (tenths) instead of the
+     * class/stat formulas. 0 = legacy foe (old saves, online Keeper tables) — old rules apply.
+     * Saved as enemy fields 20..23 (19 is AC).
+     */
+    int curveEL = 0;
+    int curveRole = 0;          // curve::Role
+    int curveToHit = 0;
+    int curveAvgDmgX10 = 0;
+    /** Telegraph: turns this foe spends winding up before it acts (surprise boss = 1). Field 25. */
+    int curveWarnTurns = 0;
+    /** Early surprise boss downgraded to the Elite role (field 26). */
+    bool curveSurprise = false;
+    /** Not saved: freshly spawned, the encounter curve has not been applied yet. */
+    bool curvePending = false;
+    bool isFoe() const { return !enemyId.empty(); }
+
     std::shared_ptr<Item> equippedWeapon;
     std::shared_ptr<Item> equippedArmor;
     std::vector<std::shared_ptr<Item>> inventory;
@@ -427,6 +454,50 @@ struct Character {
         armorClass = 10 + dexMod + armorBonus;
     }
 
+    /**
+     * Level formula HP (no bonusMaxHp): level 1 = hit die + CON mod (heroes at least 12 —
+     * v2.29 level-1 floor), later levels hit die/2 + 1 + CON mod (min 1). Uses EFFECTIVE CON so
+     * Legendary CON bonuses count (audit bug d).
+     */
+    int formulaMaxHp() const {
+        const int conMod = Attributes::getModifier(effectiveAttr(2));
+        const int hd = hitDie();
+        int hp = hd + conMod;
+        if (!isFoe()) hp = std::max(kHeroLevel1HpFloor, hp);
+        if (hp < 1) hp = 1;
+        for (int lvl = 2; lvl <= level; ++lvl) {
+            int gain = (hd / 2 + 1) + conMod; if (gain < 1) gain = 1; hp += gain;
+        }
+        return hp;
+    }
+    static constexpr int kHeroLevel1HpFloor = 12;
+
+    /** Max HP = formula + kept bonus. Never touches currentHp beyond clamping. */
+    void recomputeMaxHp() {
+        maxHp = std::max(1, formulaMaxHp() + std::max(0, bonusMaxHp));
+        if (currentHp > maxHp) currentHp = maxHp;
+    }
+
+    /**
+     * Gear changed (equip / unequip / upgrade / transfer): refresh AC and HP from effective
+     * attributes. A higher max heals by the difference (you gained it); a lower max clamps.
+     */
+    void refreshDerivedStats() {
+        const int oldMax = maxHp;
+        calculateAC();
+        recomputeMaxHp();
+        if (maxHp > oldMax && !isDowned && !isDead && currentHp > 0) {
+            currentHp = std::min(maxHp, currentHp + (maxHp - oldMax));
+        }
+    }
+
+    /** Initiative modifier: effective DEX (Legendary DEX counts — audit bug d). */
+    int initiativeModifier() const { return Attributes::getModifier(effectiveAttr(1)); }
+    /** Search (INT check) score: effective INT (audit bug d). */
+    int searchScore() const { return effectiveAttr(3); }
+    /** Healing Word bonus: effective WIS modifier (audit bug d). */
+    int healingWordModifier() const { return Attributes::getModifier(effectiveAttr(4)); }
+
     /** Recompute HP/resources from current level + attributes. Does NOT reset attributes. */
     void applyStatsForLevel() {
         switch (characterClass) {
@@ -443,31 +514,38 @@ struct Character {
                 maxResources = 1 + (level >= 17 ? 1 : 0); // Action Surge once (twice at 17+), shared with potions
                 break;
         }
-        int conMod = Attributes::getModifier(attributes.constitution);
-        int hd = hitDie();
-        // Level 1: max hit die + CON; later levels: average hit die + CON
-        maxHp = (hd + conMod);
-        for (int lvl = 2; lvl <= level; ++lvl) {
-            int gain = (hd / 2 + 1) + conMod; if (gain < 1) gain = 1; maxHp += gain;
-        }
+        // Level 1: max hit die + CON; later levels: average hit die + CON (+ kept bonus HP).
+        recomputeMaxHp();
     }
 
-    bool addXp(int amount) {
-        xp += amount;
-        if (xp >= level * 100) {
+    /** Level ceiling for one award loop (matches the loader clamp; the real cap lands in PR 4). */
+    static constexpr int kMaxLevelSafety = 100;
+
+    /**
+     * Award XP. One award can now give SEVERAL levels (audit bug c): +2 stat points per level,
+     * HP/resources recomputed once and refilled. Returns the number of levels gained.
+     */
+    int addXpLevels(int amount) {
+        if (amount > 0) xp += amount;
+        int gained = 0;
+        while (level < kMaxLevelSafety && xp >= level * 100) {
+            xp -= level * 100;
             level++;
-            xp -= (level - 1) * 100;
             pendingStatPoints += 2;
+            ++gained;
+        }
+        if (gained > 0) {
             applyStatsForLevel();
             currentHp = maxHp;
             resources = maxResources;
-            return true;
         }
-        return false;
+        return gained;
     }
+    bool addXp(int amount) { return addXpLevels(amount) > 0; }
 
     void increaseAttribute(int index) {
         if (pendingStatPoints <= 0) return;
+        const int formulaBefore = formulaMaxHp();
         switch(index) {
             case 0: attributes.strength++; break;
             case 1: attributes.dexterity++; break;
@@ -478,7 +556,14 @@ struct Character {
         }
         pendingStatPoints--;
         calculateAC();
-        if (index == 2) { maxHp += level; currentHp += level; }
+        if (index == 2) {
+            // A CON point is worth +level HP right away (as before). Whatever the formula does
+            // not cover (odd points) goes into bonusMaxHp so the next level-up keeps it (bug b).
+            const int formulaGain = formulaMaxHp() - formulaBefore;
+            bonusMaxHp += std::max(0, level - formulaGain);
+            recomputeMaxHp();
+            currentHp = std::min(maxHp, currentHp + level);
+        }
     }
 
     bool performSavingThrow(int attributeScore, int dc) {
@@ -570,7 +655,8 @@ struct Character {
         gold -= cost;
         item->bonus += 1;
         item->upgradeLevel += 1;
-        if (item->type == ItemType::ARMOR) calculateAC();
+        // Legendary stat bonuses unlock at +15/+20 — refresh AC and HP (bug d).
+        refreshDerivedStats();
         err.clear();
         return true;
     }
@@ -704,6 +790,10 @@ public:
 
     static RollResult performAttackRoll(const Character& attacker) {
         int die = rng::below(20) + 1;
+        if (attacker.curveEL > 0) {
+            // v2.29 encounter-curve foe: to-hit comes from the Reference Lamplighter (CombatCurve.h).
+            return { die + attacker.curveToHit, die, (die == 20), (die == 1) };
+        }
         int mod = getPrimaryModifier(attacker);
         int pb = proficiencyBonusForLevel(attacker.level);
         int weaponBonus = (attacker.equippedWeapon && attacker.equippedWeapon->type == ItemType::WEAPON) ? attacker.equippedWeapon->bonus : 0;

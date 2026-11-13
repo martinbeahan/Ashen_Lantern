@@ -31,46 +31,49 @@ struct EnemyArchetype {
     const char* legacyName;
     int bossTier;     // 0 = not a boss (loot/raid-key/gating); 1..5 as before
     bool endgameBoss; // Three Drowned Lanterns
+    /** v2.29 encounter-curve role (curve::Role in CombatCurve.h): 1 minion, 2 skirmisher,
+     *  3 caster, 4 support, 5 brute, 6 elite, 7 boss. Appended field; IDs unchanged. */
+    int role;
 };
 
 // NOTE: append only — never rename or reuse an id (saves + online sync store it).
 inline const EnemyArchetype* table(size_t& count) {
     static const EnemyArchetype kTable[] = {
         // Wickthieves (were goblins)
-        {"enemy_wickthief",          "Wickthief",            "Goblin",              0, false},
-        {"enemy_wickthief_scout",    "Wickthief Scout",      "Goblin Scout",        0, false},
-        {"enemy_wickthief_cutpurse", "Wickthief Cutpurse",   "Goblin Ambusher",     0, false},
-        {"enemy_wickthief_cache",    "Cache Wickthief",      "Cache Goblin",        0, false},
-        {"enemy_wickthief_river",    "River Wickthief",      "River Goblin",        0, false},
-        {"enemy_wickthief_root",     "Root Wickthief",       "Root Goblin",         0, false},
-        {"enemy_wickthief_fen",      "Fen Wickthief",        "Marsh Goblin",        0, false},
+        {"enemy_wickthief",          "Wickthief",            "Goblin",              0, false, 2},
+        {"enemy_wickthief_scout",    "Wickthief Scout",      "Goblin Scout",        0, false, 2},
+        {"enemy_wickthief_cutpurse", "Wickthief Cutpurse",   "Goblin Ambusher",     0, false, 2},
+        {"enemy_wickthief_cache",    "Cache Wickthief",      "Cache Goblin",        0, false, 2},
+        {"enemy_wickthief_river",    "River Wickthief",      "River Goblin",        0, false, 2},
+        {"enemy_wickthief_root",     "Root Wickthief",       "Root Goblin",         0, false, 2},
+        {"enemy_wickthief_fen",      "Fen Wickthief",        "Marsh Goblin",        0, false, 2},
         // Ashbound (were skeletons)
-        {"enemy_ashbound",           "Ashbound",             "Skeleton",            0, false},
-        {"enemy_ashbound_bonebound", "Bonebound Ashbound",   "Bonebound Skeleton",  0, false},
+        {"enemy_ashbound",           "Ashbound",             "Skeleton",            0, false, 5},
+        {"enemy_ashbound_bonebound", "Bonebound Ashbound",   "Bonebound Skeleton",  0, false, 5},
         // Gloamhound (was wolf)
-        {"enemy_gloamhound",         "Gloamhound",           "Wolf",                0, false},
+        {"enemy_gloamhound",         "Gloamhound",           "Wolf",                0, false, 2},
         // Criers (heralds)
-        {"enemy_crier_bone",         "Bone Crier",           "Bone Herald",         0, false},
-        {"enemy_crier_wick",         "Wickthief Herald",     "Goblin Herald",       0, false},
+        {"enemy_crier_bone",         "Bone Crier",           "Bone Herald",         0, false, 4},
+        {"enemy_crier_wick",         "Wickthief Herald",     "Goblin Herald",       0, false, 4},
         // Renamed in Phase 2 (v2.21) — display only; IDs unchanged. Old names live in kAliases.
-        {"enemy_tallow_rat",         "Tallow Rat",           "Giant Rat",           0, false},
-        {"enemy_brute",              "Millstone Brute",      "Ogre",                0, false},
-        {"enemy_tithe_enforcer",     "Tithe Enforcer",       "Debt Enforcer",       0, false},
-        {"enemy_tithe_scavenger",    "Ash Scavenger",        "Ash Scavenger",       0, false},
-        {"enemy_tithe_watcher",      "Tithe Watcher",        "Ashwake Scout",       0, false},
+        {"enemy_tallow_rat",         "Tallow Rat",           "Giant Rat",           0, false, 1},
+        {"enemy_brute",              "Millstone Brute",      "Ogre",                0, false, 5},
+        {"enemy_tithe_enforcer",     "Tithe Enforcer",       "Debt Enforcer",       0, false, 5},
+        {"enemy_tithe_scavenger",    "Ash Scavenger",        "Ash Scavenger",       0, false, 2},
+        {"enemy_tithe_watcher",      "Tithe Watcher",        "Ashwake Scout",       0, false, 3},
         // Story bosses (bestiary names). Tier kept exactly as before (only the Warden was tiered).
-        {"boss_sexton",              "The Lantern Sexton",   "Skeleton Champion",   0, false},
-        {"boss_collector",           "Collector Sallow Venn","The Collector",       0, false},
-        {"boss_warden",              "The First Lamplighter","Breach Warden",       3, false},
-        {"boss_herald",              "The Bell-Herald of the Tithe", "Ashwake Herald", 0, false},
+        {"boss_sexton",              "The Lantern Sexton",   "Skeleton Champion",   0, false, 7},
+        {"boss_collector",           "Collector Sallow Venn","The Collector",       0, false, 7},
+        {"boss_warden",              "The First Lamplighter","Breach Warden",       3, false, 7},
+        {"boss_herald",              "The Bell-Herald of the Tithe", "Ashwake Herald", 0, false, 7},
         // Crawl bosses
-        {"boss_wick_king",           "The Wick King",        "Goblin King",         1, false},
-        {"boss_prior",               "The Ossuary Prior",    "Skeleton King",       2, false},
-        {"boss_drake",               "Ashen Drake",          "Ashen Drake",         3, false},
+        {"boss_wick_king",           "The Wick King",        "Goblin King",         1, false, 7},
+        {"boss_prior",               "The Ossuary Prior",    "Skeleton King",       2, false, 7},
+        {"boss_drake",               "Ashen Drake",          "Ashen Drake",         3, false, 7},
         // Endgame — the Three Drowned Lanterns
-        {"boss_hollow_crown",        "Hollow Crown",         "Hollow Crown",        4, true},
-        {"boss_ember_hydra",         "Ember Hydra",          "Ember Hydra",         5, true},
-        {"boss_nightfang",           "Nightfang Matriarch",  "Nightfang Matriarch", 4, true},
+        {"boss_hollow_crown",        "Hollow Crown",         "Hollow Crown",        4, true, 7},
+        {"boss_ember_hydra",         "Ember Hydra",          "Ember Hydra",         5, true, 7},
+        {"boss_nightfang",           "Nightfang Matriarch",  "Nightfang Matriarch", 4, true, 7},
     };
     count = sizeof(kTable) / sizeof(kTable[0]);
     return kTable;
@@ -117,6 +120,12 @@ inline int bossTier(const std::string& id) {
 }
 
 inline bool isBoss(const std::string& id) { return bossTier(id) > 0; }
+
+/** Encounter-curve role for an ID (curve::Role as int); unknown IDs act as skirmishers (2). */
+inline int role(const std::string& id) {
+    const EnemyArchetype* a = find(id);
+    return a ? a->role : 2;
+}
 
 inline bool isEndgameBoss(const std::string& id) {
     const EnemyArchetype* a = find(id);

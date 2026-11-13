@@ -289,6 +289,16 @@ public:
     /** Apply gold + optional small loot to the living party purse (solo Continue hero). */
     bool grantDailyQuestSpoils(int gold, bool giveLoot);
 
+    // --- v2.29 combat curve (CombatCurve.h, docs/COMBAT_CURVE.md) ---
+    /** Solo / host play only: online Keeper tables and joiners keep the old rules. */
+    bool encounterCurveActive() const { return isHost_ && !dmOnlyTable_; }
+    /** The party's Encounter Level right now (incl. mode bonus). */
+    int currentEncounterLevel() const;
+    /** Pressure steps (0..4): +5% room budget and +5% XP/gold each. */
+    int getPressure() const { return pressure_; }
+    /** Rooms left with the Rekindle comeback (-20% budget). */
+    int getRekindleRooms() const { return rekindleRooms_; }
+
     const std::vector<std::unique_ptr<Character>>& getPlayers() const { return players_; }
     const std::vector<std::unique_ptr<Character>>& getEnemies() const { return enemies_; }
 
@@ -400,6 +410,21 @@ private:
     bool memoryContextKnown_ = false;
     int memoryCrawlDry_ = 0;           // cleared crawl rooms since the last Rounds memory (pity at 8)
     int heraldTolls_ = 0;              // flavour counter for the Bell-Herald (not saved)
+    // v2.29 combat curve state (header fields 38..43).
+    int pressure_ = 0;                 // flawless-room steps, 0..4
+    int rekindleRooms_ = 0;            // comeback rooms left
+    int lowHpStreak_ = 0;              // rooms in a row ending with a hero at <= 25% HP
+    bool lastRoomOverBudget_ = false;  // never two over-budget rooms back to back
+    bool heroDroppedThisRoom_ = false; // pressure resets when a hero drops
+    bool pendingSurprise_ = false;     // not saved: the room just spawned an early surprise boss
+    void resetCombatCurveState();
+    int encounterModeBonus() const;
+    double currentRoomType() const;
+    /** Fit freshly spawned foes (curvePending) to EL + role + room budget. Called from rollInitiative. */
+    void applyEncounterCurve();
+    /** Room cleared: update Pressure / low-HP streak / Rekindle. */
+    void noteRoomOutcomeForCurve();
+    std::string telegraphLine(const Character& foe) const;
     int soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
     int difficulty_ = static_cast<int>(Difficulty::EASY);
     /** Snapshot when entering raid/challenge from a loaded adventure (-1 = none). */

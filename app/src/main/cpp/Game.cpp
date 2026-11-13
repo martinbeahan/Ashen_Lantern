@@ -3,6 +3,7 @@
 #include "AndroidOut.h"
 #include "SaveCodec.h"
 #include "MemoryCatalog.h"
+#include "CombatCurve.h"
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
@@ -60,6 +61,7 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
     dqDamageDealt_ = 0;
     dqBossesDefeated_ = 0;
     while(!visualEvents_.empty()) visualEvents_.pop();
+    resetCombatCurveState();
 
     gameOver_ = false;
     turnCounter_ = 0;
@@ -181,7 +183,8 @@ void Game::applyStarterPaddingForStory() {
     // Beginner Solo padding: +2 max HP and +1 potion/feature charge (story only).
     for (auto& p : players_) {
         if (!p) continue;
-        p->maxHp += 2;
+        p->bonusMaxHp += 2; // v2.29: kept through level-ups (was lost at the first level-up)
+        p->recomputeMaxHp();
         p->currentHp = p->maxHp;
         p->maxResources += 1;
         p->resources = p->maxResources;
@@ -210,6 +213,7 @@ void Game::startDmSession(const std::string& dmName) {
     roomSearchUsed_ = false; roomRestUsed_ = false;
     dmOnlyTable_ = true;
     resetSoloQuestState();
+    resetCombatCurveState();
     dmName_ = dmName.empty() ? "The Lanternkeeper" : dmName;
     isHost_ = true;
 
@@ -299,6 +303,7 @@ void Game::prepareClientJoin() {
     resetSoloQuestState();
     dmName_.clear();
     isHost_ = false;
+    resetCombatCurveState();
     currentTurnIndex_ = 0;
 
     roomDescription_ = "Connecting to the Lanternkeeper's table…";
@@ -395,6 +400,7 @@ bool Game::setCompanionClass(CharacterClass cl) {
     const bool stable = old->isStable;
     const int dss = old->deathSaveSuccesses;
     const int dsf = old->deathSaveFailures;
+    const int keptBonusHp = old->bonusMaxHp; // v2.29: story padding / CON-point HP survive a reclass
     const std::string uid = old->uid;
     const std::string newName = companionNameForClass(cl);
 
@@ -436,6 +442,7 @@ bool Game::setCompanionClass(CharacterClass cl) {
                 else neu->equippedArmor = Item::make("Scale Mail", ItemType::ARMOR, 4, ItemRarity::COMMON, cls);
             }
         }
+        neu->bonusMaxHp = keptBonusHp;
         neu->applyStatsForLevel();
         neu->calculateAC();
         neu->currentHp = neu->maxHp;
@@ -573,8 +580,9 @@ void Game::spawnSoloQuestEnemies() {
             // Medium+: small chance the gallery hosts the Skeleton King (alone). Easy keeps soft pair.
             if (difficulty_ >= static_cast<int>(Difficulty::MEDIUM) && getRandomInt(1, 100) <= 18) {
                 spawnNamedBoss("boss_prior");
+                pendingSurprise_ = true; // v2.29: Elite role, capped at 1.5x the room budget, 1-turn warning
                 lastEvent_ = "BOSS! The Ossuary Prior — stand ready!";
-                dmSay("A mitred horror stirs among the bones — the Ossuary Prior (original foe).");
+                dmSay("A mitred horror stirs among the bones — the Ossuary Prior (original foe). Bones knit into a mitre… it needs a moment to rise.");
             } else {
                 makeFoe("enemy_ashbound", CharacterClass::FIGHTER, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
                 makeFoe("enemy_ashbound", CharacterClass::FIGHTER, -2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
@@ -600,8 +608,9 @@ void Game::spawnSoloQuestEnemies() {
             // Medium+: rare Goblin King ambush at the weir (Easy keeps soft river goblins).
             if (difficulty_ >= static_cast<int>(Difficulty::MEDIUM) && getRandomInt(1, 100) <= 16) {
                 spawnNamedBoss("boss_wick_king");
+                pendingSurprise_ = true; // v2.29: Elite role, capped at 1.5x the room budget, 1-turn warning
                 lastEvent_ = "BOSS! The Wick King — stand ready!";
-                dmSay("A crown of melted candles by the millrace — the Wick King (original) bars the path!");
+                dmSay("A crown of melted candles by the millrace — the Wick King (original) bars the path! Hot wax still drips from his crown… he needs a moment.");
             } else {
                 makeFoe("enemy_wickthief_river", CharacterClass::ROGUE, 0, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
                 makeFoe("enemy_wickthief_river", CharacterClass::ROGUE, -2, 0, /*resourceCap=*/0, /*attackStatDelta=*/-2);
@@ -1274,14 +1283,16 @@ void Game::rollInitiative() {
 
     turnOrder_.clear();
     if (isMerchantRoom_) return;
+    applyEncounterCurve(); // v2.29: freshly spawned foes get their EL / role numbers (solo only)
 
     for (auto& p : players_) {
         if (p->isDead) continue; // fallen heroes stay out of initiative
-        p->initiative = (getRandomInt(1, 20)) + Attributes::getModifier(p->attributes.dexterity);
+        // v2.29: effective DEX (Legendary DEX counts — audit bug d).
+        p->initiative = (getRandomInt(1, 20)) + p->initiativeModifier();
         turnOrder_.push_back(p.get());
     }
     for (auto& e : enemies_) {
-        e->initiative = (getRandomInt(1, 20)) + Attributes::getModifier(e->attributes.dexterity);
+        e->initiative = (getRandomInt(1, 20)) + e->initiativeModifier();
         turnOrder_.push_back(e.get());
     }
     std::sort(turnOrder_.begin(), turnOrder_.end(), [](Character* a, Character* b) {
@@ -1485,11 +1496,11 @@ bool Game::equipInventoryItem(const std::string& playerName, int invIndex) {
     if (item->type == ItemType::WEAPON) {
         if (hero->equippedWeapon) hero->addToInventory(hero->equippedWeapon);
         hero->equippedWeapon = item;
-        hero->calculateAC(); // Legendary DEX on weapons can affect AC
+        hero->refreshDerivedStats(); // Legendary DEX/CON on weapons can affect AC/HP
     } else {
         if (hero->equippedArmor) hero->addToInventory(hero->equippedArmor);
         hero->equippedArmor = item;
-        hero->calculateAC();
+        hero->refreshDerivedStats();
     }
     lastEvent_ = hero->name + " equips " + item->getDescription() + ".";
     return true;
@@ -1504,7 +1515,7 @@ bool Game::unequipSlot(const std::string& playerName, int slot) {
         hero->addToInventory(hero->equippedWeapon);
         lastEvent_ = hero->name + " unequips " + hero->equippedWeapon->name + ".";
         hero->equippedWeapon = nullptr;
-        hero->calculateAC();
+        hero->refreshDerivedStats();
         return true;
     }
     if (slot == 1) {
@@ -1512,7 +1523,7 @@ bool Game::unequipSlot(const std::string& playerName, int slot) {
         hero->addToInventory(hero->equippedArmor);
         lastEvent_ = hero->name + " unequips " + hero->equippedArmor->name + ".";
         hero->equippedArmor = nullptr;
-        hero->calculateAC();
+        hero->refreshDerivedStats();
         return true;
     }
     lastEvent_ = "Bad slot.";
@@ -1594,7 +1605,7 @@ bool Game::sellEquippedItem(const std::string& playerName, int slot) {
     std::string itemName = item->getDescription();
     // Unequip first: clear slot so combat falls back to fists / unarmored AC.
     *ptr = nullptr;
-    if (slot == 1) hero->calculateAC();
+    hero->refreshDerivedStats();
     hero->gold += price;
     lastEvent_ = hero->name + " sells " + itemName + " for " + std::to_string(price) + "g."
         + (slot == 0 ? " (fists ready)" : "");
@@ -1635,12 +1646,13 @@ void Game::deliverItemToAlly(Character* ally, std::shared_ptr<Item> item) {
         if (item->type == ItemType::WEAPON) {
             if (ally->equippedWeapon) ally->addToInventory(ally->equippedWeapon);
             ally->equippedWeapon = item;
+            ally->refreshDerivedStats();
             return;
         }
         if (item->type == ItemType::ARMOR) {
             if (ally->equippedArmor) ally->addToInventory(ally->equippedArmor);
             ally->equippedArmor = item;
-            ally->calculateAC();
+            ally->refreshDerivedStats();
             return;
         }
     }
@@ -1695,7 +1707,7 @@ bool Game::transferEquippedItemToAlly(const std::string& fromName, int slot) {
     }
     auto item = *ptr;
     *ptr = nullptr;
-    if (slot == 1) from->calculateAC();
+    from->refreshDerivedStats();
     std::string label = item->getDescription();
     bool willEquip = item->canEquip(ally->characterClass);
     deliverItemToAlly(ally, item);
@@ -1725,6 +1737,9 @@ std::unique_ptr<Character> Game::newEnemy(const std::string& enemyId, CharacterC
         + std::to_string(getRandomInt(0, 1000000));
     auto foe = std::make_unique<Character>(bestiary::displayName(enemyId), cl, uid);
     foe->enemyId = enemyId;
+    foe->applyStatsForLevel(); // foes skip the hero level-1 HP floor
+    foe->currentHp = foe->maxHp;
+    foe->curvePending = true;  // rollInitiative() fits it to the encounter curve (solo only)
     return foe;
 }
 
@@ -2633,6 +2648,12 @@ bool Game::recoverFromPartyWipe() {
     }
     gameOver_ = false;
     revivePartyForDifficulty();
+    if (encounterCurveActive()) {
+        // v2.29 Rekindle (comeback): the next room is -20%; Hard's gear strip gets 3 rooms.
+        rekindleRooms_ = (static_cast<Difficulty>(difficulty_) == Difficulty::HARD) ? 3 : 1;
+        pressure_ = 0;
+        lowHpStreak_ = 0;
+    }
     if (isBossRaid()) {
         // Mid-raid wipe: apply difficulty revive, then leave raid without spawning a blank run.
         finishBossRaidKeepParty();
@@ -2701,6 +2722,9 @@ void Game::grantKillLoot(Character* actor, const std::string& foeName, const std
         }
     }
     if (!looter) return;
+    if (encounterCurveActive() && pressure_ > 0) {
+        gold = static_cast<int>(std::lround(gold * curve::pressureMultiplier(pressure_)));
+    }
     looter->gold += gold;
     // Kill beat first so UI juice can toast "Felled …" then gold line stays in the feed.
     std::string msg = "Felled " + foeName + "! " + looter->name + " loots " +
@@ -2727,6 +2751,11 @@ void Game::enterClearedRoom(Character* actor) {
 
     int xpGained = 50 + (roomCount_ * 15) + pendingBossXpBonus_ + setPieceXp;
     pendingBossXpBonus_ = 0;
+    if (encounterCurveActive() && pressure_ > 0) {
+        // Pressure reward: +5% XP (and gold, see grantKillLoot) per flawless-room step.
+        xpGained = static_cast<int>(std::lround(xpGained * curve::pressureMultiplier(pressure_)));
+    }
+    noteRoomOutcomeForCurve();
     for (auto& p : players_) {
         if (p->addXp(xpGained)) {
             dmSay(p->name + " levels up! Spend your ability points from the character sheet.");
@@ -3150,6 +3179,12 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
 
     bool hit = result.total >= target.armorClass || result.isCriticalHit;
     if (result.isCriticalFail) hit = false;
+    if (encounterCurveActive()) {
+        // v2.29 hit clamp: always needs 3..18 on the die (15%–90%).
+        const curve::HitCheck hc = curve::attackHits(result.dieRoll, result.total - result.dieRoll, target.armorClass);
+        hit = hc.hit;
+        if (hc.clamped) ss << "(needs " << hc.need << "+ — hit clamp) ";
+    }
 
     if (hit) {
         int extraDice = sneakAttack ? actor->sneakAttackDice() : 0;
@@ -3270,7 +3305,7 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
         }
         if (best < 0) { actor->resources++; lastEvent_ = "No ally to heal."; return; }
         Character& ally = *players_[static_cast<size_t>(best)];
-        int wis = Attributes::getModifier(actor->attributes.wisdom);
+        int wis = actor->healingWordModifier(); // v2.29: effective WIS (audit bug d)
         int amount = getRandomInt(1, 4) + wis;
         if (amount < 1) amount = 1;
         ally.heal(amount);
@@ -3339,6 +3374,9 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
         int pb = CombatSystem::proficiencyBonusForLevel(actor->level);
         bool hit = result.total >= enemy.armorClass || result.isCriticalHit;
         if (result.isCriticalFail) hit = false;
+        if (encounterCurveActive()) {
+            hit = curve::attackHits(result.dieRoll, result.total - result.dieRoll, enemy.armorClass).hit;
+        }
         pushVisualEvent(VisualEventType::PLAYER_ATTACK, playerIdx);
         std::stringstream ss;
         ss << actor->name << " Cutting Quip vs " << enemy.name << "! d20=" << result.dieRoll
@@ -3408,7 +3446,7 @@ void Game::playerRest(bool force) {
     for (auto& p : players_) {
         if (p->isDead) continue; // dead heroes stay down
         int missing = p->maxHp - p->currentHp;
-        int recover = std::max(p->hitDie() + Attributes::getModifier(p->attributes.constitution), missing / 2);
+        int recover = std::max(p->hitDie() + Attributes::getModifier(p->effectiveAttr(2)), missing / 2);
         if (recover < 1) recover = 1;
         if (recover > missing && missing > 0) recover = missing;
         if (missing == 0) recover = 0;
@@ -3556,7 +3594,7 @@ void Game::playerInteract(const std::string& playerName) {
     if (storySearch) {
         // Story Search handled (clue / rune-key / shrine).
         memoryOnStorySearch();
-    } else if (hero->performSavingThrow(hero->attributes.intelligence, 12)) {
+    } else if (hero->performSavingThrow(hero->searchScore(), 12)) { // v2.29: effective INT (bug d)
         int found = 15 + roomCount_ * 2 + getRandomInt(0, 10);
         hero->gold += found;
         lastEvent_ = hero->name + " searched and found " + std::to_string(found) + " gold pieces!";
@@ -3985,6 +4023,13 @@ void Game::enemyTurn() {
         checkPartyDefeat();
         return;
     }
+    // v2.29 telegraph: a surprise boss spends its first turn winding up (1-turn warning).
+    if (enemy->curveWarnTurns > 0) {
+        enemy->curveWarnTurns--;
+        lastEvent_ = "WARNING! " + telegraphLine(*enemy);
+        addChatMessage("Combat", lastEvent_);
+        return;
+    }
     // Bell-Herald (story beat 24): flavour only — the toll hushes Wren; no mechanical effect.
     if (enemy->enemyId == "boss_herald" && static_cast<SoloQuestBeat>(questBeat_) == SoloQuestBeat::ACT4_HERALD
         && (heraldTolls_++ % 2) == 0) {
@@ -4014,18 +4059,40 @@ void Game::enemyTurn() {
             enemy->nextAttackPenalty = 0;
         }
         bool hit = (result.total >= hero.armorClass || result.isCriticalHit) && !result.isCriticalFail;
+        const bool curved = encounterCurveActive();
+        std::string clampNote;
+        if (curved) {
+            const curve::HitCheck hc = curve::attackHits(result.dieRoll, result.total - result.dieRoll, hero.armorClass);
+            hit = hc.hit;
+            if (hc.clamped) clampNote = " (needs " + std::to_string(hc.need) + "+ — hit clamp)";
+        }
         if (hit) {
-            int extra = sneak ? enemy->sneakAttackDice() : 0;
-            int dmg = CombatSystem::calculateDamage(*enemy, result.isCriticalHit, extra, 6);
+            int dmg = 0;
+            if (enemy->curveEL > 0) {
+                dmg = curve::rollFoeDamage(enemy->curveAvgDmgX10, enemy->curveEL, result.isCriticalHit, sneak);
+            } else {
+                int extra = sneak ? enemy->sneakAttackDice() : 0;
+                dmg = CombatSystem::calculateDamage(*enemy, result.isCriticalHit, extra, 6);
+            }
+            if (curved && !hero.isDowned && !hero.isStable) {
+                // v2.29 overkill guard: one hit takes at most 45% of max HP (telegraphed boss
+                // heavies will be exempt in PR 2; there are none yet).
+                const int capped = curve::overkillCap(dmg, hero.maxHp);
+                if (capped < dmg) {
+                    dmg = capped;
+                    clampNote += " (guarded: max 45% of " + hero.name + "'s HP)";
+                }
+            }
             tryFightShield(&hero, dmg);
             bool wasDowned = hero.isDowned || hero.isStable;
             hero.takeDamage(dmg, wasDowned && result.isCriticalHit);
             pushVisualEvent(VisualEventType::PLAYER_DAMAGE, targetIdx);
             lastEvent_ = enemy->name + " attacks " + hero.name + "! d20=" + std::to_string(result.dieRoll)
                 + " = " + std::to_string(result.total) + " vs AC " + std::to_string(hero.armorClass)
-                + ". " + (result.isCriticalHit ? "CRITICAL HIT! " : "Hit! ")
+                + clampNote + ". " + (result.isCriticalHit ? "CRITICAL HIT! " : "Hit! ")
                 + "Damage " + std::to_string(dmg) + ".";
             if (sneak) lastEvent_ += " (Sneak Attack)";
+            if (!wasDowned && hero.isDowned) heroDroppedThisRoom_ = true;
             addChatMessage("Combat", lastEvent_);
             if (hero.isDead) {
                 dmSay(hero.name + " is slain!");
@@ -4039,7 +4106,7 @@ void Game::enemyTurn() {
             }
         } else {
             lastEvent_ = enemy->name + " attacks " + hero.name + "! d20=" + std::to_string(result.dieRoll)
-                + " = " + std::to_string(result.total) + " vs AC " + std::to_string(hero.armorClass) + ". Miss!";
+                + " = " + std::to_string(result.total) + " vs AC " + std::to_string(hero.armorClass) + clampNote + ". Miss!";
             addChatMessage("Combat", lastEvent_);
         }
         return hero.isDead;
@@ -4112,6 +4179,14 @@ std::string Game::getPartyStatus() const {
     else if (questComplete_ && !isSoloQuestScripted()) ss << "Quest complete: Ashen Lantern recovered\n";
     else if (isAct1Beat(questBeat_)) ss << "Quest: The Kindling — " << soloQuestBeatName(questBeat_) << "\n";
     ss << "Difficulty: " << difficultyName(difficulty_) << "\n";
+    if (encounterCurveActive() && !players_.empty()) {
+        // v2.29: "Curve: EL 7 · Pressure 2/4 · Rekindle 1" — Kotlin shows the pressure pips.
+        int el = 0;
+        for (const auto& e : enemies_) if (e && e->curveEL > 0) { el = e->curveEL; break; }
+        if (el <= 0) el = currentEncounterLevel();
+        ss << "Curve: EL " << el << " · Pressure " << pressure_ << "/" << curve::kPressureMaxSteps
+           << " · Rekindle " << rekindleRooms_ << "\n";
+    }
     if (gameOver_) ss << "Game Over\n";
     if (dmOnlyTable_ && !dmName_.empty()) ss << "Lanternkeeper: " << dmName_ << "\n";
     if (Character* companion = findNpcCompanion()) {
@@ -4197,4 +4272,203 @@ bool Game::grantDailyQuestSpoils(int gold, bool giveLoot) {
     return true;
 }
 
+// ---------------------------------------------------------------------------------------------
+// v2.29 combat curve (PR 1 of the combat/progression revamp). Numbers live in CombatCurve.h.
+// ---------------------------------------------------------------------------------------------
+
+void Game::resetCombatCurveState() {
+    pressure_ = 0;
+    rekindleRooms_ = 0;
+    lowHpStreak_ = 0;
+    lastRoomOverBudget_ = false;
+    heroDroppedThisRoom_ = false;
+    pendingSurprise_ = false;
+}
+
+int Game::encounterModeBonus() const {
+    if (isBossRaid()) return 2;
+    if (isChallengeDungeon()) return 3;
+    if (isArena()) return arenaWave_ >= ARENA_MAX_WAVES ? 2 : 0;
+    if (isEndlessDeep()) return std::max(0, endlessDepth_) / 5;
+    return 0;
+}
+
+int Game::currentEncounterLevel() const {
+    std::vector<curve::PartyMember> party;
+    for (const auto& p : players_) if (p && !p->isDead) party.push_back(curve::memberOf(*p));
+    if (party.empty()) for (const auto& p : players_) if (p) party.push_back(curve::memberOf(*p));
+    return curve::encounterLevel(party, encounterModeBonus());
+}
+
+double Game::currentRoomType() const {
+    if (isSoloQuestScripted()) {
+        switch (static_cast<SoloQuestBeat>(questBeat_)) {
+            case SoloQuestBeat::MILLHOLLOW:   // Act openers stay soft
+            case SoloQuestBeat::THORNPATH:
+            case SoloQuestBeat::ACT2_GREEN:
+            case SoloQuestBeat::ACT3_RUMOR:
+            case SoloQuestBeat::ACT4_WATCH:
+                return curve::kRoomSoftOpen;
+            default:
+                return curve::kRoomNormal;
+        }
+    }
+    if (activeSetPieceId_ != 0) return curve::kRoomSetPiece;
+    if (isEndlessDeep() && endlessDepth_ > 0 && endlessDepth_ % ENDLESS_MILESTONE_EVERY == 0
+        && endlessDepth_ % ENDLESS_APEX_EVERY != 0) {
+        return curve::kRoomDeepMilestone;
+    }
+    if (isSoloCrawl() && roomCount_ <= 2) return curve::kRoomSoftOpen;
+    return curve::kRoomNormal;
+}
+
+void Game::applyEncounterCurve() {
+    bool anyPending = false;
+    for (const auto& e : enemies_) if (e && e->curvePending) { anyPending = true; break; }
+    if (!anyPending) { pendingSurprise_ = false; return; }
+    if (!encounterCurveActive()) {
+        // Online Keeper tables / joiners: old rules, untouched.
+        for (auto& e : enemies_) if (e) e->curvePending = false;
+        pendingSurprise_ = false;
+        return;
+    }
+    heroDroppedThisRoom_ = false;
+    const curve::DifficultyInfo& di = curve::difficultyInfo(difficulty_);
+
+    // No more than 4 foes on the field (5 on Nightmare); the budget fit turns the rest into HP.
+    auto isPending = [](const std::unique_ptr<Character>& e) { return e && e->curvePending; };
+    int pendingCount = static_cast<int>(std::count_if(enemies_.begin(), enemies_.end(), isPending));
+    while (pendingCount > di.maxFoes) {
+        for (auto it = enemies_.end(); it != enemies_.begin();) {
+            --it;
+            if (isPending(*it) && bestiary::role((*it)->enemyId) != static_cast<int>(curve::Role::BOSS)) {
+                enemies_.erase(it);
+                break;
+            }
+        }
+        const int now = static_cast<int>(std::count_if(enemies_.begin(), enemies_.end(), isPending));
+        if (now == pendingCount) break; // only bosses left
+        pendingCount = now;
+    }
+
+    int party = 0;
+    for (const auto& p : players_) if (p && !p->isDead) ++party;
+    party = std::max(1, party);
+    const int el = currentEncounterLevel();
+    // Mode bonuses (Raid +2, Challenge +3, Arena finale +2, Deep +depth/5) raise HP and damage to
+    // the bonus EL; hit odds (AC / to-hit) stay at the party's own EL so the 15–90% clamp and the
+    // ~60/50% targets hold in every mode.
+    int accuracyEl = el;
+    {
+        std::vector<curve::PartyMember> pm;
+        for (const auto& p : players_) if (p && !p->isDead) pm.push_back(curve::memberOf(*p));
+        if (!pm.empty()) accuracyEl = curve::encounterLevel(pm, 0);
+    }
+    const double budget = curve::roomBudget(party, difficulty_, currentRoomType());
+
+    // Comeback / pressure.
+    double mod = 1.0;
+    bool rekindled = false;
+    if (rekindleRooms_ > 0) {
+        mod = curve::kRekindleBudget;
+        rekindleRooms_--;
+        rekindled = true;
+    } else if (pressure_ > 0) {
+        mod = curve::pressureMultiplier(pressure_);
+    }
+    // Variance: +-15%, never two over-budget rooms back to back.
+    double jitter = 1.0 + getRandomInt(-15, 15) / 100.0;
+    if (lastRoomOverBudget_ && jitter > 1.0) jitter = 2.0 - jitter;
+
+    const bool surprise = pendingSurprise_;
+    pendingSurprise_ = false;
+    bool hasBoss = false;
+    double addsCost = 0, cost = 0;
+    for (const auto& e : enemies_) {
+        if (!isPending(e)) continue;
+        const curve::Role r = curve::roleFromInt(bestiary::role(e->enemyId));
+        if (r == curve::Role::BOSS) { hasBoss = true; continue; }
+        cost += curve::roleInfo(r).cost;
+    }
+    addsCost = cost;
+
+    double scaleBoss = 1.0, scaleOthers = 1.0;
+    if (surprise) {
+        // Early surprise boss: Elite numbers, capped at 1.5x this room's budget (no pressure
+        // on top of the cap; Rekindle still lowers it). The boss spends its first turn winding up.
+        const double cap = curve::kSurpriseBudgetCap * budget * std::min(1.0, mod);
+        scaleBoss = cap / curve::roleInfo(curve::Role::ELITE).cost;
+        jitter = std::min(jitter, 1.0);
+        scaleOthers = addsCost > 0 ? curve::fitScale(budget * std::min(1.0, mod) * jitter, addsCost) : 1.0;
+    } else if (hasBoss) {
+        double bossMod = mod * jitter;
+        if (isSoloQuestScripted()) bossMod = std::max(bossMod, curve::kRekindleStoryBossFloor);
+        scaleBoss = bossMod;
+        if (addsCost > 0) {
+            scaleOthers = std::clamp(curve::kBossAddsShare * budget * mod * jitter / addsCost, 0.4, 1.0);
+        }
+    } else {
+        scaleOthers = curve::fitScale(budget * mod * jitter, cost);
+    }
+    lastRoomOverBudget_ = jitter > 1.0;
+
+    for (auto& e : enemies_) {
+        if (!isPending(e)) continue;
+        curve::Role r = curve::roleFromInt(bestiary::role(e->enemyId));
+        double s = scaleOthers;
+        if (r == curve::Role::BOSS) {
+            s = scaleBoss;
+            if (surprise) {
+                r = curve::Role::ELITE;
+                e->curveSurprise = true;
+                e->curveWarnTurns = 1;
+            }
+        }
+        const curve::FoeStats st = curve::foeStats(r, el, difficulty_, party, s, accuracyEl);
+        e->maxHp = st.maxHp;
+        e->currentHp = st.maxHp;
+        e->armorClass = st.ac;
+        e->curveEL = el;
+        e->curveRole = static_cast<int>(r);
+        e->curveToHit = st.toHit;
+        e->curveAvgDmgX10 = st.avgDmgX10;
+        e->curvePending = false;
+    }
+
+    std::string line = "Encounter Level " + std::to_string(el);
+    if (pressure_ > 0 && !rekindled) line += " · Pressure " + std::to_string(pressure_) + "/" + std::to_string(curve::kPressureMaxSteps);
+    addChatMessage("Combat", line + ".");
+    if (rekindled) dmSay("The dark draws back.");
+}
+
+void Game::noteRoomOutcomeForCurve() {
+    if (!encounterCurveActive()) return;
+    bool low = false, flawless = true;
+    for (const auto& p : players_) {
+        if (!p || p->isDead) { flawless = false; continue; }
+        if (p->maxHp > 0 && p->currentHp * 4 <= p->maxHp) low = true;
+        if (p->maxHp > 0 && p->currentHp * 10 < p->maxHp * 7) flawless = false;
+        if (p->isDowned) flawless = false;
+    }
+    if (heroDroppedThisRoom_) {
+        pressure_ = 0;
+        flawless = false;
+    }
+    if (flawless) pressure_ = std::min(curve::kPressureMaxSteps, pressure_ + 1);
+    lowHpStreak_ = low ? lowHpStreak_ + 1 : 0;
+    if (lowHpStreak_ >= 2) {
+        rekindleRooms_ = std::max(rekindleRooms_, 1);
+        lowHpStreak_ = 0;
+        pressure_ = 0;
+    }
+    heroDroppedThisRoom_ = false;
+}
+
+std::string Game::telegraphLine(const Character& foe) const {
+    if (foe.enemyId == "boss_prior") return "Bones knit into a mitre — the Ossuary Prior rises. It strikes next turn.";
+    if (foe.enemyId == "boss_wick_king") return "Molten wax hardens into a crown — the Wick King rises. He strikes next turn.";
+    return foe.name + " gathers itself. It strikes next turn.";
+}
+
 } // namespace dnd
+
