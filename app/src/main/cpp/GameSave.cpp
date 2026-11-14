@@ -34,17 +34,18 @@ void parseStatBlock(Character& c, const std::vector<std::string>& f) {
     using savecodec::parseInt;
     using savecodec::clampInt;
     c.level = clampInt(parseInt(f[2], "level"), 1, 100);
-    c.xp = std::max(0, parseInt(f[3], "xp"));
-    c.maxHp = std::max(1, parseInt(f[5], "maxHp"));
+    namespace lim = savecodec::limits; // v2.36 #91: upper bounds too, not just lower
+    c.xp = clampInt(parseInt(f[3], "xp"), 0, lim::kMaxXp);
+    c.maxHp = clampInt(parseInt(f[5], "maxHp"), 1, lim::kMaxHp);
     c.currentHp = clampInt(parseInt(f[4], "hp"), 0, c.maxHp);
-    c.maxResources = std::max(0, parseInt(f[7], "maxResources"));
+    c.maxResources = clampInt(parseInt(f[7], "maxResources"), 0, lim::kMaxResources);
     c.resources = clampInt(parseInt(f[6], "resources"), 0, std::max(c.maxResources, 0) + 10);
     c.pendingStatPoints = clampInt(parseInt(f[8], "statPoints"), 0, 1000);
     c.attributes = {clampInt(parseInt(f[9], "str"), 1, 60), clampInt(parseInt(f[10], "dex"), 1, 60),
                     clampInt(parseInt(f[11], "con"), 1, 60), clampInt(parseInt(f[12], "int"), 1, 60),
                     clampInt(parseInt(f[13], "wis"), 1, 60), clampInt(parseInt(f[14], "cha"), 1, 60)};
-    c.gold = std::max(0, parseInt(f[15], "gold"));
-    c.initiative = parseInt(f[16], "initiative");
+    c.gold = clampInt(parseInt(f[15], "gold"), 0, lim::kMaxGold);
+    c.initiative = clampInt(parseInt(f[16], "initiative"), lim::kMinInitiative, lim::kMaxInitiative);
 }
 
 CharacterClass parseClassField(const std::string& s) {
@@ -324,9 +325,9 @@ bool Game::parseSave(const std::string& data) {
     auto num = [&](size_t i, int def, const char* name) { return has(i) ? parseInt(h[i], name) : def; };
 
     sessionId_ = text(h[0]);
-    roomCount_ = std::max(0, num(1, 0, "roomCount"));
+    roomCount_ = savecodec::clampInt(num(1, 0, "roomCount"), 0, savecodec::limits::kMaxRoomCount); // v2.36 #91
     gameOver_ = flag(2);
-    currentTurnIndex_ = std::max(0, num(3, 0, "turnIndex"));
+    currentTurnIndex_ = savecodec::clampInt(num(3, 0, "turnIndex"), 0, savecodec::limits::kMaxTurnIndex);
     isMerchantRoom_ = flag(4);
     dmOnlyTable_ = flag(5);
     if (has(6)) dmName_ = text(h[6]);
@@ -352,17 +353,17 @@ bool Game::parseSave(const std::string& data) {
     bossSeenHollow_ = flag(21);
     bossSeenHydra_ = flag(22);
     bossSeenNightfang_ = flag(23);
-    arenaWave_ = std::max(0, num(24, 0, "arenaWave"));
-    arenaScore_ = std::max(0, num(25, 0, "arenaScore"));
-    arenaWavesCleared_ = std::max(0, num(26, 0, "arenaCleared"));
-    endlessDepth_ = std::max(0, num(27, 0, "endlessDepth"));
-    endlessBestDepthThisRun_ = std::max(0, num(28, endlessDepth_, "endlessBest"));
+    arenaWave_ = savecodec::clampInt(num(24, 0, "arenaWave"), 0, savecodec::limits::kMaxModeCounter);
+    arenaScore_ = savecodec::clampInt(num(25, 0, "arenaScore"), 0, savecodec::limits::kMaxArenaScore);
+    arenaWavesCleared_ = savecodec::clampInt(num(26, 0, "arenaCleared"), 0, savecodec::limits::kMaxModeCounter);
+    endlessDepth_ = savecodec::clampInt(num(27, 0, "endlessDepth"), 0, savecodec::limits::kMaxModeCounter);
+    endlessBestDepthThisRun_ = savecodec::clampInt(num(28, endlessDepth_, "endlessBest"), 0, savecodec::limits::kMaxModeCounter);
     questAct4Complete_ = flag(29);
     questAct4EmberFound_ = flag(30);
     roomRestUsed_ = flag(31);
-    longRestNextAvailableRoom_ = std::max(0, num(32, 0, "longRestNext"));
+    longRestNextAvailableRoom_ = savecodec::clampInt(num(32, 0, "longRestNext"), 0, savecodec::limits::kMaxRoomCount + 100);
     // Mode-safe Long Rest progress (backward compatible: fall back to roomCount_).
-    longRestProgress_ = std::max(0, num(33, roomCount_, "longRestProgress"));
+    longRestProgress_ = savecodec::clampInt(num(33, roomCount_, "longRestProgress"), 0, savecodec::limits::kMaxRoomCount + 100);
     // v2.25 story choices (fields 35/36, after the E2 marker). Older saves have none: an act that
     // is already complete keeps the old script's outcome (Venn ended, ash-dead sealed in) and is
     // never re-prompted; an act still in progress stays undecided and asks on its resolution beat.
@@ -487,7 +488,8 @@ bool Game::parseSave(const std::string& data) {
                 p->statRules = rules;
                 p->recomputeMaxHp();
                 if (withFlames < savedMax) { // never shrink a hero on load; keep the difference
-                    p->bonusMaxHp += savedMax - withFlames;
+                    p->bonusMaxHp = savecodec::clampInt(p->bonusMaxHp + (savedMax - withFlames), 0,
+                                                        savecodec::limits::kMaxHp); // v2.36 #91
                     p->recomputeMaxHp();
                 }
             }
@@ -507,6 +509,9 @@ bool Game::parseSave(const std::string& data) {
                 p->bonusMaxResources += savedMaxRes - prestRes - p->maxResources;
                 p->maxResources = savedMaxRes - prestRes;
             }
+            // v2.36 #91: keep the derived bonus / max inside the save ceilings too.
+            p->bonusMaxResources = savecodec::clampInt(p->bonusMaxResources, 0, savecodec::limits::kMaxResources);
+            p->maxResources = savecodec::clampInt(p->maxResources, 0, savecodec::limits::kMaxResources);
             if (p->resources > p->maxResources + 10) p->resources = p->maxResources;
             if (f.size() > 30) p->status = ai::decodeStatuses(f[30]);
             if (f.size() > 31 && savecodec::tryParseInt(f[31], pv)) {

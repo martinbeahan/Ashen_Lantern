@@ -281,7 +281,9 @@ struct Item {
         auto item = std::make_shared<Item>();
         item->name = savecodec::decode(parts[0]); // no-op for names without '%'
 
-        try { item->bonus = std::stoi(parts[1]); } catch (...) { item->bonus = 0; }
+        // v2.36 #91 (rest of audit L8): no std::stoi / catch(...) — strict parse, default, clamp.
+        namespace lim = savecodec::limits;
+        item->bonus = savecodec::clampInt(savecodec::parseIntOr(parts[1], 0), lim::kMinItemBonus, lim::kMaxItemBonus);
         char t = parts[2].empty() ? 'W' : parts[2][0];
         if (t == 'A') item->type = ItemType::ARMOR;
         else if (t == 'P') item->type = ItemType::POTION;
@@ -296,25 +298,32 @@ struct Item {
             }
         }
         if (parts.size() >= 5) {
-            try { item->classTag = std::stoi(parts[4]); } catch (...) { item->classTag = -1; }
+            item->classTag = savecodec::parseIntOr(parts[4], -1);
+            if (item->classTag < -1 || item->classTag > 4) item->classTag = -1; // unknown class -> any class
         }
         if (parts.size() >= 6) {
-            try { item->upgradeLevel = std::stoi(parts[5]); } catch (...) { item->upgradeLevel = 0; }
+            item->upgradeLevel = std::max(0, savecodec::parseIntOr(parts[5], 0)); // clamped below
         }
         if (parts.size() >= 7) {
-            try { item->legStat0 = std::stoi(parts[6]); } catch (...) { item->legStat0 = -1; }
+            item->legStat0 = savecodec::parseIntOr(parts[6], -1);
+            if (item->legStat0 < -1 || item->legStat0 > 5) item->legStat0 = -1;
         }
         if (parts.size() >= 8) {
-            try { item->legStat1 = std::stoi(parts[7]); } catch (...) { item->legStat1 = -1; }
+            item->legStat1 = savecodec::parseIntOr(parts[7], -1);
+            if (item->legStat1 < -1 || item->legStat1 > 5) item->legStat1 = -1;
         }
         if (parts.size() >= 9) {
-            try { item->legStat2 = std::stoi(parts[8]); } catch (...) { item->legStat2 = -1; }
+            item->legStat2 = savecodec::parseIntOr(parts[8], -1);
+            if (item->legStat2 < -1 || item->legStat2 > 5) item->legStat2 = -1;
         }
         if (parts.size() >= 10) {
-            try { item->subEffect = std::stoi(parts[9]); } catch (...) { item->subEffect = 0; }
+            item->subEffect = savecodec::parseIntOr(parts[9], 0);
+            if (item->subEffect < 0 || item->subEffect > lim::kMaxSubEffect) item->subEffect = 0;
         }
         if (static_cast<int>(item->rarity) < 0 || static_cast<int>(item->rarity) > 4)
             item->rarity = ItemRarity::COMMON;
+        // Highest cap any rarity has (Legendary +25): never rewrites a real item, only absurd values.
+        item->upgradeLevel = savecodec::clampInt(item->upgradeLevel, 0, savecodec::limits::kMaxUpgradeLevel);
         return item;
     }
 
@@ -705,7 +714,8 @@ struct Character {
      * HP/resources recomputed once and refilled. Returns the number of levels gained.
      */
     int addXpLevels(int amount) {
-        if (amount > 0) xp += amount;
+        // v2.36 #91: saturate (an XP total near INT_MAX used to wrap negative).
+        if (amount > 0) xp = savecodec::saturatingAdd(xp, amount, 0, savecodec::limits::kMaxXp);
         int gained = 0;
         // v2.32: the cap is 50; XP for the next level follows perks::xpToNext (unchanged below 20).
         // Stat points: +2 per level to 20, then +2 at 25, 30 ... 50; levels 21-50 give 1 Ember each.
@@ -725,6 +735,8 @@ struct Character {
         return gained;
     }
     bool addXp(int amount) { return addXpLevels(amount) > 0; }
+    /** v2.36 #91: add gold without overflow (0 .. savecodec::limits::kMaxGold). */
+    void gainGold(long long amount) { gold = savecodec::saturatingAdd(gold, amount, 0, savecodec::limits::kMaxGold); }
 
     /** v2.31: index of the class's main stat (0 STR .. 5 CHA). */
     int mainStatIndex() const { return stats::mainIndex(static_cast<int>(characterClass)); }

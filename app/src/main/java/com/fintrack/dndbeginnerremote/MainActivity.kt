@@ -986,15 +986,10 @@ class MainActivity : AppCompatActivity() {
         val type = action["type"]?.toString() ?: return
         // Sanitized the same way admitPlayer stored it, so turn validation matches older clients too.
         val player = TextSafety.sanitizeName(action["playerName"]?.toString(), "Hero")
-        val target = (action["targetIndex"] as? Number)?.toInt()
-            ?: action["targetIndex"]?.toString()?.toIntOrNull()
-            ?: 0
-        val classId = (action["classId"] as? Number)?.toInt()
-            ?: action["classId"]?.toString()?.toIntOrNull()
-            ?: 0
-        val statIndex = (action["statIndex"] as? Number)?.toInt()
-            ?: action["statIndex"]?.toString()?.toIntOrNull()
-            ?: target
+        // v2.36 #91: read in 64 bits and clamp (Long.toInt() used to wrap a huge index into a valid one).
+        val target = RemoteActionArgs.index(action["targetIndex"])
+        val classId = RemoteActionArgs.classId(action["classId"])
+        val statIndex = RemoteActionArgs.statIndex(action["statIndex"], if (target in 0..5) target else -1)
 
         when (type) {
             "join" -> admitPlayer(player, classId)
@@ -3693,10 +3688,11 @@ class MainActivity : AppCompatActivity() {
 
     /** Host-authoritative multi-point spend: allocations = "s0,s1,s2,s3,s4,s5" counts per stat. */
     private fun applyLevelUpBatch(playerName: String, allocations: String) {
-        val parts = allocations.split(',').map { it.trim().toIntOrNull() ?: 0 }
-        if (parts.isEmpty() || parts.all { it <= 0 }) return
-        for (i in 0 until minOf(6, parts.size)) {
-            repeat(parts[i].coerceAtLeast(0)) {
+        // v2.36 #91: at most RemoteActionArgs.MAX_BATCH_POINTS calls, however large the numbers sent.
+        val parts = RemoteActionArgs.allocations(allocations)
+        if (parts.all { it <= 0 }) return
+        for (i in 0 until 6) {
+            repeat(parts[i]) {
                 doIncreaseStat(playerName, i)
             }
         }

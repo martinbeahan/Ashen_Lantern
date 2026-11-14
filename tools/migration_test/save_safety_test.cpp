@@ -5,6 +5,8 @@
 #include "SaveCodec.h"
 #include <iostream>
 #include <string>
+#include <vector>
+#include "CombatCurve.h"
 std::ostream aout(std::cout.rdbuf());
 using namespace dnd;
 
@@ -17,6 +19,74 @@ static const Character* findPlayer(const Game& g, const std::string& name) {
 }
 
 static std::string journalOf(const Game& g) { return g.getJournal(); }
+
+namespace dnd {
+struct GameTestAccess {
+    static void clearRoom(Game& g) {
+        for (auto& e : g.enemies_) g.removeFromTurnOrder(e.get());
+        g.enemies_.clear();
+        g.enterClearedRoom(g.players_[0].get());
+    }
+    static void killLoot(Game& g, const char* id) { g.grantKillLoot(g.players_[0].get(), "Foe", id); }
+};
+} // namespace dnd
+
+// ---- v2.36 #91 helpers: edit one numeric field of a save ----
+static std::vector<std::string> splitKeep(const std::string& s, char d) {
+    std::vector<std::string> out; std::string cur;
+    for (char c : s) { if (c == d) { out.push_back(cur); cur.clear(); } else cur.push_back(c); }
+    out.push_back(cur);
+    return out;
+}
+static std::string joinWith(const std::vector<std::string>& v, char d) {
+    std::string s;
+    for (size_t i = 0; i < v.size(); ++i) { if (i) s += d; s += v[i]; }
+    return s;
+}
+/** section 0 = header, 2 = players, 3 = enemies; rec = record index; field = ',' index; sub = ':' index or -1. */
+static std::string setField(const std::string& save, size_t section, size_t rec, size_t field, const std::string& v, int sub = -1) {
+    auto sec = splitKeep(save, '|');
+    if (section >= sec.size()) return save;
+    std::vector<std::string> recs = section == 0 ? std::vector<std::string>{sec[0]} : splitKeep(sec[section], ';');
+    if (rec >= recs.size()) return save;
+    auto f = splitKeep(recs[rec], ',');
+    if (field >= f.size()) return save;
+    if (sub < 0) f[field] = v;
+    else {
+        auto parts = splitKeep(f[field], ':');
+        if (static_cast<size_t>(sub) >= parts.size()) return save;
+        parts[static_cast<size_t>(sub)] = v;
+        f[field] = joinWith(parts, ':');
+    }
+    recs[rec] = joinWith(f, ',');
+    sec[section] = section == 0 ? recs[0] : joinWith(recs, ';');
+    return joinWith(sec, '|');
+}
+static bool sane(const Game& g) {
+    namespace lim = savecodec::limits;
+    if (g.getRoomCount() < 0 || g.getRoomCount() > lim::kMaxRoomCount + 1000) { std::cerr << "insane: g.getRoomCount() < 0 || g.getRoomCount() > lim::kMaxRoomCount + 1000\n"; return false; }
+    for (const auto& p : g.getPlayers()) {
+        if (!p) { std::cerr << "insane: !p\n"; return false; }
+        if (p->level < 1 || p->level > Character::kMaxLevel) { std::cerr << "insane: p->level < 1 || p->level > Character::kMaxLevel\n"; return false; }
+        if (p->xp < 0 || p->xp > lim::kMaxXp) { std::cerr << "insane: p->xp < 0 || p->xp > lim::kMaxXp\n"; return false; }
+        if (p->gold < 0 || p->gold > lim::kMaxGold) { std::cerr << "insane: p->gold < 0 || p->gold > lim::kMaxGold\n"; return false; }
+        if (p->maxHp < 1 || p->maxHp > 2 * lim::kMaxHp + 5000) { std::cerr << "insane: p->maxHp < 1 || p->maxHp > 2 * lim::kMaxHp + 5000\n"; return false; }
+        if (p->currentHp < 0 || p->currentHp > p->maxHp) { std::cerr << "insane: p->currentHp < 0 || p->currentHp > p->maxHp\n"; return false; }
+        if (p->maxResources < 0 || p->maxResources > 2 * lim::kMaxResources) { std::cerr << "insane: maxResources\n"; return false; }
+        if (p->resources < 0 || p->resources > p->maxResources + 10) { std::cerr << "insane: p->resources < 0 || p->resources > p->maxResources + 10\n"; return false; }
+        if (p->initiative < lim::kMinInitiative || p->initiative > lim::kMaxInitiative) { std::cerr << "insane: p->initiative < lim::kMinInitiative || p->initiative > lim::kMaxInitiative\n"; return false; }
+        for (const auto& it : {p->equippedWeapon, p->equippedArmor}) {
+            if (!it) continue;
+            if (it->bonus < lim::kMinItemBonus || it->bonus > lim::kMaxItemBonus) { std::cerr << "insane: it->bonus < lim::kMinItemBonus || it->bonus > lim::kMaxItemBonus\n"; return false; }
+            if (it->upgradeLevel < 0 || it->upgradeLevel > lim::kMaxUpgradeLevel) { std::cerr << "insane: it->upgradeLevel < 0 || it->upgradeLevel > lim::kMaxUpgradeLevel\n"; return false; }
+            if (it->classTag < -1 || it->classTag > 4) { std::cerr << "insane: it->classTag < -1 || it->classTag > 4\n"; return false; }
+        }
+    }
+    for (const auto& e : g.getEnemies()) {
+        if (!e || e->maxHp < 1 || e->maxHp > lim::kMaxHp || e->gold < 0 || e->gold > lim::kMaxGold) { std::cerr << "insane: !e || e->maxHp < 1 || e->maxHp > lim::kMaxHp || e->gold < 0 || e->gold > lim::kMaxGold\n"; return false; }
+    }
+    return true;
+}
 
 int main() {
     // 1) "Bob, Jr" (unsanitized, e.g. an old host or a direct native call) round-trips exactly.
@@ -208,6 +278,115 @@ int main() {
         Game h;
         CHECK(h.deserialize(g.serialize()));
         CHECK(h.serialize() == g.serialize());
+    }
+
+    // 14) v2.36 #91: numbers at the edge of int — every one is pulled in on load, later math can't overflow.
+    {
+        namespace lim = savecodec::limits;
+        const std::string IMAX = "2147483647", IMIN = "-2147483648";
+        Game base;
+        base.seedForTesting(11);
+        base.startNewGame(CharacterClass::FIGHTER, "Edge", 2, 1, CharacterClass::WIZARD, true);
+        base.setAsHost(true);
+        GameTestAccess::clearRoom(base);
+        const std::string s0 = base.serialize();
+        // roomCount = INT_MAX: used to wrap negative and jump a level-1 hero to 50 with 1.4 billion gold.
+        {
+            Game g; CHECK(g.deserialize(setField(s0, 0, 0, 1, IMAX)));
+            CHECK(g.getRoomCount() == lim::kMaxRoomCount);
+            const int lv = g.getPlayers()[0]->level;
+            for (int i = 0; i < 3; ++i) { GameTestAccess::killLoot(g, "enemy_ashbound"); GameTestAccess::clearRoom(g); }
+            CHECK(g.getRoomCount() > 0 && sane(g));
+            CHECK(g.getPlayers()[0]->gold <= lim::kMaxGold);
+            std::cout << "INT_MAX roomCount: room " << g.getRoomCount() << ", level " << lv << " -> " << g.getPlayers()[0]->level
+                      << ", gold " << g.getPlayers()[0]->gold << "\n";
+        }
+        // xp / gold / maxHp / maxResources / initiative = INT_MAX (hero, field 3/15/5/7/16).
+        for (size_t fld : {3u, 15u, 5u, 7u, 16u, 4u, 6u}) {
+            Game g; CHECK(g.deserialize(setField(s0, 2, 0, fld, IMAX)));
+            CHECK(sane(g));
+            GameTestAccess::killLoot(g, "boss_hollow_crown");
+            GameTestAccess::clearRoom(g);
+            CHECK(sane(g));
+            Game n; CHECK(n.deserialize(setField(s0, 2, 0, fld, IMIN))); // negative: floored
+            CHECK(sane(n));
+        }
+        { Game g; CHECK(g.deserialize(setField(s0, 2, 0, 15, IMAX))); CHECK(g.getPlayers()[0]->gold == lim::kMaxGold);
+          GameTestAccess::killLoot(g, "boss_hollow_crown"); CHECK(g.getPlayers()[0]->gold == lim::kMaxGold); }
+        { Game g; CHECK(g.deserialize(setField(s0, 2, 0, 3, IMAX))); CHECK(g.getPlayers()[0]->xp >= 0 && g.getPlayers()[0]->level <= 50); }
+        { Game g; CHECK(g.deserialize(setField(s0, 2, 0, 7, IMAX))); CHECK(g.getPlayers()[0]->resources <= lim::kMaxResources + 10); }
+        // Item token fields: bonus, classTag, upgradeLevel, legStats, subEffect (weapon = player field 18).
+        const char* junk[] = {"2147483647", "-2147483648", "99999999999", "abc", "", "1e9", "+7", " 3 ", "-1", "0x10"};
+        for (int sub : {1, 4, 5, 6, 7, 8, 9}) {
+            for (const char* v : junk) {
+                Game g; std::string err;
+                CHECK(g.deserialize(setField(s0, 2, 0, 18, v, sub), &err)); // item fields are lenient: default + clamp
+                CHECK(sane(g));
+            }
+        }
+        { Game g; CHECK(g.deserialize(setField(s0, 2, 0, 18, IMAX, 1)));
+          CHECK(g.getPlayers()[0]->equippedWeapon && g.getPlayers()[0]->equippedWeapon->bonus == lim::kMaxItemBonus);
+          CHECK(g.currentEncounterLevel() <= curve::kMaxEL); }
+        // Strict fields (a stat that isn't a number at all, or overflows int) still reject the whole save
+        // and leave the running game untouched (transactional load, M5) — never an exception or crash.
+        for (const char* v : {"abc", "99999999999", "", "1e9"}) {
+            Game g; g.startNewGame(CharacterClass::CLERIC, "Keep");
+            const std::string before = g.serialize();
+            std::string err;
+            CHECK(!g.deserialize(setField(s0, 2, 0, 15, v), &err) && !err.empty());
+            CHECK(g.serialize() == before);
+        }
+        // Enemy record (section 3) at INT_MAX: HP, gold, initiative.
+        {
+            Game f; f.seedForTesting(3);
+            f.startNewGame(CharacterClass::ROGUE, "Foe", 2, 1, CharacterClass::BARD, true);
+            const std::string sf = f.serialize();
+            for (size_t fld : {4u, 5u, 15u, 16u, 3u}) {
+                Game g; CHECK(g.deserialize(setField(sf, 3, 0, fld, IMAX)));
+                CHECK(sane(g));
+            }
+        }
+        // Fuzz: 3000 random numeric edits across header / heroes / foes / item tokens.
+        {
+            Game f; f.seedForTesting(5);
+            f.startNewGame(CharacterClass::BARD, "Fuzz", 2, 2, CharacterClass::CLERIC, true);
+            const std::string seeds[] = {s0, f.serialize()};
+            const char* vals[] = {"2147483647", "-2147483648", "2147483646", "-1", "0", "1", "999999999", "1000001",
+                                  "abc", "", "99999999999", "1e9", "7", "50", "100000000"};
+            unsigned x = 12345;
+            auto rnd = [&](unsigned n) { x = x * 1103515245u + 12345u; return (x >> 8) % n; };
+            int accepted = 0, rejected = 0;
+            for (int it = 0; it < 3000; ++it) {
+                const std::string& sd = seeds[rnd(2)];
+                std::string m = sd;
+                for (int k = 0; k < 3; ++k) {
+                    const size_t section = std::vector<size_t>{0, 2, 3}[rnd(3)];
+                    const size_t field = section == 0 ? 1 + rnd(46) : 2 + rnd(38);
+                    const int sub = (section == 2 && (field == 18 || field == 19)) ? static_cast<int>(1 + rnd(9)) : -1;
+                    m = setField(m, section, rnd(2), field, vals[rnd(15)], sub);
+                }
+                Game g; std::string err;
+                if (g.deserialize(m, &err)) {
+                    ++accepted;
+                    CHECK(sane(g));
+                    if (!g.getPlayers().empty()) { GameTestAccess::killLoot(g, "enemy_ashbound"); GameTestAccess::clearRoom(g); CHECK(sane(g)); }
+                    Game r; CHECK(r.deserialize(g.serialize())); // whatever loads, saves and reloads
+                } else {
+                    ++rejected;
+                }
+            }
+            CHECK(accepted > 500);
+            std::cout << "FUZZ #91: 3000 edited saves, " << accepted << " loaded within limits, " << rejected << " rejected cleanly\n";
+        }
+        // A real save (several modes / classes / rooms) loads and re-saves byte for byte.
+        for (int c = 0; c < 5; ++c) {
+            Game g; g.seedForTesting(20 + c);
+            g.startNewGame(static_cast<CharacterClass>(c), "Same", 1 + c % 3, c % 4, static_cast<CharacterClass>((c + 2) % 5), true);
+            g.setAsHost(true);
+            for (int r = 0; r < 4; ++r) { GameTestAccess::clearRoom(g); g.dmAdvanceRoom(); }
+            const std::string sv = g.serialize();
+            Game h; CHECK(h.deserialize(sv)); CHECK(h.serialize() == sv);
+        }
     }
     if (failures) { std::cerr << failures << " check(s) failed\n"; return 1; }
     std::cout << "save_safety_test OK\n";
