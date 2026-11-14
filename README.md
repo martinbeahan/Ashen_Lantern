@@ -6,7 +6,11 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.34 / 73) — Combat rebalance
+## What's new (v2.38 / 77) — Cleanup: potion on a fallen ally
+
+- **A potion is no longer wasted on a fallen hero (#92).** Picking a hero who has died for good (three failed death saves) used to spend the potion for 0 HP and end your turn. Now the game says they're beyond a potion's help, keeps the potion and lets you pick again. A downed (dying) ally is still revived as before. Saves unchanged; online play otherwise unchanged
+
+## Previous (v2.34 / 73) — Combat rebalance
 
 - **Rebalance: the Encounter Level follows your real power.** Foes used to assume a hero who had spent every point and wore the gear for the level, so an under-geared or unspent hero met full-power foes (a level-50 hero with nothing spent lost every fight, even on Easy). Now foe HP and armor follow what your party actually hits, and foe damage follows what it can take; a well-built party sees no change, spent Embers add a little (+0.1 EL each). Nightmare bosses are shorter (HP ×1.15, damage ×1.22), Easy foes gang up less on a wounded hero, and a Nightmare foe can no longer stall a fight by aiming at a hero who already died. Numbers in [`docs/COMBAT_CURVE.md`](docs/COMBAT_CURVE.md)
 - **Debug-build level-50 shortcut** now builds the hero like a real player: every stat point and Ember spent, weapon and armor at +25 for the level; the Rekindle explainer opens right away. Saves unchanged (no new fields); online play unchanged

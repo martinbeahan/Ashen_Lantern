@@ -3433,8 +3433,15 @@ void Game::playerHeal(int targetPlayerIndex) {
         return;
     }
 
-    actor->resources--;
     Character& target = *players_[static_cast<size_t>(targetPlayerIndex)];
+    // v2.38 (#92): a permanently dead hero can't be healed (heal() returns 0) — refuse before the
+    // potion is spent, and keep the turn so another target can be chosen. Downed heroes still revive.
+    if (target.isDead) {
+        lastEvent_ = target.name + " is beyond a potion's help — choose a living ally.";
+        addChatMessage("Combat", lastEvent_);
+        return;
+    }
+    actor->resources--;
     int amount = getRandomInt(1, 4) + getRandomInt(1, 4) + 2;
     amount = target.heal(amount); // v2.31: Mending (WIS)
     if (&target != actor) actor->status.healedRecently = 2; // v2.30: foes notice healers
