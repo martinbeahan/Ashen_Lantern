@@ -1,4 +1,4 @@
-# Kindled Path — level cap 50, Embers, Wards and Lantern Arts (v2.32)
+# Kindled Path — level cap 50, Embers, Wards and Lantern Arts (v2.32; Rekindling slots v2.33)
 
 Combat / progression revamp, PR 4 of 5. Code: `app/src/main/cpp/Perks.h` (all numbers),
 `GamePerks.cpp` (Wards, Arts, Re-temper, the sheet strings), `GameLogic.h` (XP, levels, flames on the
@@ -34,7 +34,8 @@ already earned, and the chat says so once.
 ## Embers
 
 - **1 Ember per level from 21 to 50 = 30 Embers from levels.**
-- Rekindling (prestige, PR 5): **+1 Ember per rank I–X (+10)** and **+2 bonus at rank IX** → **Ember cap 42**.
+- Rekindling (prestige, v2.33 — [`PRESTIGE.md`](PRESTIGE.md)): **+1 Ember per rank I–X (+10)** and **+2 bonus at rank IX** → **Ember cap 42**.
+  The companion counts half the hero's rank. Rank Embers can be spent from level 1 (Arts keep their unlock levels).
   (The proposal had 20 from levels + 1 per rank = 30; the cap rises by the same 10 levels plus the +2.)
 - The whole path costs **68** (flames 40 + Wards 16 + one class's Arts 12), so even a capped hero picks.
 - Embers are not stored: earned = f(level, rank); spent = flame ranks + 2 × Wards + 3 × Arts. A hero at
@@ -44,9 +45,9 @@ already earned, and the chat says so once.
 
 | Branch | Cost | Slots |
 |---|---|---|
-| **Steady Flames** — Tempered Arm / Quickwick / Deep Tallow / Lamp-Lore / Stillflame / Silver Tongue (+1 STR / DEX / CON / INT / WIS / CHA per rank), Thick Wax (+3% max HP per rank), Bright Edge (+2% damage per rank) | 1 per rank, 5 ranks | always on (like gear, a flame can pass a stat cap) |
-| **Wards** — once per battle, on their own | 2 to learn | 2 equipped |
-| **Lantern Arts** — new class actions with a recharge, ready at battle start | 3 to learn | 2 equipped |
+| **Steady Flames** — Tempered Arm / Quickwick / Deep Tallow / Lamp-Lore / Stillflame / Silver Tongue (+1 STR / DEX / CON / INT / WIS / CHA per rank), Thick Wax (+3% max HP per rank), Bright Edge (+2% damage per rank) | 1 per rank, 5 ranks (6 from Rekindled II) | always on (like gear, a flame can pass a stat cap) |
+| **Wards** — once per battle, on their own | 2 to learn | 2 equipped (3 from Rekindled III) |
+| **Lantern Arts** — new class actions with a recharge, ready at battle start | 3 to learn | 2 equipped (3 from Rekindled V) |
 
 ### Wards
 
@@ -98,7 +99,8 @@ already earned, and the chat says so once.
 | 33 | Wards `learnedMask.slot0.slot1.usedThisBattleMask` |
 | 34 | Arts `learnedMask.slot0.slot1.cd0.cd1.cd2.cd3` |
 | 35 | Free Re-temper tokens (missing → 1) |
-| 36 | Peak level (for PR 5) |
+| 36 | Peak level (Rekindling catch-up) |
+| 37–40 | v2.33 Rekindling: companion half-share, explainer shown, 3rd Ward slot, 3rd Art slot ([`PRESTIGE.md`](PRESTIGE.md)) |
 
 New statuses are appended to the status codec (shield, braced, rallied, spite, smoke, next crit, resist,
 overkindle, exhausted, sundered, stunned, asleep, bleed / bleed damage, discord); older saves decode them as 0.
@@ -180,5 +182,5 @@ Fighter + Wizard party, 1000 fights per cell. Each cell: v2.31 rules → v2.32 w
 - Discord can finish the foe it hits; Ashen Lullaby has no save but works only on minions and skirmishers.
 - The XP floor 40 + 15 × EL applies past level 20 only (below 20 nothing changes).
 - Encore's extra turn is not saved mid-turn (a reload resumes the normal order).
-- 3rd Ward / Art slots at Rekindled III / V, "Ready to Rekindle" and the prestige dialog are PR 5. Mythical-gear
-  Ward overlap (§6) waits for Mythical gear.
+- 3rd Ward / Art slots at Rekindled III / V, Steady Flame rank 6 at II, "Ready to Rekindle" and the prestige
+  dialog shipped in v2.33 ([`PRESTIGE.md`](PRESTIGE.md)). Mythical-gear Ward overlap (§6) waits for Mythical gear.

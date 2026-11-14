@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Release/R8 sanity check (Code Auditor L9): every `external fun` in MainActivity.kt must
+# (debug-only DebugShortcuts natives live in src/debug and are not counted; they must be ABSENT)
 #  1) be exported from libdndbeginnerremote.so as Java_com_fintrack_dndbeginnerremote_MainActivity_<name>
 #  2) still be a native method of com.fintrack.dndbeginnerremote.MainActivity in the (minified) dex.
 # Usage: tools/check_release_jni.sh [path/to/app-release.apk]
@@ -18,6 +19,8 @@ for so in "$work"/lib/*/libdndbeginnerremote.so; do
   for n in $names; do
     grep -qx "Java_com_fintrack_dndbeginnerremote_MainActivity_$n" <<<"$syms" || { echo "MISSING symbol $n in $so"; fail=1; }
   done
+  # v2.33: debug-only JNI (DebugShortcuts, #ifndef NDEBUG) must not exist in a release build.
+  if grep -q "Java_com_fintrack_dndbeginnerremote_DebugShortcuts_" <<<"$syms"; then echo "DEBUG-ONLY symbol in release $so"; fail=1; fi
 done
 dump="$(for d in "$work"/classes*.dex; do "$bt/dexdump" "$d"; done)"
 cls="$(awk '/Class descriptor  : .Lcom\/fintrack\/dndbeginnerremote\/MainActivity;./{f=1;next} /Class descriptor/{f=0} f' <<<"$dump")"

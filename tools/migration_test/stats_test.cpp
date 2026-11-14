@@ -134,7 +134,7 @@ int main() {
         Game r2; r2.setAsHost(true);
         CHECK(r2.deserialize(r.serialize()));
         CHECK(T::hero(r2, 0).pendingStatPoints == 7 && r2.getStatMigrationNote().empty());
-        CHECK(playerFieldCount(r.serialize()) == 37); // v2.32: + flames, wards, arts, free Re-temper, peak level
+        CHECK(playerFieldCount(r.serialize()) == 41); // v2.32: + flames, wards, arts, free Re-temper, peak level; v2.33: + 37..40 Rekindling
         // Online join of the same save: nothing touched.
         Game j; j.setAsHost(false);
         CHECK(j.deserialize(asV230(s)));

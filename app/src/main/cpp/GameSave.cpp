@@ -139,6 +139,10 @@ std::string Game::serialize() {
         ss << "," << p->artsLearned << "." << p->artEq[0] << "." << p->artEq[1];
         for (int cd : p->artCd) ss << "." << cd;
         ss << "," << p->freeRespecs << "," << p->peakLevel;
+        // v2.33 Rekindling: 37 companion half-share, 38 explainer shown this climb, 39 3rd Ward
+        // slot, 40 3rd Art slot. (The rank itself has been field 27 since v2.29.)
+        ss << "," << (p->prestigeHalf ? 1 : 0) << "," << (p->rekindleOffered ? 1 : 0)
+           << "," << p->wardEq[2] << "," << p->artEq[2];
         ss << ";";
     }
     ss << "|";
@@ -198,6 +202,7 @@ bool Game::describeSave(const std::string& data, SaveSummary* out, std::string* 
         out->gameOver = tmp.gameOver_;
         out->roomCount = tmp.roomCount_;
         out->storyComplete = tmp.questAct4Complete_;
+        out->prestigeRank = hero.prestigeRank;
     }
     return true;
 }
@@ -456,6 +461,10 @@ bool Game::parseSave(const std::string& data) {
             // never lowered by the upgrade (it can rise: Legendary CON, level-1 floor).
             int pv = 0;
             p->prestigeRank = (f.size() > 27 && savecodec::tryParseInt(f[27], pv)) ? savecodec::clampInt(pv, 0, 10) : 0;
+            // v2.33 (37, 38): companion half-share and the explainer flag. Read before the HP check
+            // below, which needs the rank's +2% HP / +1 CON to tell them from lost bonus HP.
+            p->prestigeHalf = f.size() > 37 && f[37] == "1";
+            p->rekindleOffered = f.size() > 38 && f[38] == "1";
             const int savedMax = p->maxHp;
             if (f.size() > 28 && savecodec::tryParseInt(f[28], pv)) {
                 p->bonusMaxHp = savecodec::clampInt(pv, 0, 100000);
@@ -469,7 +478,7 @@ bool Game::parseSave(const std::string& data) {
                 if (f.size() > 32) {
                     const std::vector<int> fl = ai::parseDots(f[32]);
                     for (size_t k = 0; k < p->flames.size(); ++k)
-                        p->flames[k] = k < fl.size() ? savecodec::clampInt(fl[k], 0, perks::kFlameMaxRank) : 0;
+                        p->flames[k] = k < fl.size() ? savecodec::clampInt(fl[k], 0, perks::kFlameMaxRankRekindled) : 0;
                 }
                 const bool rules = p->statRules;
                 p->statRules = true;
@@ -491,9 +500,12 @@ bool Game::parseSave(const std::string& data) {
                 p->bonusMaxResources = std::max(0, savedMaxRes - p->formulaMaxResources());
             }
             p->maxResources = p->formulaMaxResources() + p->bonusMaxResources;
-            if (p->maxResources < savedMaxRes) {
-                p->bonusMaxResources += savedMaxRes - p->maxResources;
-                p->maxResources = savedMaxRes;
+            // v2.33: a solo save's max includes Rekindling rank VI's +1 use (added back by
+            // syncStatRules) — not lost padding.
+            const int prestRes = prestige::extraSpecialUses(p->prestigeShare());
+            if (p->maxResources + prestRes < savedMaxRes) {
+                p->bonusMaxResources += savedMaxRes - prestRes - p->maxResources;
+                p->maxResources = savedMaxRes - prestRes;
             }
             if (p->resources > p->maxResources + 10) p->resources = p->maxResources;
             if (f.size() > 30) p->status = ai::decodeStatuses(f[30]);
@@ -505,7 +517,7 @@ bool Game::parseSave(const std::string& data) {
             if (f.size() > 32) {
                 const std::vector<int> fl = ai::parseDots(f[32]);
                 for (size_t k = 0; k < p->flames.size(); ++k)
-                    p->flames[k] = k < fl.size() ? savecodec::clampInt(fl[k], 0, perks::kFlameMaxRank) : 0;
+                    p->flames[k] = k < fl.size() ? savecodec::clampInt(fl[k], 0, perks::kFlameMaxRankRekindled) : 0;
                 const std::vector<int> w = f.size() > 33 ? ai::parseDots(f[33]) : std::vector<int>{};
                 auto wAt = [&](size_t i, int lo, int hi, int def) { return i < w.size() ? savecodec::clampInt(w[i], lo, hi) : def; };
                 p->wardsLearned = wAt(0, 0, (1 << perks::kWardCount) - 1, 0);
@@ -520,6 +532,9 @@ bool Game::parseSave(const std::string& data) {
                 for (size_t k = 0; k < p->artCd.size(); ++k) p->artCd[k] = aAt(3 + k, 0, perks::kOncePerBattle, 0);
                 p->freeRespecs = (f.size() > 35 && savecodec::tryParseInt(f[35], pv)) ? savecodec::clampInt(pv, 0, 9) : 0;
                 p->peakLevel = (f.size() > 36 && savecodec::tryParseInt(f[36], pv)) ? savecodec::clampInt(pv, 1, Character::kMaxLevel) : p->level;
+                // v2.33: the 3rd Ward / Art slot (39, 40); older saves have none.
+                p->wardEq[2] = (f.size() > 39 && savecodec::tryParseInt(f[39], pv)) ? savecodec::clampInt(pv, -1, perks::kWardCount - 1) : -1;
+                p->artEq[2] = (f.size() > 40 && savecodec::tryParseInt(f[40], pv)) ? savecodec::clampInt(pv, -1, perks::kArtsPerClass - 1) : -1;
             } else {
                 // A hero from before v2.32: one free Re-temper (the stat rules changed), Kindled
                 // Path empty; a hero at 21+ already has (level - 20) Embers waiting.

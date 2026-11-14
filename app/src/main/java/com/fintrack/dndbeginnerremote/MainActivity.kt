@@ -263,6 +263,12 @@ class MainActivity : AppCompatActivity() {
     external fun doLearnPerk(heroIndex: Int, kind: Int, id: Int): String
     external fun doEquipPerk(heroIndex: Int, kind: Int, slot: Int, id: Int): String
     external fun doRetemper(heroIndex: Int): String
+    // v2.33 Rekindling (prestige; solo only). The debug-only level-50 shortcut lives in the debug
+    // source set (DebugShortcuts), never here, so release builds cannot reach it.
+    external fun getRekindleState(): String
+    external fun doRekindle(): String
+    external fun markRekindleOffered()
+    external fun clearPrestigeInSave(data: String): String
     external fun doInteract(playerName: String)
     external fun doRest()
     external fun doLongRest()
@@ -1468,6 +1474,9 @@ class MainActivity : AppCompatActivity() {
             .setSingleChoiceItems(labels, preferredDifficulty.coerceIn(0, 3)) { dialog, which ->
                 preferredDifficulty = which
                 prefs().edit().putInt("pref_difficulty", preferredDifficulty).apply()
+                if (which == 3) {
+                    Toast.makeText(this, "Nightmare: if the party falls the run ends — and a Rekindled hero loses its Rekindling rank.", Toast.LENGTH_LONG).show()
+                }
                 refreshMainMenuButtons()
                 if (::settingsDifficultyText.isInitialized && settingsRoot.visibility == View.VISIBLE) {
                     updateSettingsDifficultyText()
@@ -1539,6 +1548,8 @@ class MainActivity : AppCompatActivity() {
         btnSettingsEndlessRetreat = findViewById(R.id.btnSettingsEndlessRetreat)
         btnSettingsAbandon = findViewById(R.id.btnSettingsAbandon)
         btnSettingsClose = findViewById(R.id.btnSettingsClose)
+        // Debug builds only (src/debug); the release DebugShortcuts adds nothing.
+        DebugShortcuts.attachToSettings(this, btnSettingsClose) { onDebugShortcutApplied() }
         settingsAboutText = findViewById(R.id.settingsAboutText)
         settingsDifficultyText = findViewById(R.id.settingsDifficultyText)
         settingsDailyQuests = findViewById(R.id.settingsDailyQuests)
@@ -2026,7 +2037,9 @@ class MainActivity : AppCompatActivity() {
             v.findViewById<ImageView>(R.id.slotPortrait).setImageResource(SpriteTables.heroSprite(classId))
             v.findViewById<TextView>(R.id.slotName).text = slotHeroName(slot)
             v.findViewById<TextView>(R.id.slotLevel).text =
-                if (summary != null) "Lv ${summary.level} · ${SaveSlots.className(summary.classId)}" else SaveSlots.className(classId)
+                if (summary != null) Rekindling.slotLevelLine(summary.level, SaveSlots.className(summary.classId), summary.prestigeRank)
+                else SaveSlots.className(classId)
+            bindRekindleBadge(v.findViewById(R.id.slotRekindleBadge), summary?.prestigeRank ?: 0)
             v.findViewById<TextView>(R.id.slotProgress).text = when {
                 summary == null -> "This save could not be read. It has not been deleted."
                 broken -> "${SaveSlots.progressLine(summary)} · last load failed"
@@ -2266,7 +2279,7 @@ class MainActivity : AppCompatActivity() {
         val hero = heroNameFromSave(save)
         AlertDialog.Builder(this)
             .setTitle("Boss Raid")
-            .setMessage(
+            .setMessage(nightmareRankWarning(save) +
                 "Spend 1 Raid Key to enter a focused endgame boss fight with $hero?\n\n" +
                 "Keys held: $keys/3 · ${raidKeyCountdownLabel(keys)}\n" +
                 "Your saved stats, gear, inventory, gold, companion, level, and Legendary upgrades carry over.\n" +
@@ -2404,7 +2417,7 @@ class MainActivity : AppCompatActivity() {
         val attempts = ChallengeDungeon.attempts(prefs())
         AlertDialog.Builder(this)
             .setTitle("Challenge Dungeon")
-            .setMessage(
+            .setMessage(nightmareRankWarning(save) +
                 "Enter the Cinder Crucible with $hero?\n\n" +
                 "Your saved stats, gear, inventory, gold, companion, level, and Legendary upgrades carry over.\n" +
                 "Solo save is preserved (Host/Join never overwrite it).\n\n" +
@@ -2531,7 +2544,7 @@ class MainActivity : AppCompatActivity() {
         val best = Arena.bestScore(prefs())
         AlertDialog.Builder(this)
             .setTitle("Arena — Ember Ring")
-            .setMessage(
+            .setMessage(nightmareRankWarning(save) +
                 "Enter the Ember Ring with $hero?\n\n" +
                 "Five scored waves. Your saved stats, gear, inventory, gold, companion, level, and Legendary upgrades carry over.\n" +
                 "Solo save is preserved (Host/Join never overwrite it).\n\n" +
@@ -2650,7 +2663,7 @@ class MainActivity : AppCompatActivity() {
         val best = EndlessDeep.bestDepth(prefs())
         AlertDialog.Builder(this)
             .setTitle("Endless Deep — Ashen Deep")
-            .setMessage(
+            .setMessage(nightmareRankWarning(save) +
                 "Descend into the Ashen Deep with $hero?\n\n" +
                 "Endless depth-scaling rooms. Soft end via death, Retreat, or milestone.\n" +
                 "Your saved stats, gear, inventory, gold, companion, level, and Legendary upgrades carry over.\n" +
@@ -3177,6 +3190,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun maybeNotifyLevelUps() {
+        maybeNotifyLevelUpsInner()
+        maybeOfferRekindle()
+    }
+
+    private fun maybeNotifyLevelUpsInner() {
         if (!sessionActive || !nativeReady) return
         val party = parsePartyXpProgress()
         if (party.isEmpty()) return
@@ -3219,7 +3237,11 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Open Sheet") { _, _ ->
                 showCharacterSheet(who)
             }
-            .setNegativeButton("Later", null)
+            .setNegativeButton("Later") { d, _ ->
+                d.dismiss()
+                levelUpDialogShowing = false
+                maybeOfferRekindle() // level 50 reached: the Rekindle explainer comes next (once)
+            }
             .setOnDismissListener { levelUpDialogShowing = false }
             .show()
     }
@@ -3339,7 +3361,141 @@ class MainActivity : AppCompatActivity() {
         } else {
             kindledBtn.visibility = View.GONE
         }
+        // v2.33 Rekindling: the hero's title / attunement, and "Ready to Rekindle" (solo, hero sheet).
+        val rekLine = view.findViewById<TextView>(R.id.sheetRekindleLine)
+        val rekBtn = view.findViewById<Button>(R.id.sheetRekindle)
+        val rk = if (!isOnlineHost && !isOnlineClient && heroIdx >= 0) rekindleState() else null
+        val forHero = heroIdx == 0
+        val line = Rekindling.sheetLine(rk)
+        rekLine.visibility = if (line != null && forHero) View.VISIBLE else View.GONE
+        rekLine.text = line.orEmpty()
+        val rekLabel = if (forHero) Rekindling.sheetButtonLabel(rk) else null
+        rekBtn.visibility = if (rekLabel != null) View.VISIBLE else View.GONE
+        rekBtn.text = rekLabel.orEmpty()
+        rekBtn.setOnClickListener {
+            dialog.dismiss()
+            showRekindleExplainer()
+        }
         dialog.show()
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // v2.33 Rekindling (prestige) — optional, never forced; solo only. docs/PRESTIGE.md
+    // ------------------------------------------------------------------------------------------
+
+    private var rekindleDialogShowing = false
+
+    private fun rekindleState(): Rekindling.State? =
+        if (!nativeReady || isOnlineHost || isOnlineClient) null
+        else try { Rekindling.parse(getRekindleState()) } catch (_: Throwable) { null }
+
+    /** First eligibility (level 50 + story): show the explainer once per climb. Never Rekindles by itself. */
+    private fun maybeOfferRekindle() {
+        if (!sessionActive || isFinishing || levelUpDialogShowing || rekindleDialogShowing || wipeDialogShowing) return
+        val st = rekindleState() ?: return
+        if (!st.ready || st.offered || !st.canNow) return
+        try { markRekindleOffered() } catch (_: Throwable) { return }
+        try { syncAndSave() } catch (_: Exception) {}
+        showRekindleExplainer(st)
+    }
+
+    /** The explainer: what resets, what's kept, the rank rewards. Rekindle / Not now. */
+    private fun showRekindleExplainer(known: Rekindling.State? = null) {
+        val st = known ?: rekindleState() ?: return
+        if (rekindleDialogShowing) return
+        rekindleDialogShowing = true
+        val b = AlertDialog.Builder(this)
+            .setTitle(if (st.rekindled) "Rekindle again — ${st.nextTitle}" else "Ready to Rekindle")
+            .setMessage(Rekindling.explainer(st, localPlayerName))
+            .setNegativeButton("Not now", null) // nothing changes; the Sheet keeps the button
+            .setOnDismissListener { rekindleDialogShowing = false }
+        if (st.canNow) b.setPositiveButton("Rekindle") { _, _ -> confirmRekindle() }
+        b.show()
+    }
+
+    /** Second step: Rekindling happens only after this confirmation. */
+    private fun confirmRekindle() {
+        val st = rekindleState() ?: return
+        if (!st.canNow) {
+            Toast.makeText(this, st.why.ifBlank { "Not now." }, Toast.LENGTH_LONG).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Rekindle?")
+            .setMessage(Rekindling.confirmText(st, localPlayerName))
+            .setPositiveButton("Rekindle") { _, _ ->
+                val why = try { doRekindle() } catch (t: Throwable) { Log.e(TAG, "doRekindle failed", t); "Not now." }
+                if (why.isNotEmpty()) {
+                    Toast.makeText(this, why, Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
+                }
+                lastPendingByName.clear()
+                try { syncAndSave() } catch (_: Exception) {}
+                updateUi()
+                val now = rekindleState()
+                Toast.makeText(this, "${localPlayerName} is ${now?.title ?: "Rekindled"} — level 1, gear and gold kept.", Toast.LENGTH_LONG).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /** After a debug-build test shortcut changed the party: store the story flag, save, refresh. */
+    private fun onDebugShortcutApplied() {
+        if (!DebugShortcuts.ENABLED) return
+        prefs().edit().putBoolean("story_fully_complete", true).apply()
+        lastPendingByName.clear()
+        try { syncAndSave() } catch (_: Exception) {}
+        updateUi()
+    }
+
+    /** Slot card badge: amber lantern flame I-VII, ember-white VIII-IX, Everflame X (pulses; still with reduce-flash). */
+    private fun bindRekindleBadge(iv: ImageView?, rank: Int) {
+        iv ?: return
+        iv.animate().cancel()
+        iv.alpha = 1f
+        val badge = Rekindling.badge(rank)
+        if (badge == Rekindling.Badge.NONE) { iv.visibility = View.GONE; return }
+        iv.visibility = View.VISIBLE
+        iv.contentDescription = Rekindling.title(rank)
+        val color = when (badge) {
+            Rekindling.Badge.EMBER_WHITE -> 0xFFFFF4E0.toInt()
+            Rekindling.Badge.EVERFLAME -> getColor(R.color.ae_amber_core)
+            else -> getColor(R.color.ae_amber)
+        }
+        iv.setColorFilter(color)
+        if (Rekindling.badgeAnimates(rank, reduceFlashEnabled)) {
+            android.animation.ObjectAnimator.ofFloat(iv, View.ALPHA, 1f, 0.6f).apply {
+                duration = 1600L
+                repeatMode = android.animation.ValueAnimator.REVERSE
+                repeatCount = android.animation.ValueAnimator.INFINITE
+                start()
+            }
+        }
+    }
+
+    /** Rank and difficulty of a save blob (slot card summary). */
+    private fun rankAndDifficulty(save: String?): Pair<Int, Int> {
+        if (save.isNullOrBlank() || !nativeReady) return 0 to 0
+        val s = try { SaveSlots.Summary.parse(describeSaveState(save)) } catch (_: Throwable) { null }
+        return (s?.prestigeRank ?: 0) to (s?.difficulty ?: 0)
+    }
+
+    /** Warning at the top of a Nightmare endgame entry dialog for a Rekindled hero ("" otherwise). */
+    private fun nightmareRankWarning(save: String?): String {
+        val (rank, diff) = rankAndDifficulty(save)
+        return Rekindling.nightmareWarning(rank, diff, heroNameFromSave(save.orEmpty()))
+    }
+
+    /** Nightmare endgame wipe: the restored story save loses its Rekindling rank. Returns the dialog line. */
+    private fun nightmareClearRekindling(): String {
+        val save = prefs().getString("save_state", null)
+        val (rank, _) = rankAndDifficulty(save)
+        if (rank <= 0 || save == null) return ""
+        val cleared = try { clearPrestigeInSave(save) } catch (t: Throwable) { Log.e(TAG, "clearPrestigeInSave failed", t); "" }
+        if (cleared.isBlank()) return ""
+        prefs().edit().putString("save_state", cleared).apply()
+        Log.i(TAG, "Nightmare wipe cleared Rekindling rank $rank")
+        return Rekindling.lostRankLine(rank)
     }
 
     /** Party slot of a hero by name (0 = you), from the native party order; -1 if not found. */
@@ -3391,7 +3547,7 @@ class MainActivity : AppCompatActivity() {
             if (!w.learned) col.addView(button("Learn (2 Embers)", KindledPath.canLearnWard(st, w)) {
                 reopen(try { doLearnPerk(heroIdx, KindledPath.KIND_WARD, w.id) } catch (_: Throwable) { "Not now." })
             }) else if (w.slot < 0) {
-                for (slot in 0..1) col.addView(button("Equip in slot ${slot + 1}", h.canEdit) {
+                for (slot in 0 until h.wardSlots) col.addView(button("Equip in slot ${slot + 1}", h.canEdit) {
                     reopen(try { doEquipPerk(heroIdx, KindledPath.KIND_WARD, slot, w.id) } catch (_: Throwable) { "Not now." })
                 })
             }
@@ -3402,7 +3558,7 @@ class MainActivity : AppCompatActivity() {
             if (!a.learned) col.addView(button("Learn (3 Embers)", KindledPath.canLearnArt(st, a)) {
                 reopen(try { doLearnPerk(heroIdx, KindledPath.KIND_ART, a.id) } catch (_: Throwable) { "Not now." })
             }) else if (a.slot < 0) {
-                for (slot in 0..1) col.addView(button("Equip in slot ${slot + 1}", h.canEdit) {
+                for (slot in 0 until h.artSlots) col.addView(button("Equip in slot ${slot + 1}", h.canEdit) {
                     reopen(try { doEquipPerk(heroIdx, KindledPath.KIND_ART, slot, a.id) } catch (_: Throwable) { "Not now." })
                 })
             }
@@ -6286,9 +6442,10 @@ class MainActivity : AppCompatActivity() {
             if (inRaid) {
                 // Nightmare raid wipe: do NOT create a blank character — restore pre-raid hero save.
                 restorePreRaidSaveOrKeepCurrent("nightmare raid wipe")
+                val lostRank = nightmareClearRekindling() // v2.33: a Nightmare wipe clears the slot's Rekindling
                 AlertDialog.Builder(this)
                     .setTitle("Game Over — Nightmare Raid")
-                    .setMessage(
+                    .setMessage(lostRank +
                         "The party fell in the Boss Raid. Nightmare ends the raid attempt, " +
                         "but your story hero save is restored (no blank character)."
                     )
@@ -6304,9 +6461,10 @@ class MainActivity : AppCompatActivity() {
                     .show()
             } else if (inChallenge) {
                 restorePreChallengeSaveOrKeepCurrent("nightmare challenge wipe")
+                val lostRank = nightmareClearRekindling() // v2.33: a Nightmare wipe clears the slot's Rekindling
                 AlertDialog.Builder(this)
                     .setTitle("Game Over — Nightmare Challenge")
-                    .setMessage(
+                    .setMessage(lostRank +
                         "The party fell in the Challenge Dungeon. Nightmare ends the attempt, " +
                         "but your story hero save is restored (no blank character)."
                     )
@@ -6325,9 +6483,10 @@ class MainActivity : AppCompatActivity() {
                 val waves = try { getArenaWavesCleared() } catch (_: Exception) { 0 }
                 Arena.onRunFinished(prefs(), score, waves)
                 restorePreArenaSaveOrKeepCurrent("nightmare arena wipe")
+                val lostRank = nightmareClearRekindling() // v2.33: a Nightmare wipe clears the slot's Rekindling
                 AlertDialog.Builder(this)
                     .setTitle("Game Over — Nightmare Arena")
-                    .setMessage(
+                    .setMessage(lostRank +
                         "The party fell in the Ember Ring. Nightmare ends the attempt, " +
                         "but your story hero save is restored (no blank character)."
                     )
@@ -6345,9 +6504,10 @@ class MainActivity : AppCompatActivity() {
                 val depth = try { getEndlessBestDepthThisRun() } catch (_: Exception) { 0 }
                 EndlessDeep.onRunFinished(prefs(), depth)
                 restorePreEndlessSaveOrKeepCurrent("nightmare endless wipe")
+                val lostRank = nightmareClearRekindling() // v2.33: a Nightmare wipe clears the slot's Rekindling
                 AlertDialog.Builder(this)
                     .setTitle("Game Over — Nightmare Endless Deep")
-                    .setMessage(
+                    .setMessage(lostRank +
                         "The party fell in the Ashen Deep. Nightmare ends the attempt, " +
                         "but your story hero save is restored (no blank character)."
                     )
@@ -6365,7 +6525,7 @@ class MainActivity : AppCompatActivity() {
                 clearSave("nightmare wipe")
                 AlertDialog.Builder(this)
                     .setTitle("Game Over — Nightmare")
-                    .setMessage("The entire party has fallen. Nightmare difficulty ends the run — stats, gear, and gold are lost.")
+                    .setMessage("The entire party has fallen. Nightmare difficulty ends the run — stats, gear, gold and any Rekindling rank are lost.")
                     .setCancelable(false)
                     .setPositiveButton("Main menu") { _, _ ->
                         wipeDialogShowing = false

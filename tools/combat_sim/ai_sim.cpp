@@ -24,6 +24,8 @@ struct GameTestAccess {
     }
     static Character& hero(Game& g, size_t i) { return *g.players_[i]; }
     static size_t heroes(const Game& g) { return g.players_.size(); }
+    static void story(Game& g) { g.questAct4Complete_ = true; }
+    static void clearRoomAt(Game& g, int room) { g.roomCount_ = room; g.enemies_.clear(); g.enterClearedRoom(g.players_[0].get()); }
 };
 } // namespace dnd
 using T = GameTestAccess;
@@ -37,6 +39,7 @@ struct Scn {
     int mode = static_cast<int>(SoloPlayMode::CRAWL);
     int depth = 0;
     int extraGear = 0;
+    int rank = 0;      // v2.33 Rekindling rank (hero full, companion half)
 };
 struct Res { double win = 0, lost = 0, rounds = 0; int el = 0; };
 
@@ -47,33 +50,39 @@ enum class Rules { V231, V232_BARE, V232 };
 static void giveLoadout(Character& p) {
     using namespace perks;
     const int cls = static_cast<int>(p.characterClass);
-    static const int kArtsPick[5][2] = {{0, 2}, {0, 3}, {1, 3}, {0, 1}, {0, 2}};
-    static const int kWardPick[5][2] = {{ASH_VEIL, LAST_LIGHT}, {EMBER_WARD, LAST_LIGHT}, {KINDLE_RUSH, STEADY_HAND},
-                                         {SECOND_WICK, LAST_LIGHT}, {LAST_LIGHT, SPITE_SPARK}};
+    static const int kArtsPick[5][3] = {{0, 2, 3}, {0, 3, 1}, {1, 3, 0}, {0, 1, 2}, {0, 2, 3}};
+    static const int kWardPick[5][3] = {{ASH_VEIL, LAST_LIGHT, SECOND_WICK}, {EMBER_WARD, LAST_LIGHT, ASH_VEIL},
+                                         {KINDLE_RUSH, STEADY_HAND, LAST_LIGHT}, {SECOND_WICK, LAST_LIGHT, ASH_VEIL},
+                                         {LAST_LIGHT, SPITE_SPARK, ASH_VEIL}};
     p.flames.fill(0); p.wardsLearned = 0; p.artsLearned = 0;
-    p.wardEq = {{-1, -1}}; p.artEq = {{-1, -1}};
+    p.wardEq = {{-1, -1, -1}}; p.artEq = {{-1, -1, -1}};
     auto learnArt = [&](int i) {
         if (p.level < kArtUnlock[i] || p.embersFree() < kArtCost || (p.artsLearned & (1 << i))) return;
         p.artsLearned |= (1 << i);
-        for (int& s : p.artEq) if (s < 0) { s = i; break; }
+        for (int k = 0; k < p.artSlots(); ++k) if (p.artEq[static_cast<size_t>(k)] < 0) { p.artEq[static_cast<size_t>(k)] = i; break; }
     };
     auto learnWard = [&](int w) {
         if (p.embersFree() < kWardCost || (p.wardsLearned & (1 << w))) return;
         p.wardsLearned |= (1 << w);
-        for (int& s : p.wardEq) if (s < 0) { s = w; break; }
+        for (int k = 0; k < p.wardSlots(); ++k) if (p.wardEq[static_cast<size_t>(k)] < 0) { p.wardEq[static_cast<size_t>(k)] = w; break; }
     };
     learnArt(kArtsPick[cls][0]);
     learnWard(kWardPick[cls][0]);
     learnWard(kWardPick[cls][1]);
     learnArt(kArtsPick[cls][1]);
+    // v2.33: a Rekindled hero fills the 3rd slots (rank III Ward, rank V Art) from the rank's Embers.
+    if (p.artSlots() > 2) learnArt(kArtsPick[cls][2]);
+    if (p.wardSlots() > 2) learnWard(kWardPick[cls][2]);
     const int order[] = {curve::primaryIndex(p.characterClass), DEEP_TALLOW, BRIGHT_EDGE, THICK_WAX, QUICKWICK};
     for (int f : order)
-        while (p.embersFree() >= 1 && p.flames[static_cast<size_t>(f)] < kFlameMaxRank) p.flames[static_cast<size_t>(f)]++;
+        while (p.embersFree() >= 1 && p.flames[static_cast<size_t>(f)] < p.flameCap()) p.flames[static_cast<size_t>(f)]++;
 }
 
-static void buildParty(Game& g, int level, int extraGear, bool perksOn) {
+static void buildParty(Game& g, int level, int extraGear, bool perksOn, int rank = 0) {
     for (size_t i = 0; i < T::heroes(g); ++i) {
         Character& p = T::hero(g, i);
+        p.prestigeRank = rank; p.prestigeHalf = i != 0; // v2.33: the companion has half the rank
+        p.statRules = true;
         const Character ref = curve::makeReferenceHero(p.characterClass, level);
         p.level = ref.level; p.xp = 0; p.attributes = ref.attributes; p.pendingStatPoints = 0;
         p.equippedWeapon = Item::make(curve::kRefWeaponName, ItemType::WEAPON, ref.equippedWeapon->bonus + extraGear,
@@ -104,7 +113,7 @@ static Res run(const Scn& s, Rules rules, int n, CharacterClass a = CharacterCla
         g.setAsHost(true);
         g.setStatRulesEnabledForTesting(true);
         T::setMode(g, s.mode, s.depth, 6);
-        buildParty(g, s.level, s.extraGear, rules == Rules::V232);
+        buildParty(g, s.level, s.extraGear, rules == Rules::V232, s.rank);
         g.simBeginFight(s.foes, s.surprise);
         if (!g.getEnemies().empty()) r.el = g.getEnemies().front()->curveEL;
         int steps = 0;
@@ -167,6 +176,58 @@ int main(int argc, char** argv) {
         Scn s; s.level = L; s.diff = 1; s.foes = room;
         const Res a = run(s, Rules::V231, n), b = run(s, Rules::V232, n);
         std::printf("| L%d | %.0f%% · %.0f%% | %.0f%% · %.0f%% |\n", L, a.win, a.lost, b.win, b.lost);
+    }
+    // v2.33 Rekindling: level 50 at ranks 0 / I / V / X (perks spent, the extra Embers and slots used).
+    std::printf("\n| L50, v2.32 + perks | Scenario | rank 0 | I | V | X |\n|---|---|---|---|---|---|\n");
+    for (const auto& c : cols) {
+        std::printf("| 50 | %s |", c.name.c_str());
+        for (int rank : {0, 1, 5, 10}) {
+            Scn s; s.level = 50; s.diff = c.diff; s.foes = c.foes; s.mode = c.mode; s.rank = rank;
+            const Res p = run(s, Rules::V232, n);
+            std::printf(" %.0f%% · %.0f%% · EL %d |", p.win, p.lost, p.el);
+        }
+        std::printf("\n");
+    }
+    // The climb after a Rekindling: level-50 gear (attuned to floor(level / 2) + 3), the rank's bonuses.
+    std::printf("\n| Climb after Rekindling (L50 gear, attuned to floor(level / 2) + 3) | Level | first climb (rank 0, normal gear) | I | V | X |\n|---|---|---|---|---|---|\n");
+    for (const auto& c : {cols[0], cols[1], cols[2]}) {
+        for (int L : {1, 10, 20, 30, 40}) {
+            Scn s0; s0.level = L; s0.diff = c.diff; s0.foes = c.foes; s0.mode = c.mode;
+            const Res base = run(s0, Rules::V232, n);
+            std::printf("| %s | %d | %.0f%% · %.0f%% |", c.name.c_str(), L, base.win, base.lost);
+            for (int rank : {1, 5, 10}) {
+                Scn s = s0; s.rank = rank;
+                s.extraGear = curve::makeReferenceHero(CharacterClass::FIGHTER, 50).equippedWeapon->bonus
+                    - curve::makeReferenceHero(CharacterClass::FIGHTER, L).equippedWeapon->bonus;
+                const Res p = run(s, Rules::V232, n);
+                std::printf(" %.0f%% · %.0f%% · EL %d |", p.win, p.lost, p.el);
+            }
+            std::printf("\n");
+        }
+    }
+    // Rooms (cleared, flawless pressure ignored) to climb 1 -> 50 again, the room counter carrying on.
+    std::printf("\n| Rooms to level 50 | first climb (from room 1) | rank I (from room 60) | IV | X |\n|---|---|---|---|---|\n");
+    {
+        auto climb = [](int rank, int startRoom) {
+            Game g;
+            g.seedForTesting(77);
+            g.startNewGame(CharacterClass::FIGHTER, "Mira", static_cast<int>(SoloPlayMode::CRAWL), 1, CharacterClass::CLERIC, true);
+            g.setAsHost(true);
+            g.setStatRulesEnabledForTesting(true);
+            g.syncStatRules();
+            T::story(g);
+            for (int r = 0; r < rank; ++r) { g.debugJumpToRekindleReady(); T::clearRoomAt(g, 0); g.rekindle(); }
+            int rooms = 0, room = startRoom, to20 = 0;
+            while (T::hero(g, 0).level < 50 && rooms < 5000) {
+                T::clearRoomAt(g, room++);
+                ++rooms;
+                if (!to20 && T::hero(g, 0).level >= 20) to20 = rooms;
+            }
+            return std::make_pair(to20, rooms);
+        };
+        const auto a = climb(0, 1), b = climb(1, 60), c = climb(4, 60), d = climb(10, 60);
+        std::printf("| to 20 / to 50 | %d / %d | %d / %d | %d / %d | %d / %d |\n", a.first, a.second, b.first, b.second,
+                    c.first, c.second, d.first, d.second);
     }
     return 0;
 }

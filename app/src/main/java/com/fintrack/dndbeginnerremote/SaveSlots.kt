@@ -276,6 +276,8 @@ object SaveSlots {
         val name: String, val classId: Int, val level: Int, val questBeat: Int,
         val actTitle: String, val beatName: String, val mode: Int, val difficulty: Int,
         val gameOver: Boolean, val roomCount: Int, val storyComplete: Boolean,
+        /** v2.33 Rekindling rank of the slot's hero (0 for older app builds' summaries). */
+        val prestigeRank: Int = 0,
     ) {
         companion object {
             fun parse(line: String): Summary? {
@@ -286,6 +288,7 @@ object SaveSlots {
                     p[0].ifBlank { "Hero" }, p[1].toIntOrNull() ?: 0, p[2].toIntOrNull() ?: 1,
                     p[3].toIntOrNull() ?: 0, p[4], p[5], p[6].toIntOrNull() ?: 0, p[7].toIntOrNull() ?: 0,
                     p[8] == "1", p[9].toIntOrNull() ?: 0, p[10] == "1",
+                    p.getOrNull(11)?.trim()?.toIntOrNull()?.coerceIn(0, 10) ?: 0,
                 )
             }
         }

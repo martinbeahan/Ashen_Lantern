@@ -197,6 +197,26 @@
             android:text="Kindled Path"
             android:visibility="gone" />
 
+        <!-- v2.33 Rekindling: title / attunement line and the "Ready to Rekindle" button (solo). -->
+        <TextView
+            android:id="@+id/sheetRekindleLine"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="@color/ae_amber"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/sheetRekindle"
+            style="@style/Widget.DnD.ActionButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:minHeight="48dp"
+            android:text="Ready to Rekindle"
+            android:visibility="gone" />
+
         <Button
             android:id="@+id/sheetLevelUp"
             style="@style/Widget.DnD.ActionButton"
