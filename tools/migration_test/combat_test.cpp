@@ -254,7 +254,9 @@ int main() {
             CHECK(b.curveSurprise && b.curveWarnTurns == 1);
             CHECK(b.curveRole == static_cast<int>(curve::Role::ELITE));
             const double cap = curve::kSurpriseBudgetCap * curve::roomBudget(2, 1, 1.0);
-            const auto st = curve::foeStats(curve::Role::ELITE, b.curveEL, 1, 2, cap / 2.5);
+            // v2.31: solo foes carry the universal-stats toughness (an Elite here: "others").
+            const auto st = curve::foeStats(curve::Role::ELITE, b.curveEL, 1, 2,
+                                            cap / 2.5 * curve::statsToughness(b.curveEL, false, false));
             CHECK(b.maxHp == st.maxHp);
             // It is weaker than the full Boss role would have been.
             CHECK(b.maxHp < curve::foeStats(curve::Role::BOSS, b.curveEL, 1, 2).maxHp);

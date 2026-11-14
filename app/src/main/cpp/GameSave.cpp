@@ -130,6 +130,8 @@ std::string Game::serialize() {
         ss << "," << p->prestigeRank << "," << p->bonusMaxHp;
         // v2.30: 29 kept bonus max resources (story +1), 30 statuses (EnemyAi.h codec).
         ss << "," << p->bonusMaxResources << "," << ai::encodeStatuses(p->status);
+        // v2.31: 31 Signature free special uses left this battle.
+        ss << "," << p->signatureUses;
         ss << ";";
     }
     ss << "|";
@@ -279,6 +281,13 @@ bool Game::deserialize(const std::string& data, std::string* error) {
     pendingSurprise_ = false;
 
     rebuildTurnOrder();
+    // v2.31: solo saves pick up the stat caps now (over-cap points are refunded, never lost).
+    for (auto& p : players_) if (p) p->statRules = false;
+    statMigrationNote_.clear();
+    syncStatRules();
+    for (auto& p : players_) {
+        if (p && p->signatureUses < 0) p->signatureUses = (p->statRules && p->signatureTier() >= 1) ? 1 : 0;
+    }
     return true;
 }
 
@@ -461,6 +470,11 @@ bool Game::parseSave(const std::string& data) {
             }
             if (p->resources > p->maxResources + 10) p->resources = p->maxResources;
             if (f.size() > 30) p->status = ai::decodeStatuses(f[30]);
+            if (f.size() > 31 && savecodec::tryParseInt(f[31], pv)) {
+                p->signatureUses = savecodec::clampInt(pv, 0, 1);
+            } else {
+                p->signatureUses = -1; // v2.30 save: granted below once the stat rules are known
+            }
             players_.push_back(std::move(p));
         }
     }

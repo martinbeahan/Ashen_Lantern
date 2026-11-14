@@ -1,8 +1,9 @@
-// v2.30 enemy-AI Monte Carlo, built on the SHIPPED game code: every fight is a real Game
-// (Game.cpp + GameSave.cpp) with the whole party on its own AI (attacks, specials, potions and
-// heals, exactly as the companion plays), foes fitted to the encounter curve, and the full turn
-// loop (death saves, statuses, boss phases, summons, flee). Each scenario runs twice with the same
-// seeds: v2.29 rules (enemy AI off: foes swing at the most hurt hero) and v2.30 (enemy AI on).
+// Combat Monte Carlo, built on the SHIPPED game code: every fight is a real Game (Game.cpp +
+// GameSave.cpp) with the whole party on its own AI (attacks, specials, potions and heals, exactly
+// as the companion plays), foes fitted to the encounter curve, and the full turn loop (death saves,
+// statuses, boss phases, summons, flee). Enemy AI is on. Each scenario runs twice with the same
+// seeds: v2.30 stat rules (uncapped model hero, main stat only) and v2.31 universal stats (caps,
+// every stat helps, Signature tiers).
 // Run tools/combat_sim/run.sh.
 #include "Game.h"
 #include "CombatCurve.h"
@@ -56,7 +57,8 @@ static void buildParty(Game& g, int level, int extraGear) {
     }
 }
 
-static Res run(const Scn& s, bool aiOn, int n) {
+static Res run(const Scn& s, bool v231, int n) {
+    curve::legacyReferenceForSim() = !v231;
     Res r;
     double hpSum = 0, maxSum = 0;
     for (int i = 0; i < n; ++i) {
@@ -65,7 +67,7 @@ static Res run(const Scn& s, bool aiOn, int n) {
         g.startNewGame(CharacterClass::FIGHTER, "Mira", static_cast<int>(SoloPlayMode::CRAWL), s.diff,
                        CharacterClass::WIZARD, true);
         g.setAsHost(true);
-        g.setEnemyAiEnabledForTesting(aiOn);
+        g.setStatRulesEnabledForTesting(v231);
         T::setMode(g, s.mode, s.depth, 6);
         buildParty(g, s.level, s.extraGear);
         g.simBeginFight(s.foes, s.surprise);
@@ -88,7 +90,7 @@ int main(int argc, char** argv) {
     const std::vector<std::string> room = {"enemy_wickthief", "enemy_ashbound", "enemy_tithe_watcher"};
     const std::vector<std::string> boss = {"boss_sexton", "enemy_ashbound"};
     const std::vector<std::string> trio = {"enemy_gloamhound", "enemy_gloamhound", "enemy_crier_wick"};
-    std::printf("| Level | Medium room (Wickthief, Ashbound, Watcher): v2.29 → v2.30 win, HP lost | Medium boss (Sexton + Ashbound) | Hard room | Nightmare (2 hounds + crier) |\n");
+    std::printf("| Level | Medium room (Wickthief, Ashbound, Watcher): v2.30 → v2.31 win, HP lost | Medium boss (Sexton + Ashbound) | Hard room | Nightmare (2 hounds + crier) |\n");
     std::printf("|---|---|---|---|---|\n");
     for (int L : {1, 3, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50}) {
         auto cell = [&](const std::vector<std::string>& f, int d) {
@@ -101,7 +103,7 @@ int main(int argc, char** argv) {
         std::printf("| %d | %s | %s | %s | %s |\n", L, cell(room, 1).c_str(), cell(boss, 1).c_str(),
                     cell(room, 2).c_str(), cell(trio, 3).c_str());
     }
-    std::printf("\n| Scenario | EL | v2.29 rules: win · HP lost · rounds | v2.30 AI: win · HP lost · rounds |\n|---|---|---|---|\n");
+    std::printf("\n| Scenario | EL | v2.30 stats: win · HP lost · rounds | v2.31 universal stats: win · HP lost · rounds |\n|---|---|---|---|\n");
     const int raid = static_cast<int>(SoloPlayMode::RAID), deep = static_cast<int>(SoloPlayMode::ENDLESS);
     std::vector<Scn> list;
     auto add = [&](const std::string& name, int L, int d, std::vector<std::string> f, bool surprise = false,

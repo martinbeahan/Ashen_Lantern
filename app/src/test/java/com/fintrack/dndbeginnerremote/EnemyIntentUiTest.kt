@@ -61,6 +61,27 @@ class EnemyIntentUiTest {
     }
 
     @Test
+    fun lowIntShowsRangesNotExactNumbers() {
+        // v2.31 Read intent: below INT 14 the chip shows a rough range (pref on), glyph only (pref off).
+        val smart = EnemyIntentUi.parseIntents(native)
+        val dim = EnemyIntentUi.parseIntents(native.replaceFirst("1|", "0|"))
+        assertEquals(EnemyIntentUi.NUM_EXACT, EnemyIntentUi.numberMode(smart, true))
+        assertEquals(EnemyIntentUi.NUM_RANGE, EnemyIntentUi.numberMode(dim, true))
+        assertEquals(EnemyIntentUi.NUM_OFF, EnemyIntentUi.numberMode(dim, false))
+        assertEquals(EnemyIntentUi.NUM_OFF, EnemyIntentUi.numberMode(smart, false))
+        val heavy = dim.intents[0]
+        assertEquals("14–34", EnemyIntentUi.range(24))
+        assertEquals("1–2", EnemyIntentUi.range(1))
+        assertEquals("⚒ 14–34", EnemyIntentUi.chipText(heavy, EnemyIntentUi.NUM_RANGE))
+        assertEquals("⚒ 24", EnemyIntentUi.chipText(heavy, EnemyIntentUi.NUM_EXACT))
+        assertEquals("⚒", EnemyIntentUi.chipText(heavy, EnemyIntentUi.NUM_OFF))
+        assertEquals("🛡", EnemyIntentUi.chipText(dim.intents[1], EnemyIntentUi.NUM_RANGE))
+        assertTrue(EnemyIntentUi.describe(heavy, EnemyIntentUi.NUM_RANGE).contains("roughly 14–34"))
+        assertTrue(EnemyIntentUi.describe(dim.intents[2], EnemyIntentUi.NUM_RANGE).contains("roughly +"))
+        assertEquals(EnemyIntentUi.describe(heavy, false), EnemyIntentUi.describe(heavy, EnemyIntentUi.NUM_OFF))
+    }
+
+    @Test
     fun everyIntentHasAGlyph() {
         for (i in 1..10) assertTrue("intent $i", EnemyIntentUi.glyph(i).isNotEmpty())
         assertEquals("⚔", EnemyIntentUi.glyph(EnemyIntentUi.ATTACK))
