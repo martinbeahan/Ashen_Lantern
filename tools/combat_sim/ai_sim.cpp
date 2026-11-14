@@ -40,7 +40,7 @@ struct Scn {
     int depth = 0;
     int extraGear = 0;
     int rank = 0;      // v2.33 Rekindling rank (hero full, companion half)
-    bool raw = false;  // v2.33 rebalance: under-geared + unspent (starter gear, class base stats, no Embers)
+    bool raw = false;  // v2.34 rebalance: under-geared + unspent (starter gear, class base stats, no Embers)
     bool debugJump = false; // v2.33: the debug-build level-50 shortcut on a fresh hero (debug code, not in release)
 };
 struct Res { double win = 0, lost = 0, rounds = 0; int el = 0; };
@@ -80,7 +80,7 @@ static void giveLoadout(Character& p) {
         while (p.embersFree() >= 1 && p.flames[static_cast<size_t>(f)] < p.flameCap()) p.flames[static_cast<size_t>(f)]++;
 }
 
-/** v2.33 rebalance: the "debug shortcut" hero — level L, but the class base stats with every point unspent,
+/** v2.34 rebalance: the "debug shortcut" hero — level L, but the class base stats with every point unspent,
  *  starter gear (+0 / armor base) and no Embers spent. */
 static void buildRaw(Game& g, int level) {
     for (size_t i = 0; i < T::heroes(g); ++i) {
@@ -176,7 +176,7 @@ int main(int argc, char** argv) {
         {"Raid: Ember Hydra", {"boss_ember_hydra"}, 1, raid},
         {"Raid: Nightfang Matriarch", {"boss_nightfang"}, 1, raid},
     };
-    // v2.33 rebalance: every difficulty, levels 1-50, a built hero (model stats + gear + perks) and the
+    // v2.34 rebalance: every difficulty, levels 1-50, a built hero (model stats + gear + perks) and the
     // under-geared, unspent one (what the debug shortcut used to make). Arg 2 "grid" prints only this.
     {
         static const char* kDiffName[] = {"Easy", "Medium", "Hard", "Nightmare"};

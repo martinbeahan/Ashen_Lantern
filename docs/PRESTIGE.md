@@ -103,7 +103,7 @@ rank's +2% HP / +1 CON, and the max-uses check counts rank VI's +1, so nothing i
 
 **Debug builds only.** Settings → **Debug: level 50 + story complete** (works in a solo adventure, outside a
 fight) puts the hero and companion at level 50, marks Acts 1–4 done (post-story beat in Story mode) and clears
-the "explainer shown" flag. **v2.33 rebalance:** it also builds both like a real player — every stat point
+the "explainer shown" flag. **v2.34 rebalance:** it also builds both like a real player — every stat point
 spent (half main stat, 30% CON, 20% DEX, the rest where a stat is capped), weapon and armor raised to the
 normal bonus for the level (+25; the old pieces go to the bag) and every Ember spent (two Arts, two Wards,
 then the main-stat flame, CON, Bright Edge, Thick Wax, DEX). Before, it left all of that unspent with
@@ -128,7 +128,7 @@ fills in anything still unspent. The Rekindle explainer opens right away (or She
 ## Balance (tools/combat_sim/run.sh 600)
 
 Fighter + Wizard, perks spent with the sim loadout (the rank's extra Embers into flames, the 3rd Ward /
-Art when unlocked). Win %, party HP lost %, Encounter Level. **v2.33 rebalance:** these tables are re-run
+Art when unlocked). Win %, party HP lost %, Encounter Level. **v2.34 rebalance:** these tables are re-run
 with the sim's reference-table bug fixed (the earlier PR #85 / #86 tables past level 20 were built against
 foes far tougher than the game's — COMBAT_CURVE.md) and include the new EL (+0.1 per spent Ember, so a
 level-50 rank-0 hero is EL 53).

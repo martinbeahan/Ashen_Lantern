@@ -24,7 +24,7 @@ the mode bonus raises foe HP and damage only. AC and to-hit use the party's base
 because a full +2 EL gave a 16% raid win rate in the sim. Tables cover levels 1–50 (`kTableMaxLevel`);
 EL is capped at 64.
 
-## v2.33 rebalance — the EL follows the party's real power
+## v2.34 rebalance — the EL follows the party's real power
 
 Playtest: "too hard at level 50, even on Easy". Cause, found in code and confirmed in `tools/combat_sim`:
 

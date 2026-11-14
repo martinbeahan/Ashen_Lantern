@@ -347,7 +347,7 @@ int main() {
         std::cout << "FIGHTS: " << finished << "/" << fights << " level-1 fights at ranks I / V / X finished (" << won << " won)\n";
     }
 
-    // ------------------------------------------------------------ v2.33 rebalance: EL follows real power
+    // ------------------------------------------------------------ v2.34 rebalance: EL follows real power
     {
         // The bare jump: level 50, every point and Ember unspent, starter gear (the old shortcut).
         Game bare; solo(bare, CharacterClass::FIGHTER, CharacterClass::WIZARD, 21);

@@ -826,7 +826,7 @@ bool Game::debugJumpToRekindleReady(bool buildLikeAPlayer) {
 }
 
 /**
- * v2.33 rebalance: make a debug level-50 hero look like a real one — every stat point spent
+ * v2.34 rebalance: make a debug level-50 hero look like a real one — every stat point spent
  * like the model hero (half main stat, 30% CON, 20% DEX, overflow when capped), gear at least the
  * normal bonus for the level (the old pieces go to the bag), and every Ember spent on two Arts,
  * Wards and Steady Flames (the same loadout tools/combat_sim uses).

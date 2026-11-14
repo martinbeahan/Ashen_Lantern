@@ -88,7 +88,7 @@ int main() {
         CHECK(ai::pickTarget({fighter, cleric}, ai::Tier::TACTICAL, 0, flat, 0.9) == 1); // healer focus
         CHECK(ai::scoreTarget(cleric, ai::Tier::SLOPPY, 0) == ai::scoreTarget(fighter, ai::Tier::SLOPPY, 0)); // never on Easy
         CHECK(ai::pickTarget({fighter, hurt}, ai::Tier::COORDINATED, 0, flat, 0.9) == 1); // wounded
-        // v2.33: Easy foes feel the wounded hero's pull far less (no gang-up on the weak one).
+        // v2.34: Easy foes feel the wounded hero's pull far less (no gang-up on the weak one).
         CHECK(ai::scoreTarget(hurt, ai::Tier::SLOPPY, 0) - ai::scoreTarget(fighter, ai::Tier::SLOPPY, 0)
               < 0.5 * (ai::scoreTarget(hurt, ai::Tier::TACTICAL, 0) - ai::scoreTarget(fighter, ai::Tier::TACTICAL, 0)));
         CHECK(ai::kSloppyRandomTarget > 0.30);
@@ -236,7 +236,7 @@ int main() {
             CHECK(moveOf(g, 0) != ai::Move::FINISH_DOWNED);
             CHECK(T::foe(g, 0).ai.target != 1);
         }
-        // v2.33 fix: the marked hero died before the blow — the brute strikes the other fallen hero
+        // v2.34 fix: the marked hero died before the blow — the brute strikes the other fallen hero
         // instead (it used to end its turn with no new plan and stall the fight forever).
         {
             Game g; setup(g, 3, {"enemy_brute"}, 7);
