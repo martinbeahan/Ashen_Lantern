@@ -6,7 +6,13 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.34 / 73) — Combat rebalance
+## What's new (v2.37 / 76) — Online lockdown
+
+- **Online play is locked down (#90).** Host and Join first sign in anonymously with Firebase (nothing to type). The database rules let only the Lanternkeeper write the game, and each player write only their own lobby entry, actions and chat. The host never loads game state from the database. A phone can't act as another player's hero
+- **Longer session codes** like **`AL-7KQ2M-X9D4R`** replace the guessable 4-character ones. Joining ignores dashes, spaces and case, and reads O as 0 and I / L as 1. Copy / paste from the share dialog still works
+- **Heads-up:** once the new rules are published, v2.36 and older can't Host / Join. Install v2.37 on every phone first. Console steps (Anonymous sign-in, rules, Playground checklist, deploy order) are in [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md). Saves unchanged (no new fields); Host / Join still never touch a solo save; online gameplay otherwise unchanged
+
+## Previous (v2.34 / 73) — Combat rebalance
 
 - **Rebalance: the Encounter Level follows your real power.** Foes used to assume a hero who had spent every point and wore the gear for the level, so an under-geared or unspent hero met full-power foes (a level-50 hero with nothing spent lost every fight, even on Easy). Now foe HP and armor follow what your party actually hits, and foe damage follows what it can take; a well-built party sees no change, spent Embers add a little (+0.1 EL each). Nightmare bosses are shorter (HP ×1.15, damage ×1.22), Easy foes gang up less on a wounded hero, and a Nightmare foe can no longer stall a fight by aiming at a hero who already died. Numbers in [`docs/COMBAT_CURVE.md`](docs/COMBAT_CURVE.md)
 - **Debug-build level-50 shortcut** now builds the hero like a real player: every stat point and Ember spent, weapon and armor at +25 for the level; the Rekindle explainer opens right away. Saves unchanged (no new fields); online play unchanged
@@ -219,6 +225,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Arena (Ember Ring)** — see Endgame modes below
 - **Endless Deep (Ashen Deep)** — see Endgame modes below
 - **Online multiplayer** — **Host online (Lanternkeeper)** / **Join session** via Firebase Realtime Database (the host narrates as the Lanternkeeper)
+- **Online security** — anonymous Firebase sign-in, locked-down database rules (only the host writes the game; players write only their own entries, with type and size checks), an authoritative host and unguessable 10-character session codes. See [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md)
 - **Settings** — music on/off, sound effects on/off, reduce flashing (photosensitive-friendly), foe intent chips and exact intent numbers, tutorial, Adventures (save slots), return to main menu, About
 - **Audio beds** — biome / combat / boss loops (CC0); optional Lanternkeeper (narrator) voice via Android Text-to-Speech
 
@@ -289,7 +296,7 @@ Copy the full failure line (e.g. `INSTALL_FAILED_TEST_ONLY`, `INSTALL_FAILED_OLD
 
 ### Firebase / `google-services.json` (local secret)
 
-Online **Host** / **Join** needs Firebase Realtime Database.
+Online **Host** / **Join** needs Firebase Realtime Database and **Anonymous** sign-in (v2.37+). Publish [`firebase/database.rules.json`](firebase/database.rules.json) as described in [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md).
 
 - The Google Services Gradle plugin is **enabled** in the project.
 - **`app/google-services.json` is not in this repository** — it is a local secret. Download it from your own Firebase project and place it at `app/google-services.json`.
@@ -324,6 +331,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`docs/ENDLESS_DEEP.md`](docs/ENDLESS_DEEP.md) | Endless Deep / Ashen Deep |
 | [`BUILD_HELP.md`](BUILD_HELP.md) | Build troubleshooting |
 | [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md) | Online multiplayer setup |
+| [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md) | Online lockdown: anonymous sign-in, database rules (`firebase/database.rules.json`), session codes, console steps, deploy order, Rules Playground checklist, emulator test (`tools/rules_test`) |
 
 ## Legal / trademarks
 

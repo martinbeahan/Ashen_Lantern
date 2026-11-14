@@ -1,0 +1,109 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "sessions": {
+      "$sid": {
+        ".read": "auth != null && $sid.matches(/^AL-[0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z]$/)",
+        "meta": {
+          ".write": "auth != null && $sid.matches(/^AL-[0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z]$/) && ((!data.exists() && newData.child('hostUid').val() === auth.uid) || data.child('hostUid').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['hostUid', 'hostName'])",
+          "hostUid": {
+            ".validate": "newData.isString() && newData.val() === auth.uid"
+          },
+          "hostName": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64"
+          },
+          "role": {
+            ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 16"
+          },
+          "sessionId": {
+            ".validate": "newData.isString() && newData.val() === $sid"
+          },
+          "updatedAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "gameState": {
+          ".write": "auth != null && $sid.matches(/^AL-[0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z]$/) && root.child('sessions').child($sid).child('meta').child('hostUid').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().length <= 524288"
+        },
+        "lobby": {
+          "$uid": {
+            ".write": "auth != null && $sid.matches(/^AL-[0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z]$/) && auth.uid === $uid && root.child('sessions').child($sid).child('meta').child('hostUid').val() !== null",
+            ".validate": "newData.hasChildren(['playerName', 'classId'])",
+            "playerName": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64"
+            },
+            "classId": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4"
+            },
+            "ts": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "actions": {
+          "$aid": {
+            ".write": "auth != null && $sid.matches(/^AL-[0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z]$/) && ((!data.exists() && newData.child('uid').val() === auth.uid && root.child('sessions').child($sid).child('meta').child('hostUid').val() !== null) || (data.exists() && !newData.exists() && (data.child('uid').val() === auth.uid || root.child('sessions').child($sid).child('meta').child('hostUid').val() === auth.uid)))",
+            ".validate": "newData.hasChildren(['uid', 'type'])",
+            "uid": {
+              ".validate": "newData.isString() && newData.val() === auth.uid"
+            },
+            "type": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32"
+            },
+            "playerName": {
+              ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 64"
+            },
+            "targetIndex": {
+              ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 1023"
+            },
+            "statIndex": {
+              ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 1023"
+            },
+            "classId": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4"
+            },
+            "allocations": {
+              ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 256"
+            },
+            "ts": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "chat": {
+          "$cid": {
+            ".write": "auth != null && $sid.matches(/^AL-[0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z][0-9A-HJKMNP-TV-Z]$/) && !data.exists() && newData.child('uid').val() === auth.uid && root.child('sessions').child($sid).child('meta').child('hostUid').val() !== null",
+            ".validate": "newData.hasChildren(['uid', 'text'])",
+            "uid": {
+              ".validate": "newData.isString() && newData.val() === auth.uid"
+            },
+            "text": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 500"
+            },
+            "ts": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

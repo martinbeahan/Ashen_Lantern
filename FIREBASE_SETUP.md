@@ -12,21 +12,12 @@ Online Host / Join needs **Firebase Realtime Database**. The Google Services plu
 
 ## 2. Enable Realtime Database
 1. Build → Realtime Database → Create database
-2. Start in **test mode** while developing (lock rules down before a public release)
-3. Example open rules for testing only:
-
-```json
-{
-  "rules": {
-    "sessions": {
-      "$sid": {
-        ".read": true,
-        ".write": true
-      }
-    }
-  }
-}
-```
+2. Start in **locked mode**.
+3. **Rules (v2.37+):** publish [`firebase/database.rules.json`](firebase/database.rules.json) and turn on
+   **Authentication → Sign-in method → Anonymous**. Host / Join sign in anonymously first. The old open
+   "test mode" rules are no longer suggested: anyone with the APK could read and overwrite tables.
+   Step-by-step console instructions, the deploy order and a Rules Playground checklist are in
+   [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md).
 
 ## 3. Google Services plugin
 The plugin is already enabled:
