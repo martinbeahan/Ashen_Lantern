@@ -6,14 +6,25 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.32 / 71) — Level cap 50 and the Kindled Path
+## What's new (v2.33 / 72) — Rekindling (prestige)
+
+- **Rekindling, optional.** At **level 50 with the story complete**, a plain-language explainer offers to *Rekindle*: start again at level 1, stronger for good. **Not now** changes nothing, and the Sheet keeps a **Ready to Rekindle** button; Rekindling happens only after a second confirmation that lists what resets and what's kept. Solo only
+- **What resets / what's kept** — level, attribute points and the Kindled Path reset (every Ember back, plus a free Re-temper). Kept: all gear and upgrades, gold, the story and every mode it unlocked, the Memory Ledger, Raid Keys and records, and the story +2 HP / +1 use padding
+- **10 ranks, I–X** — every rank: +1 to every attribute and every cap, +2% max HP, +1 Ember, +5% XP and gold. II: Steady Flames to rank 6 · III: a **3rd Ward** slot · IV: catch-up XP ×1.5 below your peak level · V: a **3rd Lantern Art** slot · VI: +1 class special use · VIII: ember-white badge · IX: +2 Embers (Ember cap 42) · X: *Everflame*. Rank I also unlocks Mythical gear and The Drowned Vigil — **coming in the next update**
+- **Attunement** — a Rekindled hero's gear counts up to **level + 3** (the Sheet shows the cap) and grows back as you level
+- **Companion** Rekindles with you at half your rank (rounded down). Each rank adds a quarter level to the Encounter Level
+- **Per save slot** — the rank lives in that slot's save; the Adventures card reads "Lv 12 · Fighter · Rekindled III" with an amber lantern-flame badge (Everflame's gentle pulse is still with *Reduce flashing*)
+- **Nightmare** — a party wipe ends the run and the rank goes with it (an endgame wipe restores the story hero without its rank); the menu, the Rekindle dialogs and every endgame entry warn first
+- **Saves** — 4 player fields appended (37–40); v2.32 heroes load at rank 0. Online Host / Join unchanged. See [`docs/PRESTIGE.md`](docs/PRESTIGE.md) for every number, the balance tables and the debug-build test shortcut
+
+## Previous (v2.32 / 71) — Level cap 50 and the Kindled Path
 
 - **Level cap 50.** Levels 1–20 play as before. Past 20, proficiency stays at +6, stat points come at 25, 30, 35, 40, 45 and 50, and **every level from 21 to 50 gives 1 Ember** (30 in all). The XP curve keeps today's numbers (4,900 XP for the last level, 122,500 to reach 50), and past level 20 each solo room is worth at least 40 + 15 × the Encounter Level. At 50 the XP bar stays full; an old hero above 50 loads at 50
 - **Kindled Path** (Sheet → *Kindled Path*, solo) — spend Embers on three branches:
   - **Steady Flames** (1 Ember a rank, 5 ranks): +1 STR / DEX / CON / INT / WIS / CHA, +3% max HP or +2% damage
   - **Wards** (2 Embers, 2 equipped), each fires once a battle on its own: Last Light, Cleanse, Second Wick, Ash Veil, Kindle Rush, Ember Ward, Spite Spark, Steady Hand
   - **Lantern Arts** (3 Embers, 2 equipped): 4 new actions per class, unlocking at 22 / 26 / 30 / 34 — e.g. Cleave and Iron Brace, Cinder Burst and Ash Bind, Smoke Step and Fan of Knives, Mending Circle and Relight, Rallying Verse and Encore. A new **Arts** button in a fight shows each Art's recharge as plain pips (no flashing); the companion uses its Arts on its own
-- **Ember numbers** — 30 from levels; Rekindling (next update) adds 1 per rank I–X and 2 more at rank IX: **cap 42** of a 68-Ember path
+- **Ember numbers** — 30 from levels; Rekindling (v2.33) adds 1 per rank I–X and 2 more at rank IX: **cap 42** of a 68-Ember path
 - **Signature 32** — a main stat of 32 makes every Art recharge 1 round faster
 - **Re-temper** (respec) outside a fight: 100 gold × level refunds every attribute point and Ember. **Every hero from before v2.32 gets one free Re-temper.** Wards and Arts swap for free
 - **Your hero is kept** — old saves load straight away (5 new fields are appended); a level 21+ hero has its Embers waiting. Story padding, Long Rest every 5 rooms and Short Rest after a clear are unchanged. Host / Join and the Keeper table keep the classic rules (no Kindled Path) and never touch a solo save. See [`docs/PERKS.md`](docs/PERKS.md) for every number and the balance tables
@@ -192,6 +203,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Enemy AI** — solo foes show intent chips (exact numbers at party INT 14+), play their role (focus fire, guard, heal, mark, flee), bosses change phase at 66% / 33%, and smartness scales from Easy to Nightmare
 - **Universal stats** — in solo every stat helps every class (Heft, Evade, Grit, Weak point, Mending, Barter…), stats cap at 18 + half your level (30, main stat 32) and the main stat unlocks Signature bonuses at 20 / 24 / 28 / 32; the level-up screen explains each stat for your class
 - **Kindled Path** — level cap 50; levels 21–50 give Embers for Steady Flames (stat perks), 8 once-a-battle Wards and 4 Lantern Arts per class (2 Wards + 2 Arts equipped), with a Re-temper respec (solo)
+- **Rekindling** — optional prestige at level 50 with the story done: back to level 1 keeping gear, gold and the story, for 10 permanent ranks (stats, HP, Embers, XP / gold, 3rd Ward and Art slots, catch-up XP); companion at half rank; per save slot; a Nightmare wipe clears it (solo)
 - **How combat scales** — solo fights use an Encounter Level from your level and gear (gear at 50%), foe roles and per-room threat budgets, a 15–90% hit clamp, a 45% one-hit guard, Pressure / Rekindle comeback rules and warned surprise bosses. Levels to 50
 - **Classes** — Fighter, Wizard, Rogue, Cleric, and **Bard** (CHA-based; Cutting Quip special)
 - **Companion** — AI or player-controlled ally; change class in-run where supported
@@ -299,6 +311,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`docs/COMBAT_CURVE.md`](docs/COMBAT_CURVE.md) | Combat curve: Encounter Level, roles, budgets, hit clamp, Pressure / Rekindle, save fields, `tools/combat_sim` |
 | [`docs/ENEMY_AI.md`](docs/ENEMY_AI.md) | Enemy AI: tiers, targeting score, behaviours per enemy ID, boss phases, statuses, intent chips, save fields, `tools/combat_sim/ai_sim` |
 | [`docs/PERKS.md`](docs/PERKS.md) | Kindled Path: level cap 50, XP curve, Embers, Steady Flames, Wards, Lantern Arts, Re-temper, save fields, balance tables (`tools/migration_test/perks_test`, `tools/combat_sim/ai_sim`) |
+| [`docs/PRESTIGE.md`](docs/PRESTIGE.md) | Rekindling (prestige): eligibility, reset / keep, ranks I–X, attunement, companion half share, Nightmare, save fields, debug-build test shortcut and its release check, balance tables (`tools/migration_test/prestige_test`, `tools/combat_sim/ai_sim`) |
 | [`docs/STATS.md`](docs/STATS.md) | Universal stats: formula table, caps, Signature tiers, save migration (clamp + refund), balance tables, `tools/migration_test/stats_test` |
 | [`docs/DAILY_QUESTS.md`](docs/DAILY_QUESTS.md) | Daily Quests |
 | [`docs/CHALLENGE_DUNGEON.md`](docs/CHALLENGE_DUNGEON.md) | Challenge Dungeon / Cinder Crucible |

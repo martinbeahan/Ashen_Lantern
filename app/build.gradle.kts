@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.android.application)
@@ -18,8 +19,8 @@ android {
         applicationId = "com.fintrack.dndbeginnerremote"
         minSdk = 30
         targetSdk = 36
-        versionCode = 71
-        versionName = "2.32"
+        versionCode = 72
+        versionName = "2.33"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -114,3 +115,48 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
+
+// v2.33: the level-50 test shortcut (src/debug DebugShortcuts.kt + main.cpp #ifndef NDEBUG) must never
+// ship. After the release APK is packaged, scan its dex and native libs for the shortcut's markers;
+// any hit fails assembleRelease. (tools/check_release_jni.sh checks the JNI symbol too.)
+val debugShortcutMarkers = listOf("JumpToRekindleReady", "ASHEN_DEBUG_ONLY_SHORTCUT", "[debug] Party set to level 50")
+val verifyReleaseHasNoDebugShortcuts by tasks.registering {
+    group = "verification"
+    description = "Fails if the debug-only Rekindling test shortcut is present in the release APK."
+    val apkDir = layout.buildDirectory.dir("outputs/apk/release")
+    val markers = debugShortcutMarkers
+    dependsOn("packageRelease")
+    inputs.dir(apkDir)
+    doLast {
+        val apks = apkDir.get().asFile.listFiles { f -> f.name.endsWith(".apk") }.orEmpty()
+        if (apks.isEmpty()) throw GradleException("verifyReleaseHasNoDebugShortcuts: no release APK found")
+        val needles = markers.map { it.toByteArray(Charsets.UTF_8) }
+        fun ByteArray.has(n: ByteArray): Boolean {
+            if (n.isEmpty() || size < n.size) return false
+            outer@ for (i in 0..size - n.size) {
+                for (j in n.indices) if (this[i + j] != n[j]) continue@outer
+                return true
+            }
+            return false
+        }
+        var scanned = 0
+        for (apk in apks) {
+            ZipFile(apk).use { zip ->
+                for (e in zip.entries().asSequence()) {
+                    val n = e.name
+                    if (!(n.endsWith(".dex") || (n.startsWith("lib/") && n.endsWith(".so")))) continue
+                    val bytes = zip.getInputStream(e).use { it.readBytes() }
+                    scanned++
+                    needles.forEachIndexed { k, needle ->
+                        if (bytes.has(needle)) throw GradleException(
+                            "Release APK ${apk.name} contains the debug-only shortcut marker '${markers[k]}' in $n. " +
+                                "It must stay in src/debug / #ifndef NDEBUG.")
+                    }
+                }
+            }
+        }
+        if (scanned == 0) throw GradleException("verifyReleaseHasNoDebugShortcuts: no dex / .so scanned")
+        println("verifyReleaseHasNoDebugShortcuts OK: $scanned dex/.so files in ${apks.size} APK(s), no debug shortcut")
+    }
+}
+tasks.matching { it.name == "assembleRelease" }.configureEach { dependsOn(verifyReleaseHasNoDebugShortcuts) }

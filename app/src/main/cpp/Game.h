@@ -92,6 +92,26 @@ public:
     std::string getPerkState(int heroIdx);
     /** The current hero's equipped Arts: "slot|art|name|cd|ready|target|baseCd;…" (empty = none). */
     std::string getArtsBar() const;
+    // v2.33 Rekindling (prestige; solo only; GamePerks.cpp, docs/PRESTIGE.md).
+    /** Why the hero cannot Rekindle right now ("" = they can). */
+    std::string rekindleBlockReason() const;
+    bool canRekindle() const { return rekindleBlockReason().empty(); }
+    /** Level 50 + story complete (shown as "Ready to Rekindle" even if blocked for now). */
+    bool rekindleReady() const;
+    /** Rekindle the hero (party index 0) and the companion. Only after the player confirms. */
+    bool rekindle(std::string* why = nullptr);
+    /** "R|ready|can|offered|rank|nextRank|reason|level|difficulty|attuneCap|title|nextTitle" + "P|rank|text" lines. */
+    std::string getRekindleState() const;
+    /** The explainer was shown for this climb ("Not now" keeps everything; Sheet reopens it). */
+    void markRekindleOffered();
+    /** Nightmare wipe: every hero in this game loses its Rekindling rank (perks trimmed to fit). */
+    void clearPrestigeForNightmare();
+    /** Same on a save blob (Nightmare endgame wipe restoring the story hero). "" if it won't load. */
+    static std::string clearPrestigeInSave(const std::string& data);
+#ifndef NDEBUG
+    /** DEBUG BUILDS ONLY (compiled out under NDEBUG): hero + companion to level 50, story complete. */
+    bool debugJumpToRekindleReady();
+#endif
     void playerInteract(const std::string& playerName);
     void playerRest(bool force = false);
     /** Full recover (HP, resources/specials). Same rest-opportunity gate as Short Rest. */
@@ -164,6 +184,7 @@ public:
         bool gameOver = false;
         int roomCount = 0;
         bool storyComplete = false;
+        int prestigeRank = 0; // v2.33 Rekindling rank of the hero (slot card badge)
     };
     static bool describeSave(const std::string& data, SaveSummary* out, std::string* error = nullptr);
 

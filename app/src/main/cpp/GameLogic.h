@@ -399,11 +399,11 @@ struct Character {
     std::array<int, perks::kFlameCount> flames{};
     /** Wards: learned bit mask, equipped ids (-1 empty), used this battle (player field 33). */
     int wardsLearned = 0;
-    std::array<int, perks::kWardSlots> wardEq{{-1, -1}};
+    std::array<int, perks::kWardSlotsMax> wardEq{{-1, -1, -1}}; // slot 3 (field 39) from rank III
     int wardUsed = 0;
     /** Lantern Arts of this hero's class: learned mask, equipped (-1 empty), cooldowns (field 34). */
     int artsLearned = 0;
-    std::array<int, perks::kArtSlots> artEq{{-1, -1}};
+    std::array<int, perks::kArtSlotsMax> artEq{{-1, -1, -1}};   // slot 3 (field 40) from rank V
     std::array<int, perks::kArtsPerClass> artCd{};
     /** Free Re-temper (respec) tokens: 1 for every hero saved before v2.32 (field 35). */
     int freeRespecs = 0;
@@ -412,10 +412,10 @@ struct Character {
 
     /** Perks work only for solo heroes (the stat-rules switch); online heroes and foes: never. */
     bool perksOn() const { return statRules && !isFoe(); }
-    int embersEarned() const { return perks::embersEarned(level, prestigeRank); }
+    int embersEarned() const { return perks::embersEarned(level, prestigeShare()); }
     int embersSpent() const {
         int s = 0;
-        for (int r : flames) s += std::clamp(r, 0, perks::kFlameMaxRank);
+        for (int r : flames) s += std::clamp(r, 0, perks::kFlameMaxRankRekindled);
         for (int i = 0; i < perks::kWardCount; ++i) if (wardsLearned & (1 << i)) s += perks::kWardCost;
         for (int i = 0; i < perks::kArtsPerClass; ++i) if (artsLearned & (1 << i)) s += perks::kArtCost;
         return s;
@@ -423,7 +423,8 @@ struct Character {
     int embersFree() const { return std::max(0, embersEarned() - embersSpent()); }
     bool wardEquipped(int id) const {
         if (!perksOn() || id < 0) return false;
-        for (int w : wardEq) if (w == id) return (wardsLearned & (1 << id)) != 0;
+        for (int k = 0; k < wardSlots(); ++k)
+            if (wardEq[static_cast<size_t>(k)] == id) return (wardsLearned & (1 << id)) != 0;
         return false;
     }
     /** An equipped Ward that has not fired this battle. */
@@ -431,7 +432,8 @@ struct Character {
     void spendWard(int id) { if (id >= 0) wardUsed |= (1 << id); }
     bool artEquipped(int i) const {
         if (!perksOn() || i < 0 || i >= perks::kArtsPerClass) return false;
-        for (int a : artEq) if (a == i) return (artsLearned & (1 << i)) != 0;
+        for (int k = 0; k < artSlots(); ++k)
+            if (artEq[static_cast<size_t>(k)] == i) return (artsLearned & (1 << i)) != 0;
         return false;
     }
     bool artReady(int i) const { return artEquipped(i) && artCd[static_cast<size_t>(i)] <= 0; }
@@ -452,8 +454,30 @@ struct Character {
      * gives (odd CON points). Saved as player field 28; legacy saves derive it on load.
      */
     int bonusMaxHp = 0;
-    /** Rekindling (prestige) rank. Always 0 until PR 5; saved as player field 27. EL counts 25%. */
+    /** Rekindling (prestige) rank 0..10, per save slot; saved as player field 27. EL counts 25%. */
     int prestigeRank = 0;
+    /** v2.33: the companion Rekindles with the hero at half strength (field 37). */
+    bool prestigeHalf = false;
+    /** v2.33: the "Ready to Rekindle" explainer was shown for this climb (hero, field 38). */
+    bool rekindleOffered = false;
+    /** Rank that counts for attributes, caps, HP, Embers and milestones (companion: half). */
+    int prestigeShare() const { return prestige::share(prestigeRank, prestigeHalf); }
+    /** Same, but only while the solo rules are on (0 online / for foes). */
+    int prestigeActive() const { return perksOn() ? prestigeShare() : 0; }
+    int flameCap() const { return prestige::flameCap(prestigeActive()); }
+    int wardSlots() const { return prestige::wardSlots(prestigeActive()); }
+    int artSlots() const { return prestige::artSlots(prestigeActive()); }
+    /** XP multiplier from Rekindling (+5% per rank; rank IV+ x1.5 below peak level). */
+    double prestigeXpMult() const { return perksOn() ? prestige::xpMult(prestigeRank, level, peakLevel) : 1.0; }
+    /** Attunement: gear counts up to level + 3 for a Rekindled hero (solo). */
+    int weaponBonusEff() const {
+        const int b = (equippedWeapon && equippedWeapon->type == ItemType::WEAPON) ? equippedWeapon->bonus : 0;
+        return prestige::attunedBonus(b, level, prestigeActive());
+    }
+    int armorBonusEff() const {
+        const int b = (equippedArmor && equippedArmor->type == ItemType::ARMOR) ? equippedArmor->bonus : 0;
+        return prestige::attunedBonus(b, level, prestigeActive());
+    }
     /**
      * Encounter-curve foe stats (CombatCurve.h). curveEL > 0 means this foe was built from the
      * Reference Lamplighter: attacks use curveToHit and curveAvgDmgX10 (tenths) instead of the
@@ -582,7 +606,7 @@ struct Character {
     void calculateAC() {
         int dexMod = Attributes::getModifier(effectiveAttr(1));
         if (statRules) dexMod = stats::acFromDex(dexMod); // v2.31: DEX gives at most +6 AC
-        int armorBonus = (equippedArmor && equippedArmor->type == ItemType::ARMOR) ? equippedArmor->bonus : 0;
+        const int armorBonus = armorBonusEff(); // v2.33: attuned to level + 3 when Rekindled
         armorClass = 10 + dexMod + armorBonus;
     }
 
@@ -609,6 +633,8 @@ struct Character {
         maxHp = std::max(1, formulaMaxHp() + std::max(0, bonusMaxHp));
         if (perksOn() && flames[perks::THICK_WAX] > 0) // v2.32 Thick Wax: +3% max HP per rank
             maxHp = static_cast<int>(maxHp * (1.0 + perks::kThickWaxPerRank * flames[perks::THICK_WAX]));
+        if (prestigeActive() > 0) // v2.33 Rekindling: +2% max HP per rank (companion: half)
+            maxHp = static_cast<int>(maxHp * prestige::hpMult(prestigeActive()));
         if (currentHp > maxHp) currentHp = maxHp;
     }
 
@@ -661,6 +687,7 @@ struct Character {
                 break;
         }
         maxResources += std::max(0, bonusMaxResources); // v2.30: story +1 kept through level-ups
+        maxResources += prestige::extraSpecialUses(prestigeActive()); // v2.33 rank VI: +1 use
         // Level 1: max hit die + CON; later levels: average hit die + CON (+ kept bonus HP).
         recomputeMaxHp();
     }
@@ -722,7 +749,7 @@ struct Character {
         }
     }
     /** v2.31 cap on the spent score for this stat at the current level (gear may exceed it). */
-    int attrCapFor(int which) const { return stats::attrCap(level, which == mainStatIndex(), prestigeRank); }
+    int attrCapFor(int which) const { return stats::attrCap(level, which == mainStatIndex(), prestigeShare()); }
     bool canRaise(int which) const { return !statRules || baseAttr(which) < attrCapFor(which); }
     /** Effective modifier (gear included). */
     int effMod(int which) const { return Attributes::getModifier(effectiveAttr(which)); }
@@ -906,8 +933,9 @@ struct Character {
             default: return 10;
         }
         // v2.32 Steady Flames: +1 per rank on top (like gear, it can pass the cap). Solo only.
-        const int flame = perksOn() ? std::clamp(flames[static_cast<size_t>(which)], 0, perks::kFlameMaxRank) : 0;
-        return base + legendaryAttrBonus(which) + flame;
+        const int flame = perksOn() ? std::clamp(flames[static_cast<size_t>(which)], 0, flameCap()) : 0;
+        // v2.33 Rekindling: +1 to every attribute per rank (companion: half). Solo only.
+        return base + legendaryAttrBonus(which) + flame + prestigeActive();
     }
 
     /** Once-per-fight shield charges (armor Legendary sub-effect). Not persisted mid-fight across saves. */
@@ -1046,7 +1074,7 @@ public:
         }
         int mod = getPrimaryModifier(attacker);
         int pb = proficiencyBonusForLevel(attacker.level);
-        int weaponBonus = (attacker.equippedWeapon && attacker.equippedWeapon->type == ItemType::WEAPON) ? attacker.equippedWeapon->bonus : 0;
+        int weaponBonus = (attacker.equippedWeapon && attacker.equippedWeapon->type == ItemType::WEAPON) ? attacker.weaponBonusEff() : 0;
         return { die + mod + pb + weaponBonus, die, (die == 20), (die == 1) };
     }
 
@@ -1059,7 +1087,7 @@ public:
             if (isCritical) damage += (rng::below(extraSides) + 1);
         }
         int mod = getPrimaryModifier(attacker);
-        int weaponBonus = (attacker.equippedWeapon && attacker.equippedWeapon->type == ItemType::WEAPON) ? attacker.equippedWeapon->bonus : 0;
+        int weaponBonus = (attacker.equippedWeapon && attacker.equippedWeapon->type == ItemType::WEAPON) ? attacker.weaponBonusEff() : 0;
         int total = damage + mod + weaponBonus;
         if (attacker.statRules && !attacker.isFoe()) total += stats::heft(attacker.effMod(0)); // v2.31 Heft
         return total < 1 ? 1 : total;

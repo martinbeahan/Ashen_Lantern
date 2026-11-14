@@ -425,6 +425,57 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doRetemper([[maybe_unused]] JNI
     });
 }
 
+// --- v2.33 Rekindling (prestige; solo only) ---------------------------------------------------------
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getRekindleState([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuardStr(env, "getRekindleState", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        g_Game.syncStatRules();
+        return env->NewStringUTF(g_Game.getRekindleState().c_str());
+    });
+}
+
+/** Returns "" on success, else the reason shown to the player. Only after the two-step confirm. */
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_doRekindle([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuardStr(env, "doRekindle", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        std::string why;
+        const bool ok = g_Game.rekindle(&why);
+        return env->NewStringUTF(ok ? "" : (why.empty() ? "Not now." : why.c_str()));
+    });
+}
+
+JNIEXPORT void JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_markRekindleOffered([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    jniGuardVoid("markRekindleOffered", [&]() {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        g_Game.markRekindleOffered();
+    });
+}
+
+/** Nightmare endgame wipe: the restored story save without its Rekindling rank ("" = unreadable). */
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_clearPrestigeInSave([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring data) {
+    return jniGuardStr(env, "clearPrestigeInSave", [&]() -> jstring {
+        JUtf nativeDataUtf(env, data);
+        return env->NewStringUTF(dnd::Game::clearPrestigeInSave(nativeDataUtf.str()).c_str());
+    });
+}
+
+#ifndef NDEBUG
+// DEBUG BUILDS ONLY: the Settings test shortcut (src/debug DebugShortcuts.kt). Compiled out of
+// release builds (NDEBUG), so the symbol is absent from the shipped .so — app/build.gradle.kts
+// verifyReleaseHasNoDebugShortcuts and tools/check_release_jni.sh fail the release otherwise.
+JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_DebugShortcuts_nativeJumpToRekindleReady([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuard("nativeJumpToRekindleReady", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return g_Game.debugJumpToRekindleReady() ? JNI_TRUE : JNI_FALSE;
+    });
+}
+#endif
+
 JNIEXPORT void JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_doInteract([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName) {
     jniGuardVoid("doInteract", [&]() {
@@ -1066,7 +1117,7 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_describeSaveState([[maybe_unuse
         ss << name << '\t' << s.classId << '\t' << s.level << '\t' << s.questBeat << '\t'
            << dnd::soloQuestActTitle(s.questBeat) << '\t' << dnd::soloQuestBeatName(s.questBeat) << '\t'
            << s.soloPlayMode << '\t' << s.difficulty << '\t' << (s.gameOver ? 1 : 0) << '\t'
-           << s.roomCount << '\t' << (s.storyComplete ? 1 : 0);
+           << s.roomCount << '\t' << (s.storyComplete ? 1 : 0) << '\t' << s.prestigeRank;
         return ss.str();
     });
     return env->NewStringUTF(out.c_str());

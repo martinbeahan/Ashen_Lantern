@@ -379,7 +379,7 @@ bool Game::playerUseArt(int slot, int targetEnemyIndex) {
     Character* actor = getCurrentActor();
     if (!actor || !isPartyMember(actor) || !up(actor)) return false;
     if (!actor->perksOn()) { lastEvent_ = "Lantern Arts are a solo feature."; return false; }
-    if (slot < 0 || slot >= perks::kArtSlots) return false;
+    if (slot < 0 || slot >= actor->artSlots()) return false;
     const int a = actor->artEq[static_cast<size_t>(slot)];
     if (!actor->artEquipped(a)) { lastEvent_ = "No Art in that slot."; return false; }
     const perks::ArtInfo& info = perks::art(classOrd(*actor), a);
@@ -443,7 +443,7 @@ bool Game::allyTryArt(Character& actor) {
         if (p->currentHp * 3 < p->maxHp) critical = true;
     }
     const bool rallied = actor.status.rallied > 0;
-    for (int slot = 0; slot < perks::kArtSlots; ++slot) {
+    for (int slot = 0; slot < actor.artSlots(); ++slot) {
         const int a = actor.artEq[static_cast<size_t>(slot)];
         if (!actor.artReady(a)) continue;
         int target = lowIdx;
@@ -500,7 +500,8 @@ bool Game::learnPerk(int heroIdx, int kind, int id, std::string* why) {
     auto refuse = [&](const std::string& s) { *why = s; return false; };
     if (kind == 0) {
         if (id < 0 || id >= perks::kFlameCount) return refuse("No such flame.");
-        if (p->flames[static_cast<size_t>(id)] >= perks::kFlameMaxRank) return refuse("Already at rank 5.");
+        const int cap = p->flameCap(); // 6 from Rekindling rank II
+        if (p->flames[static_cast<size_t>(id)] >= cap) return refuse("Already at rank " + std::to_string(cap) + ".");
         if (free < 1) return refuse("Need 1 Ember.");
         p->flames[static_cast<size_t>(id)]++;
         const int hp0 = p->maxHp;
@@ -516,7 +517,7 @@ bool Game::learnPerk(int heroIdx, int kind, int id, std::string* why) {
         if (p->wardsLearned & (1 << id)) return refuse("Already learned.");
         if (free < perks::kWardCost) return refuse("Need 2 Embers.");
         p->wardsLearned |= (1 << id);
-        for (int& s : p->wardEq) if (s < 0) { s = id; break; }
+        for (int k = 0; k < p->wardSlots(); ++k) { int& s = p->wardEq[static_cast<size_t>(k)]; if (s < 0) { s = id; break; } }
         addChatMessage("System", p->name + " learns the Ward " + perks::wardName(id) + ".");
         return true;
     }
@@ -526,7 +527,7 @@ bool Game::learnPerk(int heroIdx, int kind, int id, std::string* why) {
         if (p->level < perks::kArtUnlock[id]) return refuse("Unlocks at level " + std::to_string(perks::kArtUnlock[id]) + ".");
         if (free < perks::kArtCost) return refuse("Need 3 Embers.");
         p->artsLearned |= (1 << id);
-        for (int& s : p->artEq) if (s < 0) { s = id; break; }
+        for (int k = 0; k < p->artSlots(); ++k) { int& s = p->artEq[static_cast<size_t>(k)]; if (s < 0) { s = id; break; } }
         addChatMessage("System", p->name + " learns the Art " + perks::art(classOrd(*p), id).name + ".");
         return true;
     }
@@ -538,18 +539,22 @@ bool Game::equipPerk(int heroIdx, int kind, int slot, int id, std::string* why) 
     if (!why) why = &tmp;
     Character* p = perkHero(heroIdx, why);
     if (!p) return false;
-    if (slot < 0 || slot > 1) { *why = "No such slot."; return false; }
+    // v2.33: a 3rd Ward slot from Rekindling rank III, a 3rd Art slot from rank V.
+    auto place = [&](auto& eq, int slots) {
+        if (slot < 0 || slot >= slots) { *why = slots > 2 ? "No such slot." : "No such slot (a 3rd slot comes with Rekindling)."; return false; }
+        if (id >= 0) // already in another slot: swap the two
+            for (int k = 0; k < slots; ++k)
+                if (k != slot && eq[static_cast<size_t>(k)] == id) eq[static_cast<size_t>(k)] = eq[static_cast<size_t>(slot)];
+        eq[static_cast<size_t>(slot)] = id < 0 ? -1 : id;
+        return true;
+    };
     if (kind == 1) {
         if (id >= 0 && (id >= perks::kWardCount || !(p->wardsLearned & (1 << id)))) { *why = "Learn it first."; return false; }
-        if (id >= 0 && p->wardEq[static_cast<size_t>(1 - slot)] == id) p->wardEq[static_cast<size_t>(1 - slot)] = p->wardEq[static_cast<size_t>(slot)];
-        p->wardEq[static_cast<size_t>(slot)] = id < 0 ? -1 : id;
-        return true;
+        return place(p->wardEq, p->wardSlots());
     }
     if (kind == 2) {
         if (id >= 0 && (id >= perks::kArtsPerClass || !(p->artsLearned & (1 << id)))) { *why = "Learn it first."; return false; }
-        if (id >= 0 && p->artEq[static_cast<size_t>(1 - slot)] == id) p->artEq[static_cast<size_t>(1 - slot)] = p->artEq[static_cast<size_t>(slot)];
-        p->artEq[static_cast<size_t>(slot)] = id < 0 ? -1 : id;
-        return true;
+        return place(p->artEq, p->artSlots());
     }
     *why = "Unknown perk.";
     return false;
@@ -594,9 +599,9 @@ bool Game::retemper(int heroIdx, std::string* why) {
     p->pendingStatPoints += refunded;
     p->flames.fill(0);
     p->wardsLearned = 0;
-    p->wardEq = {{-1, -1}};
+    p->wardEq = {{-1, -1, -1}};
     p->artsLearned = 0;
-    p->artEq = {{-1, -1}};
+    p->artEq = {{-1, -1, -1}};
     p->resetBattlePerks();
     if (cost > 0) payer->gold -= cost;
     else p->freeRespecs = std::max(0, p->freeRespecs - 1);
@@ -620,16 +625,22 @@ std::string Game::getPerkState(int heroIdx) {
     std::ostringstream ss;
     ss << "H|" << p.name << "|" << classOrd(p) << "|" << p.level << "|" << perks::kLevelCap << "|" << p.embersEarned()
        << "|" << p.embersSpent() << "|" << p.embersFree() << "|" << p.freeRespecs << "|" << retemperCostFor(p)
-       << "|" << (canEdit ? 1 : 0) << "|" << why << "|" << p.gold << "|" << p.signatureTier() << "\n";
+       << "|" << (canEdit ? 1 : 0) << "|" << why << "|" << p.gold << "|" << p.signatureTier()
+       // v2.33 (appended): 14 Ward slots, 15 Art slots, 16 Rekindling rank
+       << "|" << p.wardSlots() << "|" << p.artSlots() << "|" << p.prestigeRank << "\n";
+    auto slotOf = [](const auto& eq, int slots, int i) {
+        for (int k = 0; k < slots; ++k) if (eq[static_cast<size_t>(k)] == i) return k;
+        return -1;
+    };
     for (int i = 0; i < perks::kFlameCount; ++i)
-        ss << "F|" << i << "|" << perks::flameName(i) << "|" << perks::flameDesc(i) << "|" << p.flames[static_cast<size_t>(i)] << "|" << perks::kFlameMaxRank << "\n";
+        ss << "F|" << i << "|" << perks::flameName(i) << "|" << perks::flameDesc(i) << "|" << p.flames[static_cast<size_t>(i)] << "|" << p.flameCap() << "\n";
     for (int i = 0; i < perks::kWardCount; ++i) {
-        const int slot = p.wardEq[0] == i ? 0 : (p.wardEq[1] == i ? 1 : -1);
+        const int slot = slotOf(p.wardEq, p.wardSlots(), i);
         ss << "W|" << i << "|" << perks::wardName(i) << "|" << perks::wardDesc(i) << "|" << ((p.wardsLearned >> i) & 1) << "|" << slot << "\n";
     }
     for (int i = 0; i < perks::kArtsPerClass; ++i) {
         const perks::ArtInfo& a = perks::art(classOrd(p), i);
-        const int slot = p.artEq[0] == i ? 0 : (p.artEq[1] == i ? 1 : -1);
+        const int slot = slotOf(p.artEq, p.artSlots(), i);
         ss << "A|" << i << "|" << a.name << "|" << a.desc << "|" << perks::cooldownFor(a.cooldown, p.signatureTier())
            << "|" << perks::kArtUnlock[i] << "|" << ((p.artsLearned >> i) & 1) << "|" << slot << "|" << static_cast<int>(a.target) << "\n";
     }
@@ -641,7 +652,7 @@ std::string Game::getArtsBar() const {
     if (!a || !isPartyMember(a) || !a->perksOn() || enemies_.empty()) return "";
     std::ostringstream ss;
     bool first = true;
-    for (int slot = 0; slot < perks::kArtSlots; ++slot) {
+    for (int slot = 0; slot < a->artSlots(); ++slot) {
         const int i = a->artEq[static_cast<size_t>(slot)];
         if (!a->artEquipped(i)) continue;
         const perks::ArtInfo& info = perks::art(classOrd(*a), i);
@@ -653,5 +664,164 @@ std::string Game::getArtsBar() const {
     }
     return ss.str();
 }
+
+// --- v2.33 Rekindling (prestige, PR 5; docs/PRESTIGE.md) ---------------------------------------------
+namespace {
+/** Kindled Path back to empty (every Ember returns). Re-temper tokens are kept. */
+void clearKindledPath(Character& p) {
+    p.flames.fill(0);
+    p.wardsLearned = 0;
+    p.wardEq = {{-1, -1, -1}};
+    p.artsLearned = 0;
+    p.artEq = {{-1, -1, -1}};
+    p.resetBattlePerks();
+}
+} // namespace
+
+bool Game::rekindleReady() const {
+    if (!universalStatsActive() || players_.empty() || !players_[0]) return false;
+    const Character& h = *players_[0];
+    return questAct4Complete_ && h.level >= prestige::kEligibleLevel && h.prestigeRank < prestige::kMaxRank;
+}
+
+std::string Game::rekindleBlockReason() const {
+    if (!universalStatsActive()) return "Rekindling is solo only.";
+    if (players_.empty() || !players_[0]) return "No hero.";
+    const Character& h = *players_[0];
+    if (h.prestigeRank >= prestige::kMaxRank) return "Everflame (rank X) is the highest rank.";
+    if (!questAct4Complete_) return "Finish the story (Acts 1-4) first.";
+    if (h.level < prestige::kEligibleLevel) return "Reach level 50 first.";
+    if (soloPlayMode_ != static_cast<int>(SoloPlayMode::STORY) && soloPlayMode_ != static_cast<int>(SoloPlayMode::CRAWL))
+        return "Finish or leave this endgame run first.";
+    if (gameOver_) return "The party has fallen.";
+    if (isInCombat()) return "Not during a fight.";
+    return "";
+}
+
+bool Game::rekindle(std::string* why) {
+    std::string tmp;
+    if (!why) why = &tmp;
+    syncStatRules();
+    *why = rekindleBlockReason();
+    if (!why->empty()) return false;
+    const int newRank = std::min(prestige::kMaxRank, players_[0]->prestigeRank + 1);
+    for (size_t i = 0; i < players_.size(); ++i) {
+        if (!players_[i] || players_[i]->isFoe()) continue;
+        Character& p = *players_[i];
+        // Reset: level 1, the class's starting attributes, Embers back (perks relock until 21).
+        const Character fresh("", p.characterClass, "rekindle");
+        p.attributes = fresh.attributes;
+        p.pendingStatPoints = 0;
+        // Odd-CON HP goes with the points; the story +2 HP padding stays (it pairs with the +1 use).
+        p.bonusMaxHp = p.bonusMaxResources > 0 ? std::min(std::max(0, p.bonusMaxHp), 2) : 0;
+        clearKindledPath(p);
+        p.freeRespecs = std::min(9, p.freeRespecs + 1); // a free Re-temper after every Rekindling
+        p.level = 1;
+        p.xp = 0;
+        p.peakLevel = std::max(p.peakLevel, prestige::kEligibleLevel);
+        p.prestigeRank = newRank;
+        p.prestigeHalf = (i != 0); // the companion Rekindles with you at half strength
+        p.rekindleOffered = false;
+        p.status = Character::Statuses{};
+        p.signatureUses = 0;
+        p.specialUsedThisCombat = false;
+        p.nextAttackPenalty = 0;
+        p.isDowned = p.isDead = p.isStable = false;
+        p.deathSaveSuccesses = p.deathSaveFailures = 0;
+        p.calculateAC();
+        p.applyStatsForLevel();
+        p.calculateAC();
+        p.currentHp = p.maxHp;
+        p.resources = p.maxResources;
+    }
+    pressure_ = 0;
+    rekindleRooms_ = 0;
+    lowHpStreak_ = 0;
+    const std::string t = prestige::title(newRank);
+    lastEvent_ = players_[0]->name + " is " + t + "! Level 1 again, with every piece of gear, gold and the story kept.";
+    addChatMessage("System", lastEvent_);
+    dmSay("The Lantern gutters, then catches again, brighter. " + players_[0]->name + " walks the road once more as "
+          + t + ".");
+    addJournalEntry("Rekindled — rank " + std::string(prestige::roman(newRank)) + ".");
+    return true;
+}
+
+std::string Game::getRekindleState() const {
+    std::ostringstream ss;
+    if (players_.empty() || !players_[0]) return "";
+    const Character& h = *players_[0];
+    const int rank = prestige::clampRank(h.prestigeRank);
+    const int next = std::min(prestige::kMaxRank, rank + 1);
+    const std::string why = rekindleBlockReason();
+    const int attune = rank > 0 ? h.level + prestige::kAttuneAbove : -1;
+    ss << "R|" << (rekindleReady() ? 1 : 0) << "|" << (why.empty() ? 1 : 0) << "|" << (h.rekindleOffered ? 1 : 0)
+       << "|" << rank << "|" << next << "|" << why << "|" << h.level << "|" << difficulty_ << "|" << attune
+       << "|" << prestige::title(rank) << "|" << prestige::title(next)
+       << "|" << prestige::wardSlots(rank) << "|" << prestige::artSlots(rank) << "\n";
+    for (int r = 1; r <= prestige::kMaxRank; ++r) ss << "P|" << r << "|" << prestige::rankPerk(r) << "\n";
+    return ss.str();
+}
+
+void Game::markRekindleOffered() {
+    if (!players_.empty() && players_[0]) players_[0]->rekindleOffered = true;
+}
+
+void Game::clearPrestigeForNightmare() {
+    for (auto& up : players_) {
+        if (!up || up->isFoe()) continue;
+        Character& p = *up;
+        if (p.prestigeRank <= 0 && !p.prestigeHalf) continue;
+        p.prestigeRank = 0;
+        p.prestigeHalf = false;
+        // Trim what the rank paid for: flame rank 6, the 3rd slots, prestige Embers, +caps.
+        for (int& f : p.flames) f = std::min(f, perks::kFlameMaxRank);
+        p.wardEq[2] = -1;
+        p.artEq[2] = -1;
+        if (p.embersSpent() > p.embersEarned()) {
+            clearKindledPath(p);
+            p.freeRespecs = std::min(9, p.freeRespecs + 1);
+        }
+        p.clampAttributesToCaps();
+        const int hp = p.currentHp;
+        p.calculateAC();
+        p.applyStatsForLevel();
+        p.currentHp = std::min(p.maxHp, hp);
+        p.resources = std::min(p.resources, p.maxResources);
+    }
+}
+
+std::string Game::clearPrestigeInSave(const std::string& data) {
+    if (data.empty() || data.find('|') == std::string::npos) return "";
+    try {
+        Game tmp{LoadOnlyTag{}};
+        tmp.parseSave(data);
+        if (tmp.players_.empty()) return "";
+        for (auto& p : tmp.players_) if (p) p->statRules = true; // a solo save: count perks as in play
+        tmp.clearPrestigeForNightmare();
+        return tmp.serialize();
+    } catch (...) {
+        return "";
+    }
+}
+
+#ifndef NDEBUG
+// DEBUG BUILDS ONLY. Compiled out of release (NDEBUG): the symbol does not exist in the shipped .so.
+bool Game::debugJumpToRekindleReady() {
+    syncStatRules();
+    if (!universalStatsActive() || players_.empty() || isInCombat()) return false;
+    questComplete_ = true;
+    questAct2Complete_ = questAct2LedgerFound_ = true;
+    questAct3Complete_ = questAct3SealFound_ = true;
+    questAct4Complete_ = questAct4EmberFound_ = true;
+    if (soloPlayMode_ == static_cast<int>(SoloPlayMode::STORY)) questBeat_ = static_cast<int>(SoloQuestBeat::POST_QUEST);
+    for (auto& p : players_) {
+        if (!p || p->isFoe()) continue;
+        while (p->level < Character::kMaxLevel) p->addXpLevels(perks::xpToNext(p->level));
+        p->rekindleOffered = false;
+    }
+    addChatMessage("System", "[debug] Party set to level 50 with the story complete.");
+    return true;
+}
+#endif
 
 } // namespace dnd

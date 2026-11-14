@@ -68,6 +68,7 @@ inline int embersEarned(int level, int prestigeRank) {
 // --- Steady Flames (permanent, 1 Ember per rank, 5 ranks) -----------------------------------------
 constexpr int kFlameCount = 8;
 constexpr int kFlameMaxRank = 5;
+constexpr int kFlameMaxRankRekindled = 6; // Rekindling rank II
 enum Flame { TEMPERED_ARM = 0, QUICKWICK, DEEP_TALLOW, LAMP_LORE, STILLFLAME, SILVER_TONGUE, THICK_WAX, BRIGHT_EDGE };
 inline const char* flameName(int i) {
     static const char* const n[kFlameCount] = {"Tempered Arm", "Quickwick", "Deep Tallow", "Lamp-Lore",
@@ -86,7 +87,8 @@ constexpr double kBrightEdgePerRank = 0.02;
 // --- Wards (once per battle, 2 Embers to learn, 2 equipped) ------------------------------------------
 constexpr int kWardCount = 8;
 constexpr int kWardCost = 2;
-constexpr int kWardSlots = 2;
+constexpr int kWardSlots = 2;      // equipped Wards (3 from Rekindling rank III)
+constexpr int kWardSlotsMax = 3;
 enum Ward { LAST_LIGHT = 0, CLEANSE, SECOND_WICK, ASH_VEIL, KINDLE_RUSH, EMBER_WARD, SPITE_SPARK, STEADY_HAND };
 inline const char* wardName(int i) {
     static const char* const n[kWardCount] = {"Last Light", "Cleanse", "Second Wick", "Ash Veil",
@@ -121,7 +123,8 @@ constexpr int kSpiteRounds = 2;
 // --- Lantern Arts (actives; 3 Embers to learn, 2 equipped; ready at battle start) -------------------
 constexpr int kArtsPerClass = 4;
 constexpr int kArtCost = 3;
-constexpr int kArtSlots = 2;
+constexpr int kArtSlots = 2;       // equipped Arts (3 from Rekindling rank V)
+constexpr int kArtSlotsMax = 3;
 constexpr int kArtUnlock[kArtsPerClass] = {22, 26, 30, 34};
 constexpr int kOncePerBattle = 99; // Relight
 
@@ -186,4 +189,79 @@ inline int retemperCost(int level) { return kRetemperGoldPerLevel * std::max(1, 
 constexpr int kPathTotalCost = kFlameCount * kFlameMaxRank + kWardCount * kWardCost + kArtsPerClass * kArtCost;
 
 } // namespace perks
+
+// --- v2.33 Rekindling (prestige, combat revamp PR 5; docs/PRESTIGE.md) ------------------------------
+// Optional at level 50 with the story complete. Level -> 1, gear/gold/story kept, +1 rank (I..X).
+// Solo only: every bonus below counts under the solo rules (Character::perksOn), never online.
+namespace prestige {
+constexpr int kMaxRank = perks::kPrestigeMaxRank;   // 10
+constexpr int kEligibleLevel = perks::kLevelCap;    // 50
+constexpr double kHpPerRank = 0.02;                 // +2% max HP per rank
+constexpr double kXpPerRank = 0.05;                 // +5% XP per rank
+constexpr double kGoldPerRank = 0.05;               // +5% gold (loot, searches) per rank
+constexpr double kCatchUpXp = 1.5;                  // rank IV+: XP x1.5 while below peak level
+constexpr int kAttuneAbove = 3;                     // gear counts up to level + 3 (Rekindled heroes)
+// Milestone ranks
+constexpr int kRankFlameCap = 2;      // II: Steady Flame cap 6
+constexpr int kRankThirdWard = 3;     // III: a 3rd Ward slot
+constexpr int kRankCatchUp = 4;       // IV: catch-up XP
+constexpr int kRankThirdArt = 5;      // V: a 3rd Art slot
+constexpr int kRankExtraSpecial = 6;  // VI: +1 class special use
+constexpr int kRankMythicCap = 7;     // VII: Mythical upgrade cap +2 (PR 6)
+constexpr int kRankWhiteBadge = 8;    // VIII: ember-white badge
+// IX: +2 Embers (perks::embersEarned); X: Everflame.
+
+inline int clampRank(int r) { return std::clamp(r, 0, kMaxRank); }
+/** Companion share: half the hero's rank, rounded down (attributes, caps, HP, Embers, milestones). */
+inline int share(int rank, bool half) { const int r = clampRank(rank); return half ? r / 2 : r; }
+inline int flameCap(int shareRank) { return shareRank >= kRankFlameCap ? perks::kFlameMaxRankRekindled : perks::kFlameMaxRank; }
+inline int wardSlots(int shareRank) { return shareRank >= kRankThirdWard ? 3 : perks::kWardSlots; }
+inline int artSlots(int shareRank) { return shareRank >= kRankThirdArt ? 3 : perks::kArtSlots; }
+inline int extraSpecialUses(int shareRank) { return shareRank >= kRankExtraSpecial ? 1 : 0; }
+inline double hpMult(int shareRank) { return 1.0 + kHpPerRank * clampRank(shareRank); }
+/** XP multiplier (full rank, so the companion keeps pace with the hero). */
+inline double xpMult(int rank, int level, int peakLevel) {
+    const int r = clampRank(rank);
+    double m = 1.0 + kXpPerRank * r;
+    if (r >= kRankCatchUp && level < peakLevel) m *= kCatchUpXp;
+    return m;
+}
+inline double goldMult(int rank) { return 1.0 + kGoldPerRank * clampRank(rank); }
+/** Sim only (tools/combat_sim): the stricter alternative, gear up to level / 2 + 3 (the reference
+ *  gear for the level + 3). Never set in the app. */
+inline bool& attuneToReferenceForSim() { static bool v = false; return v; }
+/** Attunement: a Rekindled hero's gear counts up to level + 3 (rank 0: never capped). */
+inline int attunedBonus(int bonus, int level, int shareRank) {
+    if (shareRank <= 0) return bonus;
+    const int lv = std::max(0, level);
+    return std::min(bonus, (attuneToReferenceForSim() ? lv / 2 : lv) + kAttuneAbove);
+}
+inline const char* roman(int r) {
+    static const char* const n[kMaxRank + 1] = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"};
+    return n[clampRank(r)];
+}
+/** Title shown on the sheet and the slot card: "Rekindled III", "Everflame" at X. */
+inline std::string title(int r) {
+    r = clampRank(r);
+    if (r <= 0) return "";
+    if (r >= kMaxRank) return "Everflame";
+    return std::string("Rekindled ") + roman(r);
+}
+/** One line per rank for the explainer. */
+inline const char* rankPerk(int r) {
+    static const char* const d[kMaxRank + 1] = {
+        "",
+        "Title Rekindled, amber lantern badge; unlocks Mythical gear and The Drowned Vigil (coming next update)",
+        "Steady Flames can reach rank 6",
+        "A 3rd Ward slot",
+        "Catch-up: XP x1.5 while below your peak level",
+        "A 3rd Lantern Art slot",
+        "+1 class special use",
+        "Mythical upgrade cap +2 (coming next update)",
+        "Ember-white badge",
+        "+2 bonus Embers",
+        "Everflame: the highest rank, animated badge"};
+    return d[clampRank(r)];
+}
+} // namespace prestige
 } // namespace dnd

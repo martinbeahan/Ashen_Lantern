@@ -136,7 +136,7 @@ int main() {
         CHECK(g.learnPerk(0, 0, perks::THICK_WAX) && g.learnPerk(0, 1, perks::STEADY_HAND)
               && g.learnPerk(0, 2, 2));
         const std::string s = g.serialize();
-        CHECK(playerFieldCount(s) == 37);
+        CHECK(playerFieldCount(s) == 41); // v2.33: + 37..40 Rekindling
         Game r; r.setAsHost(true);
         CHECK(r.deserialize(s));
         Character& rh = T::hero(r, 0);
@@ -317,8 +317,8 @@ int main() {
                 for (int hi = 0; hi < 2; ++hi) {
                     Character& h = T::hero(g, static_cast<size_t>(hi));
                     h.artsLearned = 0xF; h.wardsLearned = 0xFF;
-                    h.artEq = {{pair * 2, pair * 2 + 1}};
-                    h.wardEq = {{(a + pair) % 8, (a + pair + 3) % 8}};
+                    h.artEq = {{pair * 2, pair * 2 + 1, -1}};
+                    h.wardEq = {{(a + pair) % 8, (a + pair + 3) % 8, -1}};
                     h.flames.fill(1);
                 }
                 g.simAllPartyAuto();

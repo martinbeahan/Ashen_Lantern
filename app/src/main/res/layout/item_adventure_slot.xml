@@ -45,6 +45,13 @@
                 android:textColor="@color/ae_bone"
                 android:textSize="18sp"
                 android:textStyle="bold" />
+            <ImageView
+                android:id="@+id/slotRekindleBadge"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginEnd="6dp"
+                android:src="@drawable/ic_rekindle_flame"
+                android:visibility="gone" />
             <TextView
                 android:id="@+id/slotLast"
                 android:layout_width="wrap_content"

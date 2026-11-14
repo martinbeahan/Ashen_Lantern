@@ -25,6 +25,8 @@ object KindledPath {
         val name: String, val classId: Int, val level: Int, val cap: Int,
         val earned: Int, val spent: Int, val free: Int, val freeRespecs: Int, val retemperCost: Int,
         val canEdit: Boolean, val why: String, val gold: Int, val signatureTier: Int,
+        /** v2.33 Rekindling: equipped Ward / Art slots (3 from rank III / V) and the rank. */
+        val wardSlots: Int = 2, val artSlots: Int = 2, val rekindleRank: Int = 0,
     )
     data class Flame(val id: Int, val name: String, val desc: String, val rank: Int, val max: Int)
     data class Ward(val id: Int, val name: String, val desc: String, val learned: Boolean, val slot: Int)
@@ -50,7 +52,9 @@ object KindledPath {
             fun s(k: Int) = f.getOrNull(k).orEmpty()
             when (f.firstOrNull()) {
                 "H" -> if (f.size >= 12) header = Header(s(1), i(2), i(3), i(4), i(5), i(6), i(7), i(8), i(9),
-                    i(10) == 1, s(11), i(12), i(13))
+                    i(10) == 1, s(11), i(12), i(13),
+                    if (f.size > 14) i(14).coerceIn(2, 3) else 2, if (f.size > 15) i(15).coerceIn(2, 3) else 2,
+                    if (f.size > 16) i(16).coerceIn(0, 10) else 0)
                 "F" -> if (f.size >= 6) flames += Flame(i(1), s(2), s(3), i(4), i(5))
                 "W" -> if (f.size >= 6) wards += Ward(i(1), s(2), s(3), i(4) == 1, i(5))
                 "A" -> if (f.size >= 9) arts += Art(i(1), s(2), s(3), i(4), i(5), i(6) == 1, i(7), i(8))
@@ -101,7 +105,7 @@ object KindledPath {
     }
 
     fun retemperPrompt(h: Header): String {
-        val price = if (h.retemperCost <= 0) "free this time (your v2.32 Re-temper token)"
+        val price = if (h.retemperCost <= 0) "free this time (a Re-temper token)"
         else "${h.retemperCost} gold (100 × level ${h.level})"
         return "Re-temper ${h.name}? Every attribute point above the class's starting scores and every " +
             "Ember comes back to spend again. Cost: $price."
@@ -133,6 +137,7 @@ object KindledPath {
         |• Lantern Arts — 3 Embers: new class actions with a recharge (2 equipped, Arts button in a fight).
         |Main stat 32 (Signature): Arts recharge 1 round faster.
         |Re-temper outside a fight: 100 gold × level refunds attribute points and Embers. Heroes from before v2.32 get one free.
+        |Rekindling (level 50, story done) adds Embers you can spend from level 1, Flame rank 6 (II), a 3rd Ward (III) and a 3rd Art slot (V).
         |Online tables use the classic rules (no Kindled Path).
     """.trimMargin()
 }

@@ -412,6 +412,8 @@ bool Game::setCompanionClass(CharacterClass cl) {
     const auto keptWardEq = old->wardEq;
     const int keptRespecs = old->freeRespecs;
     const int keptPeak = old->peakLevel;
+    const int keptRank = old->prestigeRank;   // v2.33: Rekindling survives a reclass
+    const bool keptHalf = old->prestigeHalf;
     const std::string uid = old->uid;
     const std::string newName = companionNameForClass(cl);
 
@@ -460,6 +462,8 @@ bool Game::setCompanionClass(CharacterClass cl) {
         neu->wardEq = keptWardEq;
         neu->freeRespecs = keptRespecs;
         neu->peakLevel = keptPeak;
+        neu->prestigeRank = keptRank;
+        neu->prestigeHalf = keptHalf;
         neu->statRules = old->statRules;
         neu->applyStatsForLevel();
         neu->calculateAC();
@@ -2843,7 +2847,10 @@ void Game::enterClearedRoom(Character* actor) {
     encoreFromUid_.clear();
     noteRoomOutcomeForCurve();
     for (auto& p : players_) {
-        if (p->addXp(xpGained)) {
+        // v2.33 Rekindling: +5% XP per rank, x1.5 below peak level from rank IV (solo only).
+        const double pm = p->prestigeXpMult();
+        const int gain = pm > 1.0 ? static_cast<int>(std::lround(xpGained * pm)) : xpGained;
+        if (p->addXp(gain)) {
             dmSay(p->name + " levels up! Spend your ability points from the character sheet.");
         }
     }
@@ -3265,7 +3272,7 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
     RollResult result = CombatSystem::performAttackRoll(*actor, special && targetIsEnemy);
     int mod = CombatSystem::getPrimaryModifier(*actor);
     int pb = CombatSystem::proficiencyBonusForLevel(actor->level);
-    int gearBonus = actor->equippedWeapon ? actor->equippedWeapon->bonus : 0;
+    int gearBonus = actor->weaponBonusEff(); // v2.33: attuned to level + 3 when Rekindled
     int mockPenalty = 0;
     if (actor->nextAttackPenalty > 0) {
         mockPenalty = actor->nextAttackPenalty;
@@ -5624,6 +5631,10 @@ void Game::syncStatRules() {
             p->calculateAC();
             p->recomputeMaxHp();
             p->currentHp = std::min(p->maxHp, hp);
+            // v2.33: Rekindling rank VI's extra special use counts only under the solo rules.
+            p->maxResources = p->formulaMaxResources() + std::max(0, p->bonusMaxResources)
+                + prestige::extraSpecialUses(p->prestigeActive());
+            p->resources = std::min(p->resources, p->maxResources);
         }
     }
     if (refunded > 0) {
@@ -5665,7 +5676,10 @@ int Game::partyChaMod(const Character* except) const {
 int Game::luckGold(int gold) const {
     if (gold <= 0 || !universalStatsActive()) return gold;
     const double b = stats::goldBonus(partyChaMod());
-    return b > 0 ? static_cast<int>(std::lround(gold * (1.0 + b))) : gold;
+    // v2.33 Rekindling: +5% gold per rank of the hero (party slot 0).
+    const int rank = (!players_.empty() && players_[0]) ? players_[0]->prestigeRank : 0;
+    const double m = (1.0 + b) * prestige::goldMult(rank);
+    return m > 1.0 ? static_cast<int>(std::lround(gold * m)) : gold;
 }
 
 std::string Game::getStatGuide(const std::string& playerName) const {
