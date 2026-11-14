@@ -6,7 +6,12 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.34 / 73) — Combat rebalance
+## What's new (v2.35 / 74) — Stability hotfix (audit)
+
+- **Companion class change no longer crashes** — changing the companion's class after loading a save where the companion held the current turn read freed memory (a crash, garbled text, or the wrong hero taking the turn). The turn order now points at the new companion before the old one is freed, foes are taken out of the turn order before they are cleared, and the turn order only ever reads heroes and foes the game still has (#89)
+- **Online sessions can't be crashed by bad data** — a wrong-type value in a shared session (a number where a name, chat line or game state belongs) used to crash every device at the table, and a bad chat line kept doing it on every rejoin. Those values are now ignored, and incoming text has limits: game state 512 KB, chat 500 characters, names 24 characters, actions 32 fields (#88). Online play is otherwise unchanged
+
+## Previous (v2.34 / 73) — Combat rebalance
 
 - **Rebalance: the Encounter Level follows your real power.** Foes used to assume a hero who had spent every point and wore the gear for the level, so an under-geared or unspent hero met full-power foes (a level-50 hero with nothing spent lost every fight, even on Easy). Now foe HP and armor follow what your party actually hits, and foe damage follows what it can take; a well-built party sees no change, spent Embers add a little (+0.1 EL each). Nightmare bosses are shorter (HP ×1.15, damage ×1.22), Easy foes gang up less on a wounded hero, and a Nightmare foe can no longer stall a fight by aiming at a hero who already died. Numbers in [`docs/COMBAT_CURVE.md`](docs/COMBAT_CURVE.md)
 - **Debug-build level-50 shortcut** now builds the hero like a real player: every stat point and Ember spent, weapon and armor at +25 for the level; the Rekindle explainer opens right away. Saves unchanged (no new fields); online play unchanged
