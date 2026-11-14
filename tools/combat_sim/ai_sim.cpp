@@ -188,11 +188,8 @@ int main(int argc, char** argv) {
         }
         std::printf("\n");
     }
-    // The climb after a Rekindling: level-50 gear (attuned to level + 3), the rank's bonuses.
-    for (int strict = 0; strict < 2; ++strict) {
-    prestige::attuneToReferenceForSim() = strict == 1;
-    std::printf("\n| Climb after Rekindling (L50 gear, attuned to %s) | Level | first climb (rank 0, normal gear) | I | V | X |\n|---|---|---|---|---|---|\n",
-                strict ? "level / 2 + 3 — the stricter alternative, NOT shipped" : "level + 3, as shipped");
+    // The climb after a Rekindling: level-50 gear (attuned to floor(level / 2) + 3), the rank's bonuses.
+    std::printf("\n| Climb after Rekindling (L50 gear, attuned to floor(level / 2) + 3) | Level | first climb (rank 0, normal gear) | I | V | X |\n|---|---|---|---|---|---|\n");
     for (const auto& c : {cols[0], cols[1], cols[2]}) {
         for (int L : {1, 10, 20, 30, 40}) {
             Scn s0; s0.level = L; s0.diff = c.diff; s0.foes = c.foes; s0.mode = c.mode;
@@ -208,8 +205,6 @@ int main(int argc, char** argv) {
             std::printf("\n");
         }
     }
-    }
-    prestige::attuneToReferenceForSim() = false;
     // Rooms (cleared, flawless pressure ignored) to climb 1 -> 50 again, the room counter carrying on.
     std::printf("\n| Rooms to level 50 | first climb (from room 1) | rank I (from room 60) | IV | X |\n|---|---|---|---|---|\n");
     {

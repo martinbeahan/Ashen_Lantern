@@ -469,14 +469,17 @@ struct Character {
     int artSlots() const { return prestige::artSlots(prestigeActive()); }
     /** XP multiplier from Rekindling (+5% per rank; rank IV+ x1.5 below peak level). */
     double prestigeXpMult() const { return perksOn() ? prestige::xpMult(prestigeRank, level, peakLevel) : 1.0; }
-    /** Attunement: gear counts up to level + 3 for a Rekindled hero (solo). */
+    /** Rekindled at least once (rank >= 1) with the solo rules on; the companion counts too, even
+     *  when its half share rounds to 0 (it climbs from level 1 with the same gear). */
+    bool attuned() const { return perksOn() && prestige::clampRank(prestigeRank) > 0; }
+    /** Attunement: gear counts up to floor(level / 2) + 3 once Rekindled (solo); rank 0: uncapped. */
     int weaponBonusEff() const {
         const int b = (equippedWeapon && equippedWeapon->type == ItemType::WEAPON) ? equippedWeapon->bonus : 0;
-        return prestige::attunedBonus(b, level, prestigeActive());
+        return prestige::attunedBonus(b, level, attuned());
     }
     int armorBonusEff() const {
         const int b = (equippedArmor && equippedArmor->type == ItemType::ARMOR) ? equippedArmor->bonus : 0;
-        return prestige::attunedBonus(b, level, prestigeActive());
+        return prestige::attunedBonus(b, level, attuned());
     }
     /**
      * Encounter-curve foe stats (CombatCurve.h). curveEL > 0 means this foe was built from the
@@ -606,7 +609,7 @@ struct Character {
     void calculateAC() {
         int dexMod = Attributes::getModifier(effectiveAttr(1));
         if (statRules) dexMod = stats::acFromDex(dexMod); // v2.31: DEX gives at most +6 AC
-        const int armorBonus = armorBonusEff(); // v2.33: attuned to level + 3 when Rekindled
+        const int armorBonus = armorBonusEff(); // v2.33: attuned to level / 2 + 3 when Rekindled
         armorClass = 10 + dexMod + armorBonus;
     }
 

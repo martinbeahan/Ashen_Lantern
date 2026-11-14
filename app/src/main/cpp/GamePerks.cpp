@@ -753,7 +753,7 @@ std::string Game::getRekindleState() const {
     const int rank = prestige::clampRank(h.prestigeRank);
     const int next = std::min(prestige::kMaxRank, rank + 1);
     const std::string why = rekindleBlockReason();
-    const int attune = rank > 0 ? h.level + prestige::kAttuneAbove : -1;
+    const int attune = h.attuned() ? prestige::attuneCap(h.level) : -1;
     ss << "R|" << (rekindleReady() ? 1 : 0) << "|" << (why.empty() ? 1 : 0) << "|" << (h.rekindleOffered ? 1 : 0)
        << "|" << rank << "|" << next << "|" << why << "|" << h.level << "|" << difficulty_ << "|" << attune
        << "|" << prestige::title(rank) << "|" << prestige::title(next)

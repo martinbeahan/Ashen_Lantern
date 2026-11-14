@@ -200,7 +200,7 @@ constexpr double kHpPerRank = 0.02;                 // +2% max HP per rank
 constexpr double kXpPerRank = 0.05;                 // +5% XP per rank
 constexpr double kGoldPerRank = 0.05;               // +5% gold (loot, searches) per rank
 constexpr double kCatchUpXp = 1.5;                  // rank IV+: XP x1.5 while below peak level
-constexpr int kAttuneAbove = 3;                     // gear counts up to level + 3 (Rekindled heroes)
+constexpr int kAttuneAbove = 3;                     // gear counts up to floor(level / 2) + 3 (Rekindled heroes)
 // Milestone ranks
 constexpr int kRankFlameCap = 2;      // II: Steady Flame cap 6
 constexpr int kRankThirdWard = 3;     // III: a 3rd Ward slot
@@ -227,14 +227,13 @@ inline double xpMult(int rank, int level, int peakLevel) {
     return m;
 }
 inline double goldMult(int rank) { return 1.0 + kGoldPerRank * clampRank(rank); }
-/** Sim only (tools/combat_sim): the stricter alternative, gear up to level / 2 + 3 (the reference
- *  gear for the level + 3). Never set in the app. */
-inline bool& attuneToReferenceForSim() { static bool v = false; return v; }
-/** Attunement: a Rekindled hero's gear counts up to level + 3 (rank 0: never capped). */
-inline int attunedBonus(int bonus, int level, int shareRank) {
-    if (shareRank <= 0) return bonus;
-    const int lv = std::max(0, level);
-    return std::min(bonus, (attuneToReferenceForSim() ? lv / 2 : lv) + kAttuneAbove);
+/** Attunement cap for a Rekindled character at this level: floor(level / 2) + 3 (the normal gear
+ *  for the level, + 3). Martin's pick on PR #86 (was level + 3). */
+inline int attuneCap(int level) { return std::max(0, level) / 2 + kAttuneAbove; }
+/** Attunement: a Rekindled character's (rank >= 1, hero or companion) gear counts up to
+ *  floor(level / 2) + 3. A first-climb (rank 0) character is never capped, as in v2.32. */
+inline int attunedBonus(int bonus, int level, bool rekindled) {
+    return rekindled ? std::min(bonus, attuneCap(level)) : bonus;
 }
 inline const char* roman(int r) {
     static const char* const n[kMaxRank + 1] = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"};

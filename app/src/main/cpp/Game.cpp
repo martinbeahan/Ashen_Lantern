@@ -3272,7 +3272,7 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
     RollResult result = CombatSystem::performAttackRoll(*actor, special && targetIsEnemy);
     int mod = CombatSystem::getPrimaryModifier(*actor);
     int pb = CombatSystem::proficiencyBonusForLevel(actor->level);
-    int gearBonus = actor->weaponBonusEff(); // v2.33: attuned to level + 3 when Rekindled
+    int gearBonus = actor->weaponBonusEff(); // v2.33: attuned to level / 2 + 3 when Rekindled
     int mockPenalty = 0;
     if (actor->nextAttackPenalty > 0) {
         mockPenalty = actor->nextAttackPenalty;

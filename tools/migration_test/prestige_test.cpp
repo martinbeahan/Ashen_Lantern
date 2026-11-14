@@ -78,10 +78,11 @@ int main() {
         CHECK(std::abs(prestige::xpMult(3, 10, 50) - 1.15) < 1e-9);          // no catch-up before IV
         CHECK(std::abs(prestige::xpMult(4, 10, 50) - 1.2 * 1.5) < 1e-9);     // IV below peak
         CHECK(std::abs(prestige::xpMult(4, 50, 50) - 1.2) < 1e-9);           // at peak: none
-        CHECK(prestige::attunedBonus(25, 4, 1) == 7 && prestige::attunedBonus(25, 4, 0) == 25 && prestige::attunedBonus(5, 4, 1) == 5);
+        CHECK(prestige::attunedBonus(25, 4, true) == 5 && prestige::attunedBonus(25, 4, false) == 25 && prestige::attunedBonus(4, 4, true) == 4);
+        CHECK(prestige::attuneCap(1) == 3 && prestige::attuneCap(10) == 8 && prestige::attuneCap(21) == 13 && prestige::attuneCap(50) == 28);
         CHECK(prestige::title(3) == "Rekindled III" && prestige::title(10) == "Everflame" && prestige::title(0).empty());
         CHECK(perks::embersEarned(1, 1) == 1 && perks::embersEarned(1, 9) == 11 && perks::embersEarned(50, 10) == 42);
-        std::cout << "NUMBERS: half share, flame cap 6 (II), slots 3 (III / V), +1 use (VI), XP +5%/rank, catch-up x1.5 (IV), attune L+3\n";
+        std::cout << "NUMBERS: half share, flame cap 6 (II), slots 3 (III / V), +1 use (VI), XP +5%/rank, catch-up x1.5 (IV), attune floor(L/2)+3\n";
     }
 
     // ------------------------------------------------------------ Eligibility (optional, never forced)
@@ -151,7 +152,11 @@ int main() {
         CHECK(h.effectiveAttr(4) == fresh.attributes.wisdom + 1 + h.legendaryAttrBonus(4)); // +1 all stats
         CHECK(c.effectiveAttr(0) == c.attributes.strength + c.legendaryAttrBonus(0));        // I / 2 = 0
         CHECK(h.attrCapFor(0) == stats::attrCap(1, false) + 1);
-        CHECK(h.weaponBonusEff() == 4); // attuned: +4 of +25 at level 1
+        CHECK(h.weaponBonusEff() == 3); // attuned: floor(1 / 2) + 3 = +3 of +25 at level 1
+        CHECK(contains(g.getRekindleState(), "|1|" + std::to_string(g.getDifficulty()) + "|3|")); // Sheet cap
+        // The companion is attuned too, even though its half share of rank I rounds to 0.
+        c.equippedWeapon = Item::make("Ashen Blade", ItemType::WEAPON, 25, ItemRarity::LEGENDARY, 0);
+        CHECK(c.prestigeShare() == 0 && c.attuned() && c.weaponBonusEff() == 3);
         CHECK(!g.rekindleReady() && contains(g.rekindleBlockReason(), "level 50"));
         CHECK(contains(g.getRekindleState(), "|Rekindled I|Rekindled II|"));
         CHECK(contains(g.getChatHistory(), "Rekindled I"));
@@ -211,13 +216,16 @@ int main() {
         CHECK(T::luck(g, 1000) >= 1250); // +25% gold (and any CHA luck)
         h.equippedArmor = Item::make("Ashen Plate", ItemType::ARMOR, 20, ItemRarity::LEGENDARY, 0);
         h.calculateAC();
-        CHECK(h.armorBonusEff() == h.level + 3);
+        CHECK(h.armorBonusEff() == h.level / 2 + 3);
+        h.level = 20; CHECK(h.armorBonusEff() == 13);
+        h.level = 50; CHECK(h.armorBonusEff() == 20); // +20 fits under 28: a level-50 hero is uncapped again
+        h.level = lv0;
         // Rank 0: never capped, so ordinary heroes see no change.
         Game z; solo(z, CharacterClass::FIGHTER, CharacterClass::CLERIC, 5, 1);
         T::hero(z, 0).equippedArmor = Item::make("Ashen Plate", ItemType::ARMOR, 20, ItemRarity::LEGENDARY, 0);
         CHECK(T::hero(z, 0).armorBonusEff() == 20 && std::abs(T::hero(z, 0).prestigeXpMult() - 1.0) < 1e-9);
         CHECK(T::luck(z, 1000) == T::luck(z, 1000) && T::luck(z, 1000) < 1250);
-        std::cout << "REWARDS: +5% XP / gold per rank, catch-up x1.5 below peak, gear attuned to level + 3, EL +25% of rank\n";
+        std::cout << "REWARDS: +5% XP / gold per rank, catch-up x1.5 below peak, gear attuned to floor(level / 2) + 3 (rank >= 1 only), EL +25% of rank\n";
     }
 
     // ------------------------------------------------------------ Saves: fields 37-40, older saves, HP on load
@@ -310,9 +318,11 @@ int main() {
         CHECK(!jh.perksOn() && jh.prestigeActive() == 0);
         CHECK(jh.effectiveAttr(0) == jh.attributes.strength + jh.legendaryAttrBonus(0));
         CHECK(std::abs(jh.prestigeXpMult() - 1.0) < 1e-9 && jh.wardSlots() == 2);
+        jh.equippedWeapon = Item::make("Ashen Blade", ItemType::WEAPON, 25, ItemRarity::LEGENDARY, 0);
+        CHECK(!jh.attuned() && jh.weaponBonusEff() == 25); // no attunement online
         std::string why;
         CHECK(!j.rekindle(&why) && contains(why, "solo"));
-        std::cout << "ONLINE: classic rules — no Rekindling bonuses, cannot Rekindle\n";
+        std::cout << "ONLINE: classic rules — no Rekindling bonuses or attunement, cannot Rekindle\n";
     }
 
     // ------------------------------------------------------------ Fights after a Rekindling finish

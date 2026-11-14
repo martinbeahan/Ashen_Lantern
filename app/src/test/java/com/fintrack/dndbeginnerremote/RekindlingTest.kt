@@ -38,7 +38,7 @@ class RekindlingTest {
         val s = Rekindling.parse(raw())!!
         val t = Rekindling.explainer(s, "Mira")
         for (needle in listOf("optional", "Not now", "level 1", "gold", "story", "+1 to every attribute", "+2% max HP",
-                "+5% XP", "companion", "Mythical gear and The Drowned Vigil", "Re-temper", "+ 3", "Ready to Rekindle"))
+                "+5% XP", "companion", "Mythical gear and The Drowned Vigil", "Re-temper", "half your level + 3", "+3 at level 1", "+13 at level 20", "Ready to Rekindle"))
             assertTrue("explainer misses '$needle'", t.contains(needle))
         assertFalse(t.contains("Nightmare"))
         val n = Rekindling.explainer(Rekindling.parse(raw(diff = 3))!!, "Mira")
@@ -49,12 +49,19 @@ class RekindlingTest {
         assertTrue(c.contains("Rekindle Mira to Rekindled I?") && c.contains("can't be undone") && c.contains("Keeps"))
     }
 
+    @Test fun attuneCapIsHalfLevelPlusThree() {
+        assertEquals(3, Rekindling.attuneCap(1)); assertEquals(8, Rekindling.attuneCap(10))
+        assertEquals(13, Rekindling.attuneCap(21)); assertEquals(28, Rekindling.attuneCap(50))
+        assertTrue(Rekindling.confirmText(Rekindling.parse(raw())!!, "Mira").contains("attuned to half your level + 3"))
+    }
+
     @Test fun sheetAndWarnings() {
         assertNull(Rekindling.sheetButtonLabel(null))
         assertNull(Rekindling.sheetButtonLabel(Rekindling.parse(raw(ready = 0))))
         assertEquals("Ready to Rekindle → Rekindled I", Rekindling.sheetButtonLabel(Rekindling.parse(raw())))
         assertNull(Rekindling.sheetLine(Rekindling.parse(raw())))
-        assertTrue(Rekindling.sheetLine(Rekindling.parse(raw(rank = 3, attune = 15)))!!.contains("+15"))
+        val line = Rekindling.sheetLine(Rekindling.parse(raw(rank = 3, attune = 15)))!!
+        assertTrue(line.contains("+15") && line.contains("half your level + 3") && !line.contains("(level + 3)"))
         assertEquals("", Rekindling.nightmareWarning(3, 1, "Mira"))
         assertEquals("", Rekindling.nightmareWarning(0, 3, "Mira"))
         assertTrue(Rekindling.nightmareWarning(3, 3, "Mira").contains("loses Rekindled III"))

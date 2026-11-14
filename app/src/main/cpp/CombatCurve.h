@@ -330,7 +330,7 @@ inline int encounterLevel(const std::vector<PartyMember>& party, int modeBonus) 
 inline PartyMember memberOf(const Character& c) {
     PartyMember m;
     m.level = c.level;
-    // v2.33: a Rekindled hero's gear counts as attuned (level + 3); the companion's rank is half.
+    // v2.33: a Rekindled hero's gear counts as attuned (level / 2 + 3); the companion's rank is half.
     m.weaponBonus = c.weaponBonusEff();
     m.armorBonus = c.armorBonusEff();
     m.armorBase = starterArmorBase(c.characterClass);

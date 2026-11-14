@@ -10,6 +10,10 @@ object Rekindling {
     const val MAX_RANK = 10
     const val ELIGIBLE_LEVEL = 50
     const val ATTUNE_ABOVE = 3
+    /** Attunement cap once Rekindled: floor(level / 2) + 3 (mirrors prestige::attuneCap). */
+    fun attuneCap(level: Int): Int = level.coerceAtLeast(0) / 2 + ATTUNE_ABOVE
+    /** Plain wording of the attunement rule, used by the Sheet, explainer and confirm text. */
+    const val ATTUNE_RULE = "half your level + $ATTUNE_ABOVE"
 
     data class State(
         val ready: Boolean, val canNow: Boolean, val offered: Boolean, val rank: Int, val nextRank: Int,
@@ -75,7 +79,7 @@ object Rekindling {
     /** Sheet line for a Rekindled hero: title and attunement. */
     fun sheetLine(s: State?): String? {
         if (s == null || !s.rekindled) return null
-        val attune = if (s.attuneCap >= 0) " · gear attuned up to +${s.attuneCap} (level + $ATTUNE_ABOVE)" else ""
+        val attune = if (s.attuneCap >= 0) " · gear attuned up to +${s.attuneCap} ($ATTUNE_RULE)" else ""
         return "${s.title}$attune"
     }
 
@@ -89,8 +93,8 @@ object Rekindling {
         append("• Attribute points go back to your class's starting scores; you earn them again as you level.\n")
         append("• Embers come back — your Kindled Path is cleared, plus a free Re-temper.\n\n")
         append("What you keep\n")
-        append("• All gear and the bag, every upgrade, and your gold. Gear is attuned: it counts up to your level + $ATTUNE_ABOVE ")
-        append("(\"+7 of +25\"), and grows back as you level.\n")
+        append("• All gear and the bag, every upgrade, and your gold. Gear is attuned: it counts up to $ATTUNE_RULE, ")
+        append("rounded down (a +25 relic counts as +${attuneCap(1)} at level 1 and +${attuneCap(20)} at level 20), and grows back as you level.\n")
         append("• The story stays complete, with every mode it unlocked, plus the Memory Ledger, Raid Keys and records.\n\n")
         append("Every rank, for good\n")
         append("• +1 to every attribute (and +1 to every cap), +2% max HP, +1 Ember, +5% XP and +5% gold.\n")
@@ -117,7 +121,7 @@ object Rekindling {
     fun confirmText(s: State, heroName: String): String = buildString {
         append("Rekindle $heroName to ${s.nextTitle}?\n\n")
         append("Resets: level 1, attribute points, Embers (Kindled Path cleared).\n")
-        append("Keeps: gear and upgrades (attuned to level + $ATTUNE_ABOVE), gold, the story and every mode, Ledger, Raid Keys.\n")
+        append("Keeps: gear and upgrades (attuned to $ATTUNE_RULE), gold, the story and every mode, Ledger, Raid Keys.\n")
         append("Gains: ${s.nextTitle} — ${s.perks[s.nextRank] ?: "rank bonuses"}; +1 all attributes, +2% HP, +1 Ember, +5% XP and gold; a free Re-temper.\n")
         if (s.nightmare) append("\n⚠ Nightmare: a party wipe ends the run and clears the rank.\n")
         append("\nThis can't be undone.")

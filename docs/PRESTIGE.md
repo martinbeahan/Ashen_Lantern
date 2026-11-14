@@ -52,9 +52,15 @@ Embers: 30 from levels 21–50 + 1 per rank + 2 at IX → **cap 42** (unchanged 
 
 ## Attunement
 
-A Rekindled hero's weapon and armor bonus counts **up to level + 3** (a +25 relic is "attuned +7" at level 4)
-and grows back as you level. Rank 0 heroes are never capped. The Sheet shows the cap
-("gear attuned up to +7 (level + 3)"). The Encounter Level reads the attuned bonus.
+Once Rekindled (rank ≥ 1), weapon and armor bonuses count **up to floor(level / 2) + 3**, the normal gear for
+the level plus 3: a +25 relic counts as +3 at level 1, +8 at level 10, +13 at level 20 and is uncapped again by
+level 44–50 (cap 28). It applies to the hero **and the companion** (even when the companion's half share of
+rank I rounds to 0, since it climbs from level 1 with the same gear).
+
+- **Rank 0 (first climb): no cap at all**, exactly as v2.32.
+- **Online: no cap** (classic rules, like every other Rekindling effect).
+- The Sheet shows it: "Rekindled I · gear attuned up to +13 (half your level + 3)". The Encounter Level reads
+  the attuned bonus.
 
 ## Companion
 
@@ -129,27 +135,33 @@ Art when unlocked). Win %, party HP lost %, Encounter Level.
 | Raid: Ember Hydra | 70% · 57% · EL 52 | 84% · 45% · EL 52 | 99% · 23% · EL 53 | 100% · 17% · EL 54 |
 | Raid: Nightfang Matriarch | 95% · 42% · EL 52 | 99% · 33% · EL 52 | 100% · 17% · EL 53 | 100% · 12% · EL 54 |
 
-The climb after Rekindling (level-50 gear, attuned to level + 3 as shipped), boss + escort:
+The climb after Rekindling (level-50 gear, attuned to **floor(level / 2) + 3** as shipped; the companion is
+attuned too), win % · HP lost %:
 
-| Level | first climb (rank 0) | I | V | X |
-|---|---|---|---|---|
-| 1 | 100% · 0% | 97% · 2% | 87% · 8% | 100% · 0% |
-| 10 | 80% · 57% | 100% · 29% | 100% · 12% | 100% · 7% |
-| 20 | 77% · 63% | 100% · 10% | 100% · 5% | 100% · 3% |
-| 30 | 68% · 69% | 100% · 10% | 100% · 8% | 100% · 4% |
-| 40 | 80% · 65% | 100% · 32% | 100% · 29% | 100% · 22% |
+| Fight | Level | first climb (rank 0) | I | V | X |
+|---|---|---|---|---|---|
+| Boss + escort | 1 | 100% · 0% | 93% · 5% | 98% · 1% | 100% · 0% |
+| Boss + escort | 10 | 80% · 57% | 88% · 55% | 99% · 30% | 100% · 8% |
+| Boss + escort | 20 | 77% · 63% | 88% · 48% | 100% · 20% | 100% · 11% |
+| Boss + escort | 30 | 68% · 69% | 96% · 42% | 100% · 27% | 100% · 16% |
+| Boss + escort | 40 | 80% · 65% | 96% · 41% | 100% · 31% | 100% · 25% |
+| Nightmare trio | 10 | 90% · 54% | 97% · 45% | 100% · 34% | 100% · 14% |
+| Nightmare trio | 20 | 90% · 56% | 93% · 48% | 100% · 22% | 100% · 17% |
+| Nightmare trio | 30 | 68% · 79% | 92% · 54% | 100% · 31% | 100% · 23% |
+| Nightmare trio | 40 | 85% · 68% | 97% · 46% | 100% · 32% | 100% · 27% |
 
-Same with the stricter alternative (gear up to **level / 2 + 3**, i.e. normal gear for the level + 3; sim only,
-not shipped): rank I 92% · 66% at L10, 85% · 63% at L20, 92% · 53% at L30, 99% · 37% at L40.
+Medium rooms stay 100% at every level and rank. For comparison, the first draft of this PR used **level + 3**:
+rank I won the L20 boss 100% · 10% (vs 77% on a first climb), so the climb back was trivial; Martin picked the
+stricter cap. At level 50 the cap (28) is above any normal gear, so the L50 grid above is unchanged.
 
 Rooms cleared to reach level 50 again (room counter carrying on from room 60): first climb 113 (43 to
 level 20); rank I 70 (16); rank IV 64 (14); rank X 39 (8).
 
-**Trade-offs.** Each rank is a real power step: by rank V every L50 fight is ≥ 98%, and the climb back is
-easy — attuned gear at level + 3 is far above the normal gear for the level (L/2), while the EL only follows
-gear at 50% (capped at +4). If the climb should stay meaningful, the stricter "level / 2 + 3" attunement
-keeps rank I close to a first climb (table above) — a one-line change in `prestige::attunedBonus`. The fast
-re-climb also comes from room XP (50 + 15 × room) carrying on from the post-story room count.
+**Trade-offs.** Each rank is a real power step: by rank V every L50 fight is ≥ 98%. With the stricter
+attunement, rank I re-climbs about one tier easier than a first climb (boss +8–28 points, mostly from +1
+attributes, HP and the attuned +3 over normal gear); rank V and up still re-climb very comfortably, which is
+the intended reward for repeated Rekindles. The fast re-climb also comes from room XP (50 + 15 × room)
+carrying on from the post-story room count.
 
 ## Deviations from the proposal
 
