@@ -405,6 +405,13 @@ bool Game::setCompanionClass(CharacterClass cl) {
     const int dsf = old->deathSaveFailures;
     const int keptBonusHp = old->bonusMaxHp; // v2.29: story padding / CON-point HP survive a reclass
     const int keptBonusRes = old->bonusMaxResources; // v2.30: story +1 resource survives too
+    // v2.32 Kindled Path: flames, Wards, Re-temper tokens and peak level survive a reclass;
+    // class Arts do not (their Embers come back to spend on the new class).
+    const auto keptFlames = old->flames;
+    const int keptWards = old->wardsLearned;
+    const auto keptWardEq = old->wardEq;
+    const int keptRespecs = old->freeRespecs;
+    const int keptPeak = old->peakLevel;
     const std::string uid = old->uid;
     const std::string newName = companionNameForClass(cl);
 
@@ -448,6 +455,12 @@ bool Game::setCompanionClass(CharacterClass cl) {
         }
         neu->bonusMaxHp = keptBonusHp;
         neu->bonusMaxResources = keptBonusRes;
+        neu->flames = keptFlames;
+        neu->wardsLearned = keptWards;
+        neu->wardEq = keptWardEq;
+        neu->freeRespecs = keptRespecs;
+        neu->peakLevel = keptPeak;
+        neu->statRules = old->statRules;
         neu->applyStatsForLevel();
         neu->calculateAC();
         neu->currentHp = neu->maxHp;
@@ -1300,6 +1313,7 @@ void Game::rollInitiative() {
         fledFoes_ = 0;
         roomFoeTotal_ = static_cast<int>(enemies_.size());
         for (auto& p : players_) if (p) p->status = Character::Statuses{};
+        startBattlePerks(); // v2.32: Wards re-arm, Arts ready, Ember Ward shield
     }
 
     for (auto& p : players_) {
@@ -2061,8 +2075,33 @@ void Game::advanceTurn() {
     // v2.30: the actor's statuses tick down at the end of its own turn (Burn deals damage).
     endTurnStatuses(getCurrentActor());
     if (turnOrder_.empty()) { currentTurnIndex_ = 0; return; }
-    currentTurnIndex_ = (currentTurnIndex_ + 1) % static_cast<int>(turnOrder_.size());
+    const int n = static_cast<int>(turnOrder_.size());
+    auto indexOfUid = [&](const std::string& uid) {
+        for (int i = 0; i < n; ++i) if (turnOrder_[static_cast<size_t>(i)] && turnOrder_[static_cast<size_t>(i)]->uid == uid) return i;
+        return -1;
+    };
+    // v2.32 Encore: the chosen ally takes an extra turn now, then the order resumes after the Bard.
+    if (!encoreUid_.empty()) {
+        const int ally = indexOfUid(encoreUid_);
+        const std::string from = getCurrentActor() ? getCurrentActor()->uid : std::string();
+        encoreUid_.clear();
+        if (ally >= 0 && ally != currentTurnIndex_) {
+            encoreFromUid_ = from;
+            currentTurnIndex_ = ally;
+            return;
+        }
+    }
+    if (!encoreFromUid_.empty()) {
+        const int from = indexOfUid(encoreFromUid_);
+        encoreFromUid_.clear();
+        if (from >= 0) currentTurnIndex_ = from;
+    }
+    currentTurnIndex_ = (currentTurnIndex_ + 1) % n;
     if (currentTurnIndex_ == 0) ++combatRound_;
+    if (bleedKill_) { // v2.32: a foe bled out at the end of its turn
+        bleedKill_ = false;
+        purgeDownedEnemies();
+    }
 }
 
 void Game::removeFromTurnOrder(Character* c) {
@@ -2784,6 +2823,11 @@ void Game::enterClearedRoom(Character* actor) {
 
     int xpGained = 50 + (roomCount_ * 15) + pendingBossXpBonus_ + setPieceXp;
     pendingBossXpBonus_ = 0;
+    if (universalStatsActive()) {
+        // v2.32: past level 20 a solo room is worth at least 40 + 15 x EL (the 50-cap curve needs it).
+        const int el = currentEncounterLevel();
+        if (el > perks::kProficiencyCapLevel) xpGained = std::max(xpGained, perks::roomXpFloor(el) + setPieceXp);
+    }
     if (encounterCurveActive() && pressure_ > 0) {
         // Pressure reward: +5% XP (and gold, see grantKillLoot) per flawless-room step.
         xpGained = static_cast<int>(std::lround(xpGained * curve::pressureMultiplier(pressure_)));
@@ -2795,6 +2839,8 @@ void Game::enterClearedRoom(Character* actor) {
     }
     fledFoes_ = 0;
     for (auto& p : players_) if (p) p->status = Character::Statuses{}; // fight over: statuses end
+    encoreUid_.clear();
+    encoreFromUid_.clear();
     noteRoomOutcomeForCurve();
     for (auto& p : players_) {
         if (p->addXp(xpGained)) {
@@ -3045,6 +3091,14 @@ void Game::allyTurn() {
 
     Character& enemy = *enemies_[static_cast<size_t>(target)];
 
+    // 2b) v2.32: a ready Lantern Art when the simple rules say so (solo; GamePerks.cpp).
+    if (allyTryArt(*actor)) {
+        if (roomCount_ != roomBefore) return;
+        Character* now = getCurrentActor();
+        if (now && now->uid == actorUid) advanceTurn();
+        return;
+    }
+
     // 3) Class special when it clearly beats a basic swing and we have a use left.
     // v2.30: a Fighter's Action Surge is once per fight — don't burn the turn retrying it.
     if (specialAvailable(*actor) && actor->characterClass != CharacterClass::CLERIC
@@ -3203,7 +3257,7 @@ int Game::proficiencyBonus() const {
 }
 
 bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIndex, bool targetIsEnemy, int targetIndex, bool sneakAttack,
-                               bool special, int flatBonus) {
+                               bool special, int flatBonus, double artMult) {
     if (!actor) return false;
     pushVisualEvent(targetIsEnemy ? VisualEventType::PLAYER_ATTACK : VisualEventType::ENEMY_ATTACK, atkVisIndex);
 
@@ -3226,6 +3280,9 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
         inspireBonus = stats::inspire(partyChaMod(actor));
         result.total += inspireBonus;
     }
+    // v2.32 Warcry / Rallying Verse (+2) and Spite Spark (+3): to hit and to damage.
+    const int rally = (targetIsEnemy && actor->perksOn()) ? perkRallyBonus(*actor) : 0;
+    result.total += rally;
 
     std::stringstream ss;
     ss << actor->name << " attacks " << target.name << "! d20=" << result.dieRoll
@@ -3234,6 +3291,7 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
     if (mockPenalty > 0) ss << " - " << mockPenalty << " (rattled)";
     if (blindPenalty > 0) ss << " - " << blindPenalty << " (blinded)";
     if (inspireBonus > 0) ss << " + " << inspireBonus << " (inspired)";
+    if (rally > 0) ss << " + " << rally << " (rallied)";
     ss << " = " << result.total << " vs AC " << target.armorClass << ". ";
 
     bool hit = result.total >= target.armorClass || result.isCriticalHit;
@@ -3244,6 +3302,26 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
         hit = hc.hit;
         if (hc.clamped) ss << "(needs " << hc.need << "+ — hit clamp) ";
     }
+    // v2.32 Steady Hand (Ward): the first miss each battle is rolled again.
+    if (!hit && targetIsEnemy && actor->wardReady(perks::STEADY_HAND)) {
+        actor->spendWard(perks::STEADY_HAND);
+        const int die = getRandomInt(1, 20);
+        const int rest = result.total - result.dieRoll;
+        result.dieRoll = die;
+        result.total = die + rest;
+        result.isCriticalHit = die >= CombatSystem::critMin(*actor, special && targetIsEnemy);
+        result.isCriticalFail = die == 1;
+        hit = result.total >= target.armorClass || result.isCriticalHit;
+        if (result.isCriticalFail) hit = false;
+        if (encounterCurveActive()) hit = curve::attackHits(die, rest, target.armorClass).hit;
+        ss << "Steady Hand — again: d20=" << die << " = " << result.total << ". ";
+    }
+    // v2.32 Smoke Step: the next hit from the shadows is a critical.
+    if (hit && targetIsEnemy && actor->status.nextCrit > 0) {
+        actor->status.nextCrit = 0;
+        result.isCriticalHit = true;
+        ss << "(from the smoke) ";
+    }
 
     if (hit) {
         int extraDice = sneakAttack ? actor->sneakAttackDice() : 0;
@@ -3251,6 +3329,11 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
         dmg += std::max(0, flatBonus); // v2.31: Action Surge's second swing (+Heft)
         if (special && targetIsEnemy && actor->signatureTier() >= 2) // Signature: potency +25%
             dmg = static_cast<int>(std::lround(dmg * stats::kSignaturePotency));
+        if (targetIsEnemy && actor->perksOn()) { // v2.32 Arts scale, rally, Bright Edge, Kindle Rush, Overkindle
+            dmg += rally;
+            dmg = std::max(1, static_cast<int>(std::lround(dmg * artMult)));
+            dmg = perkOutgoingDamage(*actor, dmg, special, &ss);
+        }
         // v2.31 Break guard: STR mod +3 strips a foe's shield-wall.
         if (targetIsEnemy && actor->statRules && target.status.guarded > 0 && stats::breaksGuard(actor->effMod(0))) {
             target.status.guarded = 0;
@@ -3370,6 +3453,14 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
         addChatMessage("Combat", lastEvent_);
         return;
     }
+    if (actor->status.exhausted > 0) {
+        // v2.32 Overkindle: the round after the double blast, no special (the turn is not spent).
+        lastEvent_ = actor->name + " is burnt out from Overkindle — no " + actor->getSpecialAbilityName() + " this turn.";
+        addChatMessage("Combat", lastEvent_);
+        return;
+    }
+    // v2.32 Overkindle: this special deals double damage (reset when the special ends).
+    struct SpecialMultReset { double& m; ~SpecialMultReset() { m = 1.0; } } specialMultReset{specialMult_};
 
     // Cleric Healing Word can target allies without an enemy
     if (actor->characterClass == CharacterClass::CLERIC) {
@@ -3411,6 +3502,12 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
     if (!specialAvailable(*actor)) { lastEvent_ = "No uses remaining for that feature."; return; }
     spendSpecialUse(*actor);
     if (actor->characterClass == CharacterClass::FIGHTER) actor->specialUsedThisCombat = true;
+    if (actor->perksOn() && actor->status.overkindle > 0) {
+        actor->status.overkindle = 0;
+        actor->status.exhausted = 2; // ticks at the end of this turn and the next
+        specialMult_ = 2.0;
+        dmSay(actor->name + " pours the whole flame into it — Overkindle!");
+    }
 
     Character& enemy = *enemies_[static_cast<size_t>(targetEnemyIndex)];
 
@@ -3444,6 +3541,7 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
         int total = 0;
         for (int i = 0; i < 3; ++i) total += getRandomInt(1, 4) + dartFlat;
         if (actor->signatureTier() >= 2) total = static_cast<int>(std::lround(total * stats::kSignaturePotency));
+        if (actor->perksOn()) total = perkOutgoingDamage(*actor, total, true, nullptr); // v2.32
         enemy.takeDamage(total);
         noteDailyQuestDamage(total);
         noteFoeDamaged(enemy, total, actor, true); // a spell scorches like a crit (Hydra regrowth)
@@ -3481,6 +3579,7 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
             const bool potent = actor->signatureTier() >= 2; // v2.31 Signature: +25% sting and rattle
             if (potent) dmg = static_cast<int>(std::lround(dmg * stats::kSignaturePotency));
             if (dmg < 1) dmg = 1;
+            if (actor->perksOn()) dmg = perkOutgoingDamage(*actor, dmg, true, nullptr); // v2.32
             enemy.takeDamage(dmg);
             noteDailyQuestDamage(dmg);
             noteFoeDamaged(enemy, dmg, actor, result.isCriticalHit);
@@ -4141,9 +4240,11 @@ void Game::enemyTurn() {
         if (enemyAiActive() && enemy->curveEL > 0 && enemy->ai.move == 0) planEnemyMove(*enemy);
         return;
     }
+    if (perkFoeTurnTaken(*enemy, enemyIdx)) return; // v2.32 stunned / asleep / Discord
     if (enemyAiActive() && enemy->curveEL > 0) {
         // v2.30: roles, intents and boss phases (EnemyAi.h). Legacy / online foes fall through.
         runEnemyMove(*enemy, enemyIdx);
+        wardsAfterFoeMove(); // v2.32 Cleanse / Sanctify
         return;
     }
     // Bell-Herald (story beat 24): flavour only — the toll hushes Wren; no mechanical effect.
@@ -4684,6 +4785,12 @@ int Game::pickAiHeroTarget(const Character& foe, int behaviour) {
         for (const auto& v : hv) if (v.alive && !v.downed) ++standing;
         if (standing > 1) hv[static_cast<size_t>(foe.ai.lastTarget)].alive = false;
     }
+    // v2.32 Iron Brace: a braced hero draws every single-target move; Smoke Step hides a hero.
+    {
+        const int braced = bracedHeroIndex();
+        if (braced >= 0) return braced;
+        for (size_t i = 0; i < hv.size(); ++i) if (heroHidden(static_cast<int>(i))) hv[i].alive = false;
+    }
     std::vector<double> noise;
     for (size_t i = 0; i < hv.size(); ++i) noise.push_back(getRandomInt(0, 9999) / 10000.0);
     const double roll = getRandomInt(0, 9999) / 10000.0;
@@ -4890,8 +4997,9 @@ bool Game::foeStrike(Character& foe, int foeIdx, int heroIdx, double dmgMult, in
     if (bonus != 0) notes += std::string(" ") + (bonus > 0 ? "+" : "") + std::to_string(bonus) + " (allies / marks)";
     result.total += bonus;
     bool hit = true, crit = false;
+    const int heroAc = hero.armorClass + (hero.status.braced > 0 ? perks::kBraceAc : 0); // v2.32 Iron Brace
     if (!autoHit) {
-        const curve::HitCheck hc = curve::attackHits(result.dieRoll, result.total - result.dieRoll, hero.armorClass);
+        const curve::HitCheck hc = curve::attackHits(result.dieRoll, result.total - result.dieRoll, heroAc);
         hit = hc.hit;
         crit = result.isCriticalHit && hit && !exempt; // a telegraphed heavy is already the big hit
         if (hc.clamped) notes += " (needs " + std::to_string(hc.need) + "+ — hit clamp)";
@@ -4899,7 +5007,7 @@ bool Game::foeStrike(Character& foe, int foeIdx, int heroIdx, double dmgMult, in
     const std::string head = autoHit
         ? foe.name + " — " + moveLabel + " on " + hero.name + " (no roll)"
         : foe.name + " — " + moveLabel + " on " + hero.name + "! d20=" + std::to_string(result.dieRoll)
-          + " = " + std::to_string(result.total) + " vs AC " + std::to_string(hero.armorClass) + notes;
+          + " = " + std::to_string(result.total) + " vs AC " + std::to_string(heroAc) + notes;
     if (!hit) {
         lastEvent_ = head + ". Miss!";
         addChatMessage("Combat", lastEvent_);
@@ -4930,8 +5038,9 @@ bool Game::foeStrike(Character& foe, int foeIdx, int heroIdx, double dmgMult, in
             guard = " (telegraphed heavy — not guarded)";
         }
     }
-    tryFightShield(&hero, dmg);
     const bool wasDowned = hero.isDowned || hero.isStable;
+    if (!wasDowned) guard += wardsBeforeHit(hero, dmg); // v2.32 Ash Veil, shields, Last Light
+    tryFightShield(&hero, dmg);
     hero.takeDamage(dmg, wasDowned && crit);
     if (dealt) *dealt = dmg;
     pushVisualEvent(VisualEventType::PLAYER_DAMAGE, heroIdx);
@@ -4939,6 +5048,7 @@ bool Game::foeStrike(Character& foe, int foeIdx, int heroIdx, double dmgMult, in
     addChatMessage("Combat", lastEvent_);
     if (!wasDowned && hero.isDowned) heroDroppedThisRoom_ = true;
     if (hero.isDowned) hero.status = Character::Statuses{};
+    wardsAfterHit(hero, wasDowned); // v2.32 Second Wick, Spite Spark
     if (hero.isDead) {
         dmSay(hero.name + " is slain!");
         removeFromTurnOrder(&hero);
@@ -5038,6 +5148,10 @@ void Game::updateBossPhase(Character& foe, bool announce) {
 }
 
 void Game::noteFoeDamaged(Character& foe, int dmg, const Character* by, bool crit) {
+    if (dmg > 0 && foe.status.asleep > 0) { // v2.32 Ashen Lullaby: a hit wakes it
+        foe.status.asleep = 0;
+        addChatMessage("Combat", foe.name + " jolts awake!");
+    }
     if (!enemyAiActive() || foe.curveEL <= 0 || dmg <= 0) return;
     const int hi = heroIndexOf(by);
     if (hi >= 0) foe.ai.lastHitBy = hi;
@@ -5052,7 +5166,9 @@ void Game::noteFoeDamaged(Character& foe, int dmg, const Character* by, bool cri
 }
 
 void Game::endTurnStatuses(Character* c) {
-    if (!c || !enemyAiActive()) return;
+    if (!c) return;
+    tickPerkStatuses(*c); // v2.32 Arts / Wards (all zero online)
+    if (!enemyAiActive()) return;
     auto& st = c->status;
     if (st.burn > 0) {
         if (!c->isDead && !c->isDowned && c->currentHp > 0 && st.burnDmg > 0) {
@@ -5113,8 +5229,8 @@ void Game::runEnemyMove(Character& foe, int foeIdx) {
         if (m == Move::FINISH_DOWNED) {
             Character* h = heroAt(t);
             if (!h || h->isDead || !(h->isDowned || h->currentHp <= 0)) { m = Move::STRIKE; t = -1; }
-        } else if (!isStanding(heroAt(t))) {
-            t = pickAiHeroTarget(foe, beh);
+        } else if (!isStanding(heroAt(t)) || heroHidden(t) || (bracedHeroIndex() >= 0 && bracedHeroIndex() != t)) {
+            t = pickAiHeroTarget(foe, beh); // v2.32: also when the target hid or another hero braced
         }
         if (t < 0 || !heroAt(t) || heroAt(t)->isDead) { checkPartyDefeat(); return; }
         if (m == Move::SWARM_BITE && !isStanding(heroAt(t))) {

@@ -132,6 +132,13 @@ std::string Game::serialize() {
         ss << "," << p->bonusMaxResources << "," << ai::encodeStatuses(p->status);
         // v2.31: 31 Signature free special uses left this battle.
         ss << "," << p->signatureUses;
+        // v2.32 Kindled Path: 32 flames, 33 wards, 34 arts, 35 free Re-tempers, 36 peak level.
+        ss << ",";
+        for (size_t k = 0; k < p->flames.size(); ++k) ss << (k ? "." : "") << p->flames[k];
+        ss << "," << p->wardsLearned << "." << p->wardEq[0] << "." << p->wardEq[1] << "." << p->wardUsed;
+        ss << "," << p->artsLearned << "." << p->artEq[0] << "." << p->artEq[1];
+        for (int cd : p->artCd) ss << "." << cd;
+        ss << "," << p->freeRespecs << "," << p->peakLevel;
         ss << ";";
     }
     ss << "|";
@@ -227,6 +234,7 @@ bool Game::deserialize(const std::string& data, std::string* error) {
     resetMemoryRuntime(); // a loaded hero gets its Ledger context pushed again by Kotlin
 
     players_ = std::move(tmp.players_);
+    levelCapNote_ = tmp.levelCapNote_; // v2.32: heroes above 50 were clamped
     enemies_ = std::move(tmp.enemies_);
     chatHistory_ = std::move(tmp.chatHistory_);
     journalEntries_ = std::move(tmp.journalEntries_);
@@ -284,6 +292,10 @@ bool Game::deserialize(const std::string& data, std::string* error) {
     // v2.31: solo saves pick up the stat caps now (over-cap points are refunded, never lost).
     for (auto& p : players_) if (p) p->statRules = false;
     statMigrationNote_.clear();
+    if (!levelCapNote_.empty()) {
+        addChatMessage("System", "Level cap 50 (v2.32): " + levelCapNote_ + ". Extra XP is kept as a full bar.");
+        levelCapNote_.clear();
+    }
     syncStatRules();
     for (auto& p : players_) {
         if (p && p->signatureUses < 0) p->signatureUses = (p->statRules && p->signatureTier() >= 1) ? 1 : 0;
@@ -451,9 +463,24 @@ bool Game::parseSave(const std::string& data) {
                 p->bonusMaxHp = std::max(0, savedMax - p->formulaMaxHp());
             }
             p->recomputeMaxHp();
-            if (p->maxHp < savedMax) { // never shrink a hero on load; keep the difference
-                p->bonusMaxHp += savedMax - p->maxHp;
+            {
+                // v2.32: a solo save's max HP includes Steady Flames (Deep Tallow CON, Thick Wax);
+                // compare with them on so they are not mistaken for lost bonus HP.
+                if (f.size() > 32) {
+                    const std::vector<int> fl = ai::parseDots(f[32]);
+                    for (size_t k = 0; k < p->flames.size(); ++k)
+                        p->flames[k] = k < fl.size() ? savecodec::clampInt(fl[k], 0, perks::kFlameMaxRank) : 0;
+                }
+                const bool rules = p->statRules;
+                p->statRules = true;
                 p->recomputeMaxHp();
+                const int withFlames = p->maxHp;
+                p->statRules = rules;
+                p->recomputeMaxHp();
+                if (withFlames < savedMax) { // never shrink a hero on load; keep the difference
+                    p->bonusMaxHp += savedMax - withFlames;
+                    p->recomputeMaxHp();
+                }
             }
             // v2.30: kept bonus resources (29) and statuses (30). Older saves derive the bonus
             // from the saved max (story +1 padding); max resources never shrink on load.
@@ -475,6 +502,39 @@ bool Game::parseSave(const std::string& data) {
             } else {
                 p->signatureUses = -1; // v2.30 save: granted below once the stat rules are known
             }
+            if (f.size() > 32) {
+                const std::vector<int> fl = ai::parseDots(f[32]);
+                for (size_t k = 0; k < p->flames.size(); ++k)
+                    p->flames[k] = k < fl.size() ? savecodec::clampInt(fl[k], 0, perks::kFlameMaxRank) : 0;
+                const std::vector<int> w = f.size() > 33 ? ai::parseDots(f[33]) : std::vector<int>{};
+                auto wAt = [&](size_t i, int lo, int hi, int def) { return i < w.size() ? savecodec::clampInt(w[i], lo, hi) : def; };
+                p->wardsLearned = wAt(0, 0, (1 << perks::kWardCount) - 1, 0);
+                p->wardEq[0] = wAt(1, -1, perks::kWardCount - 1, -1);
+                p->wardEq[1] = wAt(2, -1, perks::kWardCount - 1, -1);
+                p->wardUsed = wAt(3, 0, (1 << perks::kWardCount) - 1, 0);
+                const std::vector<int> a = f.size() > 34 ? ai::parseDots(f[34]) : std::vector<int>{};
+                auto aAt = [&](size_t i, int lo, int hi, int def) { return i < a.size() ? savecodec::clampInt(a[i], lo, hi) : def; };
+                p->artsLearned = aAt(0, 0, (1 << perks::kArtsPerClass) - 1, 0);
+                p->artEq[0] = aAt(1, -1, perks::kArtsPerClass - 1, -1);
+                p->artEq[1] = aAt(2, -1, perks::kArtsPerClass - 1, -1);
+                for (size_t k = 0; k < p->artCd.size(); ++k) p->artCd[k] = aAt(3 + k, 0, perks::kOncePerBattle, 0);
+                p->freeRespecs = (f.size() > 35 && savecodec::tryParseInt(f[35], pv)) ? savecodec::clampInt(pv, 0, 9) : 0;
+                p->peakLevel = (f.size() > 36 && savecodec::tryParseInt(f[36], pv)) ? savecodec::clampInt(pv, 1, Character::kMaxLevel) : p->level;
+            } else {
+                // A hero from before v2.32: one free Re-temper (the stat rules changed), Kindled
+                // Path empty; a hero at 21+ already has (level - 20) Embers waiting.
+                p->freeRespecs = 1;
+                p->peakLevel = std::max(1, std::min(p->level, Character::kMaxLevel));
+            }
+            if (p->level > Character::kMaxLevel) {
+                levelCapNote_ += (levelCapNote_.empty() ? "" : ", ") + p->name + " " + std::to_string(p->level) + " → " + std::to_string(Character::kMaxLevel);
+                p->level = Character::kMaxLevel;
+                p->xp = perks::xpToNext(Character::kMaxLevel - 1); // extra XP is a full bar
+                p->applyStatsForLevel();
+                p->currentHp = std::min(p->currentHp, p->maxHp);
+            }
+            p->clampLevelToCap();
+            p->peakLevel = std::max(p->peakLevel, p->level);
             players_.push_back(std::move(p));
         }
     }

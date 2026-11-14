@@ -19,6 +19,7 @@ import android.widget.Toast
 import android.view.Gravity
 import android.widget.ImageView
 import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
@@ -50,6 +51,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSendChat: Button
     private lateinit var btnAttack: Button
     private lateinit var btnSpecial: Button
+    private lateinit var btnArts: Button
     private lateinit var btnHeal: Button
     private lateinit var btnInteract: Button
     private lateinit var btnRest: Button
@@ -254,6 +256,13 @@ class MainActivity : AppCompatActivity() {
     external fun doAttack(targetIndex: Int)
     external fun doHeal(targetIndex: Int)
     external fun doSpecial(targetIndex: Int)
+    // v2.32 Kindled Path (solo only; the native side refuses online)
+    external fun doUseArt(slot: Int, targetIndex: Int): Boolean
+    external fun getArtsBar(): String
+    external fun getPerkState(heroIndex: Int): String
+    external fun doLearnPerk(heroIndex: Int, kind: Int, id: Int): String
+    external fun doEquipPerk(heroIndex: Int, kind: Int, slot: Int, id: Int): String
+    external fun doRetemper(heroIndex: Int): String
     external fun doInteract(playerName: String)
     external fun doRest()
     external fun doLongRest()
@@ -379,6 +388,8 @@ class MainActivity : AppCompatActivity() {
         btnSendChat = findViewById(R.id.btnSendChat)
         btnAttack = findViewById(R.id.btnAttack)
         btnSpecial = findViewById(R.id.btnSpecial)
+        btnArts = findViewById(R.id.btnArts)
+        btnArts.setOnClickListener { showArtsPicker() }
         btnHeal = findViewById(R.id.btnHeal)
         bindPotionButtonIcon()
         btnInteract = findViewById(R.id.btnInteract)
@@ -3202,7 +3213,9 @@ class MainActivity : AppCompatActivity() {
         levelUpDialogShowing = true
         AlertDialog.Builder(this)
             .setTitle("Level up!")
-            .setMessage("$who reached level $lvl.\n\nOpen Sheet (or Ally) to assign attribute points.")
+            .setMessage("$who reached level $lvl.\n\nOpen Sheet (or Ally) to assign attribute points." +
+                if (lvl >= KindledPath.EMBER_FIRST_LEVEL && !isOnlineHost && !isOnlineClient)
+                    "\n\n+1 Ember — spend it on the Sheet → Kindled Path." else "")
             .setPositiveButton("Open Sheet") { _, _ ->
                 showCharacterSheet(who)
             }
@@ -3250,7 +3263,7 @@ class MainActivity : AppCompatActivity() {
         val sheetXpBar = view.findViewById<EmberXpView>(R.id.sheetXpBar)
         if (xpProg != null) {
             val (xp, need, lvl, _) = xpProg
-            sheetXpLabel.text = "XP $xp/$need · Level $lvl → ${lvl + 1}"
+            sheetXpLabel.text = KindledPath.xpLabel(xp, need, lvl) // v2.32: level cap 50
             sheetXpBar.setProgress(xp, need)
         } else {
             sheetXpLabel.text = "XP —"
@@ -3312,7 +3325,138 @@ class MainActivity : AppCompatActivity() {
             dialog.dismiss()
             showStatUpgradeDialog(forName)
         }
+        // v2.32 Kindled Path: solo only (Host/Join keep the classic rules).
+        val kindledBtn = view.findViewById<Button>(R.id.sheetKindledPath)
+        val heroIdx = partyIndexOf(forName)
+        if (!isOnlineHost && !isOnlineClient && heroIdx >= 0) {
+            val st = try { KindledPath.parse(getPerkState(heroIdx)) } catch (_: Throwable) { null }
+            kindledBtn.visibility = if (st != null) View.VISIBLE else View.GONE
+            kindledBtn.text = KindledPath.sheetButtonLabel(st?.header)
+            kindledBtn.setOnClickListener {
+                dialog.dismiss()
+                showKindledPath(heroIdx)
+            }
+        } else {
+            kindledBtn.visibility = View.GONE
+        }
         dialog.show()
+    }
+
+    /** Party slot of a hero by name (0 = you), from the native party order; -1 if not found. */
+    private fun partyIndexOf(name: String): Int {
+        val raw = try { getPartyXpProgress() } catch (_: Throwable) { "" }
+        raw.split(';').forEachIndexed { i, rec ->
+            if (rec.substringBefore('|').equals(name, ignoreCase = true)) return i
+        }
+        return -1
+    }
+
+    /** v2.32 Kindled Path: Embers, Steady Flames, Wards, Lantern Arts and Re-temper (solo, outside a fight). */
+    private fun showKindledPath(heroIdx: Int) {
+        if (!nativeReady || isOnlineHost || isOnlineClient) return
+        val st = try { KindledPath.parse(getPerkState(heroIdx)) } catch (_: Throwable) { null } ?: return
+        val h = st.header
+        val pad = (12 * resources.displayMetrics.density).toInt()
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(pad, pad / 2, pad, pad) }
+        lateinit var dialog: AlertDialog
+        fun reopen(msg: String) {
+            if (msg.isNotBlank()) Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            else syncAndSave()
+            dialog.dismiss()
+            updateUi()
+            showKindledPath(heroIdx)
+        }
+        fun text(t: String, sizeSp: Float = 13f, bold: Boolean = false) = TextView(this).apply {
+            text = t; textSize = sizeSp
+            if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, pad / 3, 0, pad / 6)
+        }
+        fun button(label: String, enabled: Boolean, onClick: () -> Unit) = Button(this).apply {
+            text = label; isAllCaps = false; textSize = 12f; isEnabled = enabled
+            setOnClickListener { onClick() }
+        }
+        col.addView(text("${h.name} · Level ${h.level}/${h.cap}", 15f, true))
+        col.addView(text(KindledPath.emberLine(h)))
+        if (!h.canEdit && h.why.isNotBlank()) col.addView(text(h.why))
+        col.addView(text("Steady Flames (1 Ember a rank)", 14f, true))
+        for (f in st.flames) {
+            col.addView(text(KindledPath.flameRow(f)))
+            col.addView(button("Kindle +1", KindledPath.canLearnFlame(st, f)) {
+                reopen(try { doLearnPerk(heroIdx, KindledPath.KIND_FLAME, f.id) } catch (_: Throwable) { "Not now." })
+            })
+        }
+        col.addView(text("Wards — once a battle, 2 equipped (2 Embers)", 14f, true))
+        for (w in st.wards) {
+            col.addView(text(KindledPath.wardRow(w)))
+            if (!w.learned) col.addView(button("Learn (2 Embers)", KindledPath.canLearnWard(st, w)) {
+                reopen(try { doLearnPerk(heroIdx, KindledPath.KIND_WARD, w.id) } catch (_: Throwable) { "Not now." })
+            }) else if (w.slot < 0) {
+                for (slot in 0..1) col.addView(button("Equip in slot ${slot + 1}", h.canEdit) {
+                    reopen(try { doEquipPerk(heroIdx, KindledPath.KIND_WARD, slot, w.id) } catch (_: Throwable) { "Not now." })
+                })
+            }
+        }
+        col.addView(text("Lantern Arts — 2 equipped, Arts button in a fight (3 Embers)", 14f, true))
+        for (a in st.arts) {
+            col.addView(text(KindledPath.artRow(a, h.level)))
+            if (!a.learned) col.addView(button("Learn (3 Embers)", KindledPath.canLearnArt(st, a)) {
+                reopen(try { doLearnPerk(heroIdx, KindledPath.KIND_ART, a.id) } catch (_: Throwable) { "Not now." })
+            }) else if (a.slot < 0) {
+                for (slot in 0..1) col.addView(button("Equip in slot ${slot + 1}", h.canEdit) {
+                    reopen(try { doEquipPerk(heroIdx, KindledPath.KIND_ART, slot, a.id) } catch (_: Throwable) { "Not now." })
+                })
+            }
+        }
+        col.addView(text("Re-temper", 14f, true))
+        col.addView(text(if (h.retemperCost <= 0) "Free (one-time v2.32 token)." else "${h.retemperCost} gold (100 × level)."))
+        col.addView(button("Re-temper…", h.canEdit) {
+            AlertDialog.Builder(this)
+                .setTitle("Re-temper")
+                .setMessage(KindledPath.retemperPrompt(h))
+                .setPositiveButton("Re-temper") { _, _ ->
+                    reopen(try { doRetemper(heroIdx) } catch (_: Throwable) { "Not now." })
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        })
+        col.addView(text(KindledPath.helpText, 12f))
+        dialog = AlertDialog.Builder(this)
+            .setTitle("Kindled Path")
+            .setView(ScrollView(this).apply { addView(col) })
+            .setPositiveButton("Close", null)
+            .create()
+        dialog.show()
+    }
+
+    /** v2.32: pick one of the current hero's equipped Arts (cooldown pips are plain text — no flashing). */
+    private fun showArtsPicker() {
+        if (!nativeReady || isOnlineHost || isOnlineClient) return
+        val bar = try { KindledPath.parseBar(getArtsBar()) } catch (_: Throwable) { emptyList() }
+        if (bar.isEmpty()) {
+            Toast.makeText(this, "No Lantern Arts equipped — open the Sheet → Kindled Path.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Lantern Arts")
+            .setItems(bar.map { KindledPath.barLine(it) }.toTypedArray()) { _, which ->
+                val art = bar[which]
+                if (!art.ready) {
+                    Toast.makeText(this, KindledPath.barLine(art), Toast.LENGTH_SHORT).show()
+                    return@setItems
+                }
+                val target = if (art.target == KindledPath.TARGET_FOE) (resolveSelectedIndex(true) ?: -1) else -1
+                performOrQueue("art", art.slot) {
+                    val ok = try { doUseArt(art.slot, target) } catch (_: Throwable) { false }
+                    if (!ok) {
+                        val ev = try { getLastEvent() } catch (_: Exception) { "" }
+                        if (ev.isNotBlank()) Toast.makeText(this, ev, Toast.LENGTH_SHORT).show()
+                    } else {
+                        scheduleDiceFromLastEvent()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showCompanionSheet() {
@@ -4740,6 +4884,7 @@ class MainActivity : AppCompatActivity() {
         if (dmTableLock) {
             btnAttack.isEnabled = false
             btnSpecial.isEnabled = false
+            if (::btnArts.isInitialized) btnArts.isEnabled = false
             btnHeal.isEnabled = false
             btnRest.isEnabled = false
             btnInteract.isEnabled = false
@@ -4753,6 +4898,13 @@ class MainActivity : AppCompatActivity() {
             val actorRes = try { getCurrentActorResources() } catch (_: Exception) { 1 }
             btnSpecial.isEnabled = canAct && !cleared && !isShop && actorRes > 0
             btnSpecial.alpha = if (!isShop && !cleared && actorRes <= 0) 0.45f else 1f
+            // v2.32 Lantern Arts: shown only when the hero whose turn it is has an Art equipped (solo).
+            val artsBar = if (isOnlineHost || isOnlineClient || isShop || cleared) emptyList()
+                else try { KindledPath.parseBar(getArtsBar()) } catch (_: Throwable) { emptyList() }
+            btnArts.visibility = if (artsBar.isEmpty()) View.GONE else View.VISIBLE
+            btnArts.text = KindledPath.buttonLabel(artsBar)
+            btnArts.isEnabled = canAct && artsBar.any { it.ready }
+            btnArts.alpha = if (artsBar.any { it.ready }) 1f else 0.45f
             btnHeal.isEnabled = canAct && !cleared && !isShop && actorRes > 0
             // Onward / shop after clear even if local hero is downed (party continues).
             btnAttack.isEnabled = when {
@@ -4827,6 +4979,7 @@ class MainActivity : AppCompatActivity() {
             btnReset.visibility = View.VISIBLE
             btnAttack.isEnabled = false
             btnSpecial.isEnabled = false
+            if (::btnArts.isInitialized) btnArts.isEnabled = false
             btnHeal.isEnabled = false
             btnRest.isEnabled = false
             btnInteract.isEnabled = false

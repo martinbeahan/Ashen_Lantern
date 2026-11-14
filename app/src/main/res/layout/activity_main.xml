@@ -357,6 +357,17 @@
                     android:textSize="11sp"
                     android:layout_marginEnd="5dp" />
                 <Button
+                    android:id="@+id/btnArts"
+                    style="@style/Widget.DnD.ActionButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="68dp"
+                    android:text="✸&#10;Arts"
+                    android:textSize="11sp"
+                    android:visibility="gone"
+                    android:contentDescription="Lantern Arts"
+                    android:layout_marginEnd="5dp" />
+                <Button
                     android:id="@+id/btnHeal"
                     style="@style/Widget.DnD.ActionButton"
                     android:layout_width="wrap_content"

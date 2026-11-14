@@ -71,6 +71,7 @@ object BeginnerGuide {
         |
         |Attack — Weapon strike vs Armor Class (d20 + bonuses).
         |Special — Your class feature (uses a resource).
+        |Arts — Lantern Arts from the Kindled Path (solo, level 22+; each recharges).
         |Potion — Heal 2d4+2 HP (uses a resource).
         |Short Rest — Recover some HP and resources (once per clear).
         |Long Rest — Full HP and resources (every 5 rooms; once per clear).
@@ -81,7 +82,8 @@ object BeginnerGuide {
         |Tip: AC is how hard you are to hit. Higher is better.
         |Tip: Resources power Specials and combat Potions — rest to regain some.
         |Wayfarer's Tonic (daily quest) — open Inventory and tap Use.
-        |Tip: XP fills as you clear rooms; level-ups grant attribute points.
+        |Tip: XP fills as you clear rooms; level-ups grant attribute points (every level to 20, then every 5th).
+        |Level cap 50. Levels 21-50 give an Ember each: spend them on the Sheet → Kindled Path (solo).
     """.trimMargin()
 
     /** Plain-English blurbs matching this build's C++ rules (SRD-safe wording). Classic = online tables. */

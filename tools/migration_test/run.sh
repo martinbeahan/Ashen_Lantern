@@ -7,7 +7,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 src="$here/../../app/src/main/cpp"
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
-cp "$src"/{Game.cpp,GameSave.cpp,Game.h,GameLogic.h,QuestScript.h,EncounterAuthorship.h,Bestiary.h,SaveCodec.h,MemoryCatalog.h,CombatCurve.h,EnemyAi.h,StatRules.h} "$work"/
+cp "$src"/{Game.cpp,GameSave.cpp,Game.h,GameLogic.h,QuestScript.h,EncounterAuthorship.h,Bestiary.h,SaveCodec.h,MemoryCatalog.h,CombatCurve.h,EnemyAi.h,StatRules.h,Perks.h,GamePerks.cpp} "$work"/
 cp "$here/AndroidOut.h" "$here/migration_test.cpp" "$here/save_safety_test.cpp" "$here/kindling_test.cpp" "$here/memory_test.cpp" "$here/slots_test.cpp" "$work"/
 ndk_bin="$(ls -d "${ANDROID_HOME:-$HOME/Android/Sdk}"/ndk/*/toolchains/llvm/prebuilt/linux-x86_64/bin 2>/dev/null | sort | tail -1 || true)"
 if [[ -n "$ndk_bin" && -x "$ndk_bin/clang++" ]]; then
@@ -15,22 +15,25 @@ if [[ -n "$ndk_bin" && -x "$ndk_bin/clang++" ]]; then
 else
   cxx=("${CXX:-c++}")
 fi
-"${cxx[@]}" -std=c++17 -O0 -o "$work/migration_test" "$work/migration_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp"
+"${cxx[@]}" -std=c++17 -O0 -o "$work/migration_test" "$work/migration_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/migration_test"
-"${cxx[@]}" -std=c++17 -O0 -o "$work/save_safety_test" "$work/save_safety_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp"
+"${cxx[@]}" -std=c++17 -O0 -o "$work/save_safety_test" "$work/save_safety_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/save_safety_test"
-"${cxx[@]}" -std=c++17 -O0 -o "$work/kindling_test" "$work/kindling_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp"
+"${cxx[@]}" -std=c++17 -O0 -o "$work/kindling_test" "$work/kindling_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/kindling_test"
-"${cxx[@]}" -std=c++17 -O0 -o "$work/memory_test" "$work/memory_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp"
+"${cxx[@]}" -std=c++17 -O0 -o "$work/memory_test" "$work/memory_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/memory_test"
-"${cxx[@]}" -std=c++17 -O0 -o "$work/slots_test" "$work/slots_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp"
+"${cxx[@]}" -std=c++17 -O0 -o "$work/slots_test" "$work/slots_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/slots_test"
 cp "$here/combat_test.cpp" "$work"/
-"${cxx[@]}" -std=c++17 -O0 -o "$work/combat_test" "$work/combat_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp"
+"${cxx[@]}" -std=c++17 -O0 -o "$work/combat_test" "$work/combat_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/combat_test"
 cp "$here/ai_test.cpp" "$work"/
-"${cxx[@]}" -std=c++17 -O0 -o "$work/ai_test" "$work/ai_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp"
+"${cxx[@]}" -std=c++17 -O0 -o "$work/ai_test" "$work/ai_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/ai_test"
 cp "$here/stats_test.cpp" "$work"/
-"${cxx[@]}" -std=c++17 -O0 -o "$work/stats_test" "$work/stats_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp"
+"${cxx[@]}" -std=c++17 -O0 -o "$work/stats_test" "$work/stats_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/stats_test"
+cp "$here/perks_test.cpp" "$work"/
+"${cxx[@]}" -std=c++17 -O0 -o "$work/perks_test" "$work/perks_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
+"$work/perks_test"

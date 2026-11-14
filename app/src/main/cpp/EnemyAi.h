@@ -244,7 +244,12 @@ inline std::string encodeStatuses(const Character::Statuses& st) {
     std::ostringstream ss;
     ss << st.burn << "." << st.burnDmg << "." << st.marked << "." << st.guarded << "." << st.blind
        << "." << st.slowed << "." << st.slowedFromInit << "." << st.shackled << "." << st.inspired
-       << "." << st.healedRecently;
+       << "." << st.healedRecently
+       // v2.32 (appended): Arts / Wards
+       << "." << st.shield << "." << st.braced << "." << st.rallied << "." << st.spite << "." << st.smoke
+       << "." << st.nextCrit << "." << st.resist << "." << st.overkindle << "." << st.exhausted
+       << "." << st.sundered << "." << st.stunned << "." << st.asleep << "." << st.bleed << "." << st.bleedDmg
+       << "." << st.discord;
     return ss.str();
 }
 inline Character::Statuses decodeStatuses(const std::string& s) {
@@ -255,6 +260,10 @@ inline Character::Statuses decodeStatuses(const std::string& s) {
     st.guarded = at(3, 0, 9); st.blind = at(4, 0, 9); st.slowed = at(5, 0, 9);
     st.slowedFromInit = 6 < v.size() ? std::clamp(v[6], -1000, 1000) : 0; st.shackled = at(7, 0, 9); st.inspired = at(8, 0, 9);
     st.healedRecently = at(9, 0, 9);
+    st.shield = at(10, 0, 1000000); st.braced = at(11, 0, 9); st.rallied = at(12, 0, 9); st.spite = at(13, 0, 9);
+    st.smoke = at(14, 0, 9); st.nextCrit = at(15, 0, 1); st.resist = at(16, 0, 9); st.overkindle = at(17, 0, 1);
+    st.exhausted = at(18, 0, 9); st.sundered = at(19, 0, 9); st.stunned = at(20, 0, 9); st.asleep = at(21, 0, 1);
+    st.bleed = at(22, 0, 9); st.bleedDmg = at(23, 0, 100000); st.discord = at(24, 0, 1);
     return st;
 }
 inline std::string encodeFoeAi(const Character::FoeAi& a) {
@@ -294,6 +303,18 @@ inline std::string statusCodes(const Character& c) {
     add('K', c.status.shackled);
     add('I', c.status.inspired);
     if (c.nextAttackPenalty > 0) add('R', 1);
+    // v2.32 Arts / Wards
+    add('W', c.status.shield > 0 ? 1 : 0); // shielded
+    add('A', c.status.braced);             // Iron Brace
+    add('V', std::max(c.status.rallied, c.status.spite)); // rallied (+hit / +damage)
+    add('H', c.status.smoke);              // hidden (Smoke Step)
+    add('C', c.status.resist);             // Sanctified
+    add('X', c.status.exhausted);
+    add('U', c.status.sundered);
+    add('T', c.status.stunned);
+    add('N', c.status.asleep);             // asleep (Ashen Lullaby)
+    add('D', c.status.bleed);
+    add('Q', c.status.discord);
     return out;
 }
 

@@ -188,6 +188,16 @@
             android:text="Open Inventory" />
 
         <Button
+            android:id="@+id/sheetKindledPath"
+            style="@style/Widget.DnD.ActionButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:minHeight="48dp"
+            android:text="Kindled Path"
+            android:visibility="gone" />
+
+        <Button
             android:id="@+id/sheetLevelUp"
             style="@style/Widget.DnD.ActionButton"
             android:layout_width="match_parent"
