@@ -303,6 +303,22 @@ public:
     /** Smart foes (intents, roles, boss phases): solo only, on curve-fitted foes. Online and
      *  legacy (pre-v2.29) mid-fight foes keep the old AI. */
     bool enemyAiActive() const { return encounterCurveActive() && enemyAiEnabled_; }
+    /** v2.31 universal stats: solo only (online Keeper tables and joiners keep the old rules). */
+    bool universalStatsActive() const { return encounterCurveActive() && statRulesEnabled_; }
+    /**
+     * v2.31: set Character::statRules on the party to match universalStatsActive(); when the
+     * rules come on, clamp spent scores above the caps and refund the points (save migration,
+     * announced once in chat). Idempotent; cheap.
+     */
+    void syncStatRules();
+    /**
+     * v2.31 stat guide for the level-up panel / sheet:
+     * "active|main|cap0,..,cap5|base0,..,base5|eff0,..,eff5|line0|..|line5|signature"
+     * (lines say what each stat does for this hero's class, with numbers). Empty if unknown.
+     */
+    std::string getStatGuide(const std::string& playerName) const;
+    /** Last save-migration note ("Stat caps: STR 25 → 22 (3 points refunded)"), empty if none. */
+    const std::string& getStatMigrationNote() const { return statMigrationNote_; }
     /**
      * Intent chips: "numbers|bannerSeq|bannerText|entries". numbers = 1 when a living hero has
      * INT 14+ (exact numbers allowed). entries are ';'-joined
@@ -316,6 +332,8 @@ public:
     // Test / simulator hooks (never called from JNI).
     void seedForTesting(unsigned seed) { rng_.seed(seed); rng::engine().seed(seed + 1); }
     void setEnemyAiEnabledForTesting(bool on) { enemyAiEnabled_ = on; }
+    /** Sim / tests only: v2.30 stat rules (no caps or universal effects) for before/after tables. */
+    void setStatRulesEnabledForTesting(bool on) { statRulesEnabled_ = on; }
     /** Replace the room with these foes (fitted to the curve like a normal room) and roll initiative. */
     void simBeginFight(const std::vector<std::string>& enemyIds, bool surprise = false);
     /** Every party member is AI-driven (simulator). */
@@ -450,6 +468,7 @@ private:
     std::string telegraphLine(const Character& foe) const;
     // v2.30 enemy AI state. Header fields 44 round, 45 foes this room, 46 fled this room.
     bool enemyAiEnabled_ = true;
+    bool statRulesEnabled_ = true; // v2.31 universal stats (solo); false only in the sim baseline
     int combatRound_ = 0;
     int roomFoeTotal_ = 0;
     int fledFoes_ = 0;
@@ -552,7 +571,17 @@ private:
     void applyStarterPaddingForStory();
     int proficiencyBonus() const;
     void resolveEnemyDefeated(Character* actor, int targetEnemyIndex);
-    bool performWeaponAttack(Character* actor, Character& target, int attackerVisualIndex, bool targetIsEnemy, int targetIndex, bool sneakAttack);
+    bool performWeaponAttack(Character* actor, Character& target, int attackerVisualIndex, bool targetIsEnemy, int targetIndex, bool sneakAttack,
+                             bool special = false, int flatBonus = 0);
+    /** v2.31: can this hero use their class special now (resource, or a Signature free use)? */
+    bool specialAvailable(const Character& c) const;
+    /** v2.31: spend one use of the special: the free Signature use first, else a resource. */
+    void spendSpecialUse(Character& c);
+    /** v2.31: best CHA mod among living heroes under the solo rules (Luck / Intimidate). */
+    int partyChaMod(const Character* except = nullptr) const;
+    /** v2.31 Luck of the Lantern: gold found / looted, +3% per party CHA mod (cap +30%). */
+    int luckGold(int gold) const;
+    std::string statMigrationNote_;
     /** L5: bounded — with no Renderer (window destroyed / UI-only build) nothing drains it. */
     static constexpr size_t kMaxVisualEvents = 64;
     void pushVisualEvent(VisualEventType type, int index) {

@@ -107,6 +107,43 @@ object EnemyIntentUi {
     /** Exact numbers only when the party is clever enough (INT 14+) and the player wants them. */
     fun showNumbers(s: Snapshot, prefExactNumbers: Boolean): Boolean = s.numbers && prefExactNumbers
 
+    // v2.31 Read intent (INT): exact numbers at INT 14+, a rough range below it (pref on), glyph only (pref off).
+    const val NUM_OFF = 0
+    const val NUM_RANGE = 1
+    const val NUM_EXACT = 2
+
+    fun numberMode(s: Snapshot, prefExactNumbers: Boolean): Int = when {
+        !prefExactNumbers -> NUM_OFF
+        s.numbers -> NUM_EXACT
+        else -> NUM_RANGE
+    }
+
+    /** Rough range for a hidden number: 60%–140% of it ("14–34"). */
+    fun range(value: Int): String {
+        val lo = maxOf(1, (value * 0.6).toInt())
+        val hi = maxOf(lo, kotlin.math.ceil(value * 1.4).toInt())
+        return "$lo–$hi"
+    }
+
+    fun chipText(i: Intent, mode: Int): String = when (mode) {
+        NUM_EXACT -> chipText(i, numbers = true)
+        NUM_RANGE -> {
+            val g = glyph(i.intent)
+            if (g.isEmpty()) "" else if (i.value > 0) "$g ${range(i.value)}" else g
+        }
+        else -> chipText(i, numbers = false)
+    }
+
+    fun describe(i: Intent, mode: Int): String = when (mode) {
+        NUM_EXACT -> describe(i, true)
+        NUM_RANGE -> {
+            val d = describe(i, false)
+            if (d.isEmpty() || i.value <= 0) d
+            else d + (if (i.intent == HEAL) ", roughly +" else ", roughly ") + range(i.value) + " (INT 14 reads it exactly)"
+        }
+        else -> describe(i, false)
+    }
+
     /** Chip text, e.g. "⚔ 12" with numbers or "⚔" without. */
     fun chipText(i: Intent, numbers: Boolean): String {
         val g = glyph(i.intent)

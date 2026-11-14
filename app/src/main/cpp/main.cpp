@@ -416,6 +416,18 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doIncreaseStat([[maybe_unused]]
     });
 }
 
+// v2.31 universal stats: "rules|main|caps|base|effective|STR..CHA lines|signature" for the
+// level-up screen and sheet help (Game::getStatGuide; StatGuide.kt parses it).
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getStatGuide([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName) {
+    return jniGuardStr(env, "getStatGuide", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        JUtf nativeNameUtf(env, playerName);
+        g_Game.syncStatRules(); // caps reflect the current table (solo vs online)
+        return env->NewStringUTF(g_Game.getStatGuide(nativeNameUtf.c_str()).c_str());
+    });
+}
+
 JNIEXPORT jboolean JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_doBuyItem([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName, jint itemIndex) {
     return jniGuard("doBuyItem", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {

@@ -142,6 +142,9 @@ inline int primaryIndex(CharacterClass c) {
  * A model hero at level L: default point split (50% main stat, 30% CON, 20% DEX of the
  * 2 points per level), expected gear of L/2 on each slot. Built with the real Character.
  */
+/** Sim only: build the v2.30 (uncapped) model hero for before/after tables. Never set in the app. */
+inline bool& legacyReferenceForSim() { static bool v = false; return v; }
+
 inline Character makeReferenceHero(CharacterClass cls, int level) {
     Character c("Reference", cls, "ref");
     c.level = std::clamp(level, 1, Character::kMaxLevelSafety);
@@ -157,17 +160,61 @@ inline Character makeReferenceHero(CharacterClass cls, int level) {
             case 5: c.attributes.charisma += n; break;
         }
     };
-    add(main, static_cast<int>(pts * 0.5));
-    add(2, static_cast<int>(pts * 0.3));
-    add(1, static_cast<int>(pts * 0.2));
+    // v2.31: the model respects the universal stat caps (StatRules.h). Points that would push a
+    // stat past its cap overflow to CON, then DEX, then the rest — like a sensible player.
+    auto get = [&](int idx) {
+        switch (idx) {
+            case 0: return c.attributes.strength;
+            case 1: return c.attributes.dexterity;
+            case 2: return c.attributes.constitution;
+            case 3: return c.attributes.intelligence;
+            case 4: return c.attributes.wisdom;
+            default: return c.attributes.charisma;
+        }
+    };
+    int overflow = 0;
+    auto addCapped = [&](int idx, int n) {
+        const int cap = legacyReferenceForSim() ? 1000 : stats::attrCap(c.level, idx == main, 0);
+        const int room = std::max(0, cap - get(idx));
+        const int put = std::min(room, n);
+        add(idx, put);
+        overflow += n - put;
+    };
+    addCapped(main, static_cast<int>(pts * 0.5));
+    addCapped(2, static_cast<int>(pts * 0.3));
+    addCapped(1, static_cast<int>(pts * 0.2));
+    static const int kSpill[] = {2, 1, 0, 3, 4, 5};
+    for (int idx : kSpill) {
+        if (overflow <= 0) break;
+        const int n = overflow;
+        overflow = 0;
+        addCapped(idx, n);
+    }
     const int cls_i = static_cast<int>(cls);
     c.equippedWeapon = Item::make(kRefWeaponName, ItemType::WEAPON, c.level / 2, ItemRarity::COMMON, cls_i);
     c.equippedArmor = Item::make(kRefArmorName, ItemType::ARMOR, starterArmorBase(cls) + c.level / 2,
                                  ItemRarity::COMMON, cls_i);
     c.applyStatsForLevel();
+    c.statRules = !legacyReferenceForSim(); // v2.31: DEX gives at most +6 AC, as for real heroes
     c.calculateAC();
+    c.statRules = false; // the model's numbers are read raw (no Heft / crit range in the curve)
     c.currentHp = c.maxHp;
     return c;
+}
+
+/**
+ * v2.31 universal stats: every stat now helps (Heft, Weak point, Signature uses, sharper Magic
+ * Missile...), none of which is in the model hero. Solo foes get extra HP so fights keep their
+ * length: +15% for normal foes, +10% for a boss with an escort, +40% for a boss alone (single
+ * targets eat the Signature burst). Ramps in from EL 1 to EL 10. Tuned with tools/combat_sim.
+ */
+constexpr double kStatsToughOthers = 0.15;
+constexpr double kStatsToughBoss = 0.10;
+constexpr double kStatsToughBossAlone = 0.40;
+inline double statsToughness(int el, bool boss, bool bossHasEscort) {
+    const double ramp = std::clamp((el - 1) / 9.0, 0.0, 1.0);
+    const double add = !boss ? kStatsToughOthers : (bossHasEscort ? kStatsToughBoss : kStatsToughBossAlone);
+    return 1.0 + ramp * add;
 }
 
 struct RefStats { double atk, ac, hp, dmg; };
@@ -186,7 +233,10 @@ inline RefStats referenceFor(CharacterClass cls, int level) {
 
 /** Reference Lamplighter = average of a Fighter and a Wizard. Cached table EL 1..kMaxEL. */
 inline const RefStats& reference(int el) {
-    static const std::array<RefStats, kMaxEL + 1> kTable = [] {
+    // Two cached tables: v2.31 (capped model hero) and the sim-only v2.30 baseline.
+    static const auto build = [](bool legacy) {
+        const bool saved = legacyReferenceForSim();
+        legacyReferenceForSim() = legacy;
         std::array<RefStats, kMaxEL + 1> t{};
         for (int L = 1; L <= kMaxEL; ++L) {
             const RefStats f = referenceFor(CharacterClass::FIGHTER, L);
@@ -194,8 +244,14 @@ inline const RefStats& reference(int el) {
             t[static_cast<size_t>(L)] = {(f.atk + w.atk) / 2, (f.ac + w.ac) / 2, (f.hp + w.hp) / 2, (f.dmg + w.dmg) / 2};
         }
         t[0] = t[1];
+        legacyReferenceForSim() = saved;
         return t;
-    }();
+    };
+    static const std::array<RefStats, kMaxEL + 1> kTable = build(false);
+    if (legacyReferenceForSim()) {
+        static const std::array<RefStats, kMaxEL + 1> kLegacy = build(true);
+        return kLegacy[static_cast<size_t>(std::clamp(el, 1, kMaxEL))];
+    }
     return kTable[static_cast<size_t>(std::clamp(el, 1, kMaxEL))];
 }
 

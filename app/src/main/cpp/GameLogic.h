@@ -8,6 +8,7 @@
 #include <sstream>
 #include <algorithm>
 #include "Bestiary.h"
+#include "StatRules.h"
 #include "SaveCodec.h"
 #include "AndroidOut.h"
 
@@ -210,10 +211,12 @@ struct Item {
         return classTag == static_cast<int>(c);
     }
 
-    int shopCost() const {
+    int shopCost() const { return shopCostAtBonus(bonus); }
+    /** Shop value as if the item had bonus b (b = bonus - upgradeLevel is its value before upgrades). */
+    int shopCostAtBonus(int b) const {
         int rarityMult = 1 + static_cast<int>(rarity);
-        int base = (bonus + 1) * 20 * rarityMult;
-        if (type == ItemType::POTION) return std::max(15, bonus * 3);
+        int base = (std::max(0, b) + 1) * 20 * rarityMult;
+        if (type == ItemType::POTION) return std::max(15, b * 3);
         if (classTag >= 0) base += 10; // class-tagged premium
         return std::max(15, base);
     }
@@ -224,13 +227,20 @@ struct Item {
         return rarityBase * (upgradeLevel + 1) * (1 + bonus / 2);
     }
 
-    /** Sell-back gold: fair fraction of shop value, scaled by rarity + upgrades (~40–60%). */
-    int sellPrice() const {
+    /**
+     * Sell-back gold: fair fraction of shop value, scaled by rarity + upgrades (~40–60%).
+     * v2.31 Barter: +1% per CHA mod on top (solo only; callers pass 0 online), so the old 65%
+     * cap can reach 75% (stats::kSellCapMax). The CHA extra is paid on the item's value before
+     * forge upgrades, so an upgrade can never be resold at a profit; always below the buy price.
+     */
+    int sellPrice(int chaMod = 0) const {
         int buy = shopCost();
         // Common 40% … Legendary 60% base; +2% per upgrade tier, cap 65%.
         int pct = 40 + static_cast<int>(rarity) * 5 + upgradeLevel * 2;
-        if (pct > 65) pct = 65;
+        if (pct > stats::kSellCapBase) pct = stats::kSellCapBase;
         int price = (buy * pct) / 100;
+        const int extraPct = std::min(stats::kSellCapMax - pct, stats::sellBonusPct(chaMod));
+        if (extraPct > 0) price += (shopCostAtBonus(bonus - upgradeLevel) * extraPct) / 100;
         return std::max(1, price);
     }
 
@@ -372,6 +382,16 @@ struct Character {
     /** Fighter Action Surge (and similar): at most once per combat; cleared on initiative. */
     bool specialUsedThisCombat = false;
 
+    // --- v2.31 (universal stats, PR 3) ------------------------------------------------------
+    /**
+     * Solo rules switch (not saved; Game::syncStatRules sets it for the party in solo play):
+     * attribute caps, DEX AC cap, Heft, crit range, Mending, Signature tiers. Online heroes and
+     * foes keep the old rules (false).
+     */
+    bool statRules = false;
+    /** Signature tier 1 (main 20+): free class-special uses left this battle. Player field 31. */
+    int signatureUses = 0;
+
     // --- v2.29 (combat curve, PR 1) ---------------------------------------------------------
     /**
      * Max HP earned outside the level formula, kept through every level-up (audit bug b):
@@ -491,6 +511,7 @@ struct Character {
 
     void calculateAC() {
         int dexMod = Attributes::getModifier(effectiveAttr(1));
+        if (statRules) dexMod = stats::acFromDex(dexMod); // v2.31: DEX gives at most +6 AC
         int armorBonus = (equippedArmor && equippedArmor->type == ItemType::ARMOR) ? equippedArmor->bonus : 0;
         armorClass = 10 + dexMod + armorBonus;
     }
@@ -597,8 +618,70 @@ struct Character {
     }
     bool addXp(int amount) { return addXpLevels(amount) > 0; }
 
-    void increaseAttribute(int index) {
-        if (pendingStatPoints <= 0) return;
+    /** v2.31: index of the class's main stat (0 STR .. 5 CHA). */
+    int mainStatIndex() const { return stats::mainIndex(static_cast<int>(characterClass)); }
+    /** Spent (base) score, no gear. */
+    int baseAttr(int which) const {
+        switch (which) {
+            case 0: return attributes.strength;
+            case 1: return attributes.dexterity;
+            case 2: return attributes.constitution;
+            case 3: return attributes.intelligence;
+            case 4: return attributes.wisdom;
+            case 5: return attributes.charisma;
+            default: return 10;
+        }
+    }
+    void setBaseAttr(int which, int v) {
+        switch (which) {
+            case 0: attributes.strength = v; break;
+            case 1: attributes.dexterity = v; break;
+            case 2: attributes.constitution = v; break;
+            case 3: attributes.intelligence = v; break;
+            case 4: attributes.wisdom = v; break;
+            case 5: attributes.charisma = v; break;
+            default: break;
+        }
+    }
+    /** v2.31 cap on the spent score for this stat at the current level (gear may exceed it). */
+    int attrCapFor(int which) const { return stats::attrCap(level, which == mainStatIndex(), prestigeRank); }
+    bool canRaise(int which) const { return !statRules || baseAttr(which) < attrCapFor(which); }
+    /** Effective modifier (gear included). */
+    int effMod(int which) const { return Attributes::getModifier(effectiveAttr(which)); }
+    /** Signature tier from the effective main score (0 when the solo rules are off). */
+    int signatureTier() const { return statRules ? stats::signatureTier(effectiveAttr(mainStatIndex())) : 0; }
+
+    /**
+     * v2.31 save migration: clamp every spent score above its cap and refund the points.
+     * Returns the refunded points; `note` lists the changes ("STR 25 → 22"). HP and AC refresh.
+     */
+    int clampAttributesToCaps(std::string* note = nullptr) {
+        int refunded = 0;
+        for (int i = 0; i < 6; ++i) {
+            const int cap = attrCapFor(i);
+            const int v = baseAttr(i);
+            if (v > cap) {
+                refunded += v - cap;
+                setBaseAttr(i, cap);
+                if (note) {
+                    if (!note->empty()) *note += ", ";
+                    *note += std::string("STRDEXCONINTWISCHA").substr(static_cast<size_t>(i) * 3, 3) + " " + std::to_string(v) + " → " + std::to_string(cap);
+                }
+            }
+        }
+        if (refunded > 0) {
+            pendingStatPoints += refunded;
+            calculateAC();
+            recomputeMaxHp();
+        }
+        return refunded;
+    }
+
+    /** Spend one point. v2.31: refused (false) when the stat is at its cap in solo play. */
+    bool increaseAttribute(int index) {
+        if (pendingStatPoints <= 0) return false;
+        if (index < 0 || index > 5) return false;
+        if (!canRaise(index)) return false;
         const int formulaBefore = formulaMaxHp();
         switch(index) {
             case 0: attributes.strength++; break;
@@ -618,6 +701,7 @@ struct Character {
             recomputeMaxHp();
             currentHp = std::min(maxHp, currentHp + level);
         }
+        return true;
     }
 
     bool performSavingThrow(int attributeScore, int dc) {
@@ -655,9 +739,17 @@ struct Character {
         }
     }
 
-    void heal(int amount) {
-        if (amount <= 0) return;
-        if (isDead) return; // permanently dead — needs magic not modeled here
+    /**
+     * Heal. v2.31 Mending: a hero under the solo rules receives +4% per WIS mod (cap +40%) from
+     * every source. Returns the amount after Mending (before clamping to max HP).
+     */
+    int heal(int amount) {
+        if (amount <= 0) return 0;
+        if (isDead) return 0; // permanently dead — needs magic not modeled here
+        if (statRules && !isFoe()) {
+            const double m = stats::mending(effMod(4));
+            if (m > 0) amount = static_cast<int>(amount * (1.0 + m) + 0.5);
+        }
         isDowned = false;
         isStable = false;
         deathSaveSuccesses = 0;
@@ -667,6 +759,7 @@ struct Character {
         } else {
             currentHp = std::min(maxHp, currentHp + amount);
         }
+        return amount;
     }
 
     /** Party-wipe continue: clear death locks and set HP (difficulty-tuned by caller). */
@@ -842,7 +935,22 @@ public:
         return 2 + (level - 1) / 4;
     }
 
-    static RollResult performAttackRoll(const Character& attacker) {
+    /**
+     * v2.31 crit range for a hero under the solo rules: INT Weak point (19+ at mod +4, 18+ at +8)
+     * and, for a class special at Signature tier 3, one more. Foes and online heroes: 20.
+     */
+    static int critMin(const Character& attacker, bool special = false) {
+        if (!attacker.statRules || attacker.isFoe()) return 20;
+        return stats::critMin(attacker.effMod(3), special && attacker.signatureTier() >= 3);
+    }
+
+    static RollResult performAttackRoll(const Character& attacker, bool special = false) {
+        RollResult r = performAttackRollRaw(attacker);
+        if (r.dieRoll >= critMin(attacker, special)) r.isCriticalHit = true; // only counts on a hit
+        return r;
+    }
+
+    static RollResult performAttackRollRaw(const Character& attacker) {
         int die = rng::below(20) + 1;
         if (attacker.curveEL > 0) {
             // v2.29 encounter-curve foe: to-hit comes from the Reference Lamplighter (CombatCurve.h).
@@ -865,6 +973,7 @@ public:
         int mod = getPrimaryModifier(attacker);
         int weaponBonus = (attacker.equippedWeapon && attacker.equippedWeapon->type == ItemType::WEAPON) ? attacker.equippedWeapon->bonus : 0;
         int total = damage + mod + weaponBonus;
+        if (attacker.statRules && !attacker.isFoe()) total += stats::heft(attacker.effMod(0)); // v2.31 Heft
         return total < 1 ? 1 : total;
     }
 };

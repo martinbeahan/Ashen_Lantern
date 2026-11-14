@@ -1280,10 +1280,13 @@ void Game::spawnRoomContent() {
 }
 
 void Game::rollInitiative() {
+    syncStatRules(); // v2.31: solo heroes use the universal stat rules
     for (auto& p : players_) {
         if (!p) continue;
         p->fightShieldUsed = false;
         p->specialUsedThisCombat = false;
+        // v2.31 Signature (main stat 20+): one free class-special use per battle.
+        p->signatureUses = p->signatureTier() >= 1 ? 1 : 0;
     }
 
     turnOrder_.clear();
@@ -1436,6 +1439,7 @@ bool Game::buyItem(const std::string& playerName, int itemIndex) {
 
     auto item = shopInventory_[static_cast<size_t>(itemIndex)];
     int cost = item->shopCost();
+    if (hero->statRules) cost = stats::buyPrice(cost, hero->effMod(5)); // v2.31 Barter
 
     if (hero->gold >= cost) {
         hero->gold -= cost;
@@ -1462,7 +1466,9 @@ std::string Game::getShopManifest() const {
         // idx:name|bonus|type|rarity|class|cost
         ss << i << ":" << it->name << "|" << it->bonus << "|"
            << (it->type == ItemType::WEAPON ? "Weapon" : (it->type == ItemType::ARMOR ? "Armor" : "Potion"))
-           << "|" << it->rarityLabel() << "|" << it->classLabel() << "|" << it->shopCost() << ";";
+           << "|" << it->rarityLabel() << "|" << it->classLabel() << "|"
+           << ((!players_.empty() && players_[0] && players_[0]->statRules)
+                   ? stats::buyPrice(it->shopCost(), players_[0]->effMod(5)) : it->shopCost()) << ";"; // v2.31 Barter
     }
     return ss.str();
 }
@@ -1486,7 +1492,7 @@ std::string Game::getInventoryManifest(const std::string& playerName) const {
            << (it->type == ItemType::WEAPON ? "Weapon" : (it->type == ItemType::ARMOR ? "Armor" : "Potion"))
            << "|" << it->rarityLabel() << "|" << it->classLabel() << "|" << slot
            << "|" << it->upgradeLevel << "|" << it->upgradeCost()
-           << "|" << it->sellPrice() << "|" << leg << ";";
+           << "|" << it->sellPrice(hero->statRules ? hero->effMod(5) : 0) << "|" << leg << ";";
     };
     // Equipped first with negative-ish slots encoded as weapon/armor indices in slot field
     emit(hero->equippedWeapon, "weapon", -1);
@@ -1604,7 +1610,7 @@ bool Game::sellInventoryItem(const std::string& playerName, int invIndex) {
         lastEvent_ = "No such item.";
         return false;
     }
-    int price = item->sellPrice();
+    int price = item->sellPrice(hero->statRules ? hero->effMod(5) : 0); // v2.31 Barter
     std::string itemName = item->getDescription();
     hero->inventory.erase(hero->inventory.begin() + invIndex);
     hero->gold += price;
@@ -1623,7 +1629,7 @@ bool Game::sellEquippedItem(const std::string& playerName, int slot) {
         return false;
     }
     auto item = *ptr;
-    int price = item->sellPrice();
+    int price = item->sellPrice(hero->statRules ? hero->effMod(5) : 0); // v2.31 Barter
     std::string itemName = item->getDescription();
     // Unequip first: clear slot so combat falls back to fists / unarmored AC.
     *ptr = nullptr;
@@ -2751,6 +2757,7 @@ void Game::grantKillLoot(Character* actor, const std::string& foeName, const std
     if (encounterCurveActive() && pressure_ > 0) {
         gold = static_cast<int>(std::lround(gold * curve::pressureMultiplier(pressure_)));
     }
+    gold = luckGold(gold); // v2.31 Luck of the Lantern (CHA)
     looter->gold += gold;
     // Kill beat first so UI juice can toast "Felled …" then gold line stays in the feed.
     std::string msg = "Felled " + foeName + "! " + looter->name + " loots " +
@@ -3013,8 +3020,10 @@ void Game::allyTurn() {
 
     // 1) Heal a downed / critically hurt ally when we can (potion or Cleric Healing Word).
     const int healIdx = pickAllyAiHealTarget();
-    if (healIdx >= 0 && actor->resources > 0) {
-        if (actor->characterClass == CharacterClass::CLERIC && actor->status.shackled <= 0) {
+    const bool canWord = actor->characterClass == CharacterClass::CLERIC && actor->status.shackled <= 0
+                         && specialAvailable(*actor); // v2.31: a Signature free use counts
+    if (healIdx >= 0 && (actor->resources > 0 || canWord)) {
+        if (canWord) {
             dmSay(actor->name + " calls a Healing Word for a wounded ally.");
             playerSpecialAction(0); // Cleric special ignores enemy index; heals lowest HP
         } else {
@@ -3038,8 +3047,7 @@ void Game::allyTurn() {
 
     // 3) Class special when it clearly beats a basic swing and we have a use left.
     // v2.30: a Fighter's Action Surge is once per fight — don't burn the turn retrying it.
-    const bool surgeSpent = actor->characterClass == CharacterClass::FIGHTER && actor->specialUsedThisCombat;
-    if (actor->resources > 0 && actor->characterClass != CharacterClass::CLERIC && !surgeSpent
+    if (specialAvailable(*actor) && actor->characterClass != CharacterClass::CLERIC
         && actor->status.shackled <= 0 && allySpecialBeatsBasic(*actor, enemy)) {
         dmSay(actor->name + " uses " + actor->getSpecialAbilityName() + "!");
         playerSpecialAction(target);
@@ -3060,6 +3068,7 @@ void Game::allyTurn() {
 
 void Game::processTurn() {
     if (gameOver_ || isMerchantRoom_ || !isHost_) return;
+    syncStatRules();
     // Cleared chamber: wait for Search / Short Rest / Onward — do not AI-spin allies.
     if (enemies_.empty()) return;
     if (turnOrder_.empty()) return;
@@ -3093,10 +3102,12 @@ void Game::processTurn() {
                 return;
             }
             int roll = getRandomInt(1, 20);
+            // v2.31 Grit: +floor(CONmod / 2) on death saves (natural 1 and 20 as before).
+            const int grit = current->statRules ? stats::deathSaveBonus(current->effMod(2)) : 0;
             if (roll == 20) {
                 current->heal(1);
                 addChatMessage("System", current->name + " stood back up with a Natural 20!");
-            } else if (roll >= 10) {
+            } else if (roll != 1 && roll + grit >= 10) {
                 current->deathSaveSuccesses++;
                 if (current->deathSaveSuccesses >= 3) {
                     current->currentHp = 0;
@@ -3191,11 +3202,13 @@ int Game::proficiencyBonus() const {
     return dnd::CombatSystem::proficiencyBonusForLevel(level);
 }
 
-bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIndex, bool targetIsEnemy, int targetIndex, bool sneakAttack) {
+bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIndex, bool targetIsEnemy, int targetIndex, bool sneakAttack,
+                               bool special, int flatBonus) {
     if (!actor) return false;
     pushVisualEvent(targetIsEnemy ? VisualEventType::PLAYER_ATTACK : VisualEventType::ENEMY_ATTACK, atkVisIndex);
 
-    RollResult result = CombatSystem::performAttackRoll(*actor);
+    // v2.31: INT Weak point widens the crit range; a special at Signature tier 3 one more.
+    RollResult result = CombatSystem::performAttackRoll(*actor, special && targetIsEnemy);
     int mod = CombatSystem::getPrimaryModifier(*actor);
     int pb = CombatSystem::proficiencyBonusForLevel(actor->level);
     int gearBonus = actor->equippedWeapon ? actor->equippedWeapon->bonus : 0;
@@ -3207,6 +3220,12 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
     }
     const int blindPenalty = (targetIsEnemy && actor->status.blind > 0) ? ai::kBlindToHit : 0;
     result.total -= blindPenalty; // v2.30: Crown flare
+    // v2.31 Inspire: a companion gets +floor(CHAmod / 4) to hit from the party's best CHA.
+    int inspireBonus = 0;
+    if (targetIsEnemy && actor->statRules && !players_.empty() && players_[0].get() != actor) {
+        inspireBonus = stats::inspire(partyChaMod(actor));
+        result.total += inspireBonus;
+    }
 
     std::stringstream ss;
     ss << actor->name << " attacks " << target.name << "! d20=" << result.dieRoll
@@ -3214,6 +3233,7 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
        << " (magic)";
     if (mockPenalty > 0) ss << " - " << mockPenalty << " (rattled)";
     if (blindPenalty > 0) ss << " - " << blindPenalty << " (blinded)";
+    if (inspireBonus > 0) ss << " + " << inspireBonus << " (inspired)";
     ss << " = " << result.total << " vs AC " << target.armorClass << ". ";
 
     bool hit = result.total >= target.armorClass || result.isCriticalHit;
@@ -3228,6 +3248,15 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
     if (hit) {
         int extraDice = sneakAttack ? actor->sneakAttackDice() : 0;
         int dmg = CombatSystem::calculateDamage(*actor, result.isCriticalHit, extraDice, 6);
+        dmg += std::max(0, flatBonus); // v2.31: Action Surge's second swing (+Heft)
+        if (special && targetIsEnemy && actor->signatureTier() >= 2) // Signature: potency +25%
+            dmg = static_cast<int>(std::lround(dmg * stats::kSignaturePotency));
+        // v2.31 Break guard: STR mod +3 strips a foe's shield-wall.
+        if (targetIsEnemy && actor->statRules && target.status.guarded > 0 && stats::breaksGuard(actor->effMod(0))) {
+            target.status.guarded = 0;
+            target.armorClass -= ai::kGuardAc;
+            ss << "(guard broken) ";
+        }
         if (!targetIsEnemy) {
             tryFightShield(&target, dmg);
         }
@@ -3317,7 +3346,7 @@ void Game::playerHeal(int targetPlayerIndex) {
     actor->resources--;
     Character& target = *players_[static_cast<size_t>(targetPlayerIndex)];
     int amount = getRandomInt(1, 4) + getRandomInt(1, 4) + 2;
-    target.heal(amount);
+    amount = target.heal(amount); // v2.31: Mending (WIS)
     if (&target != actor) actor->status.healedRecently = 2; // v2.30: foes notice healers
     lastEvent_ = actor->name + " drinks a Potion of Healing on " + target.name + " for " + std::to_string(amount) + " HP.";
     dmSay(target.name + " feels vitality return as the potion takes hold.");
@@ -3344,20 +3373,25 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
 
     // Cleric Healing Word can target allies without an enemy
     if (actor->characterClass == CharacterClass::CLERIC) {
-        if (actor->resources <= 0) { lastEvent_ = "No spell slots left."; return; }
-        actor->resources--;
+        if (!specialAvailable(*actor)) { lastEvent_ = "No spell slots left."; return; }
+        const bool usedSignature = actor->signatureUses > 0;
+        spendSpecialUse(*actor);
         // Heals the lowest-HP living ally (M2: never a dead ally; the UI target index is unused here).
         int best = -1;
         for (size_t i = 0; i < players_.size(); ++i) {
             if (!players_[i] || players_[i]->isDead) continue;
             if (best < 0 || players_[i]->currentHp < players_[static_cast<size_t>(best)]->currentHp) best = static_cast<int>(i);
         }
-        if (best < 0) { actor->resources++; lastEvent_ = "No ally to heal."; return; }
+        if (best < 0) {
+            if (usedSignature) actor->signatureUses++; else actor->resources++;
+            lastEvent_ = "No ally to heal."; return;
+        }
         Character& ally = *players_[static_cast<size_t>(best)];
         int wis = actor->healingWordModifier(); // v2.29: effective WIS (audit bug d)
         int amount = getRandomInt(1, 4) + wis;
         if (amount < 1) amount = 1;
-        ally.heal(amount);
+        if (actor->signatureTier() >= 2) amount = static_cast<int>(std::lround(amount * stats::kSignaturePotency));
+        amount = ally.heal(amount); // v2.31: the ally's Mending (WIS) adds to it
         if (&ally != actor) actor->status.healedRecently = 2; // v2.30: foes notice healers
         lastEvent_ = actor->name + " casts Healing Word on " + ally.name + " for " + std::to_string(amount) + " HP.";
         dmSay("A soft glow knits " + ally.name + "'s wounds — Healing Word.");
@@ -3367,14 +3401,15 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
     }
 
     if (enemies_.empty() || targetEnemyIndex < 0 || static_cast<size_t>(targetEnemyIndex) >= enemies_.size()) return;
-    if (actor->resources <= 0) { lastEvent_ = "No uses remaining for that feature."; return; }
-    // Fighter Action Surge: once per combat (still spends a resource/supply).
-    if (actor->characterClass == CharacterClass::FIGHTER && actor->specialUsedThisCombat) {
+    // Fighter Action Surge: once per combat (still spends a resource/supply); a Signature free use
+    // (main stat 20+, solo) allows one more.
+    if (actor->characterClass == CharacterClass::FIGHTER && actor->specialUsedThisCombat && actor->signatureUses <= 0) {
         lastEvent_ = "Action Surge already used this fight — rest or finish the battle for another chance.";
         dmSay(actor->name + " is still catching their breath from the last surge.");
         return;
     }
-    actor->resources--;
+    if (!specialAvailable(*actor)) { lastEvent_ = "No uses remaining for that feature."; return; }
+    spendSpecialUse(*actor);
     if (actor->characterClass == CharacterClass::FIGHTER) actor->specialUsedThisCombat = true;
 
     Character& enemy = *enemies_[static_cast<size_t>(targetEnemyIndex)];
@@ -3382,10 +3417,12 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
     if (actor->characterClass == CharacterClass::FIGHTER) {
         dmSay(actor->name + " shouts and surges forward — Action Surge!");
         // Extra attack action: two weapon attacks
-        performWeaponAttack(actor, enemy, playerIdx, true, targetEnemyIndex, false);
+        performWeaponAttack(actor, enemy, playerIdx, true, targetEnemyIndex, false, true);
         if (enemy.currentHp > 0) {
             dmSay("Still standing! " + actor->name + " swings again.");
-            performWeaponAttack(actor, enemy, playerIdx, true, targetEnemyIndex, false);
+            // v2.31: the second swing adds +floor(STRmod / 2).
+            const int extra = actor->statRules ? stats::heft(actor->effMod(0)) : 0;
+            performWeaponAttack(actor, enemy, playerIdx, true, targetEnemyIndex, false, true, extra);
         }
         if (enemy.currentHp <= 0) resolveEnemyDefeated(actor, targetEnemyIndex);
         else advanceTurn();
@@ -3394,7 +3431,7 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
 
     if (actor->characterClass == CharacterClass::ROGUE) {
         dmSay(actor->name + " slips into a flank and strikes — Sneak Attack!");
-        performWeaponAttack(actor, enemy, playerIdx, true, targetEnemyIndex, true);
+        performWeaponAttack(actor, enemy, playerIdx, true, targetEnemyIndex, true, true);
         if (enemy.currentHp <= 0) resolveEnemyDefeated(actor, targetEnemyIndex);
         else advanceTurn();
         return;
@@ -3402,8 +3439,11 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
 
     if (actor->characterClass == CharacterClass::WIZARD) {
         // Magic Missile: 3 darts of 1d4+1, auto-hit (SRD)
+        // v2.31: each dart is 1d4 + 1 + floor(INTmod / 3) in solo play; Signature potency +25%.
+        const int dartFlat = actor->statRules ? stats::dartBonus(actor->effMod(3)) : 1;
         int total = 0;
-        for (int i = 0; i < 3; ++i) total += getRandomInt(1, 4) + 1;
+        for (int i = 0; i < 3; ++i) total += getRandomInt(1, 4) + dartFlat;
+        if (actor->signatureTier() >= 2) total = static_cast<int>(std::lround(total * stats::kSignaturePotency));
         enemy.takeDamage(total);
         noteDailyQuestDamage(total);
         noteFoeDamaged(enemy, total, actor, true); // a spell scorches like a crit (Hydra regrowth)
@@ -3420,7 +3460,7 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
     if (actor->characterClass == CharacterClass::BARD) {
         // Cutting Quip: CHA attack vs AC; psychic sting + rattle (-2 next attack). Original flavor.
         dmSay(actor->name + " fires a Cutting Quip — a barbed line that bites deeper than steel.");
-        RollResult result = CombatSystem::performAttackRoll(*actor);
+        RollResult result = CombatSystem::performAttackRoll(*actor, true);
         int mod = CombatSystem::getPrimaryModifier(*actor);
         int pb = CombatSystem::proficiencyBonusForLevel(actor->level);
         if (actor->status.blind > 0) result.total -= ai::kBlindToHit; // v2.30: Crown flare
@@ -3438,14 +3478,16 @@ void Game::playerSpecialAction(int targetEnemyIndex) {
             int cha = Attributes::getModifier(actor->effectiveAttr(5));
             int dmg = getRandomInt(1, 4) + cha;
             if (result.isCriticalHit) dmg += getRandomInt(1, 4);
+            const bool potent = actor->signatureTier() >= 2; // v2.31 Signature: +25% sting and rattle
+            if (potent) dmg = static_cast<int>(std::lround(dmg * stats::kSignaturePotency));
             if (dmg < 1) dmg = 1;
             enemy.takeDamage(dmg);
             noteDailyQuestDamage(dmg);
             noteFoeDamaged(enemy, dmg, actor, result.isCriticalHit);
-            enemy.nextAttackPenalty = 2;
+            enemy.nextAttackPenalty = potent ? 3 : 2;
             pushVisualEvent(VisualEventType::ENEMY_DAMAGE, targetEnemyIndex);
             ss << (result.isCriticalHit ? "CRITICAL! " : "Hit! ")
-               << "Psychic sting " << dmg << ". " << enemy.name << " is rattled (-2 next attack).";
+               << "Psychic sting " << dmg << ". " << enemy.name << " is rattled (-" << enemy.nextAttackPenalty << " next attack).";
             dmSay(enemy.name + " flinches at the cutting words.");
         } else {
             ss << "Miss!";
@@ -3504,7 +3546,9 @@ void Game::playerRest(bool force) {
         if (recover > missing && missing > 0) recover = missing;
         if (missing == 0) recover = 0;
         p->heal(recover);
-        p->resources = std::min(p->maxResources, p->resources + std::max(1, p->maxResources / 2));
+        int back = std::max(1, p->maxResources / 2);
+        if (p->statRules && stats::restResourceBonus(p->effMod(4))) ++back; // v2.31: WIS +4
+        p->resources = std::min(p->maxResources, p->resources + back);
         p->isDowned = false;
         p->isStable = false;
         p->deathSaveSuccesses = 0;
@@ -3648,7 +3692,7 @@ void Game::playerInteract(const std::string& playerName) {
         // Story Search handled (clue / rune-key / shrine).
         memoryOnStorySearch();
     } else if (hero->performSavingThrow(hero->searchScore(), 12)) { // v2.29: effective INT (bug d)
-        int found = 15 + roomCount_ * 2 + getRandomInt(0, 10);
+        int found = luckGold(15 + roomCount_ * 2 + getRandomInt(0, 10)); // v2.31 Luck (CHA)
         hero->gold += found;
         lastEvent_ = hero->name + " searched and found " + std::to_string(found) + " gold pieces!";
         addChatMessage("Combat", lastEvent_);
@@ -3942,8 +3986,14 @@ void Game::playerAdvanceFromCleared() {
 
 void Game::playerIncreaseStat(const std::string& playerName, int statIndex) {
     if (gameOver_) return;
+    syncStatRules();
     Character* hero = findCharacter(playerName);
-    if (hero) hero->increaseAttribute(statIndex);
+    if (!hero) return;
+    if (!hero->increaseAttribute(statIndex) && hero->pendingStatPoints > 0 && statIndex >= 0 && statIndex <= 5) {
+        const std::string statName = std::string("STRDEXCONINTWISCHA").substr(static_cast<size_t>(statIndex) * 3, 3);
+        lastEvent_ = statName + " is at its cap (" + std::to_string(hero->attrCapFor(statIndex))
+            + " at level " + std::to_string(hero->level) + ") — spend the point elsewhere.";
+    }
 }
 
 int Game::scoreHeroThreat(const Character& hero, bool partyHasDowned) const {
@@ -4493,6 +4543,7 @@ void Game::applyEncounterCurve() {
                 e->curveWarnTurns = 1;
             }
         }
+        if (universalStatsActive()) s *= curve::statsToughness(el, r == curve::Role::BOSS, addsCost > 0); // v2.31
         const curve::FoeStats st = curve::foeStats(r, el, difficulty_, party, s, accuracyEl);
         e->maxHp = st.maxHp;
         e->currentHp = st.maxHp;
@@ -4658,7 +4709,9 @@ void Game::planEnemyMove(Character& foe) {
     }
     Move m = Move::STRIKE;
     // Wickthieves and hounds slip away under 25% (Medium and up). Never undead or bosses.
-    if (bestiary::canFlee(foe.enemyId) && tier >= ai::Tier::TACTICAL && hpFrac < ai::kFleeBelow) {
+    // v2.31 Intimidate: the party's best CHA makes them break sooner (+2% per mod).
+    const double fleeAt = ai::kFleeBelow + (universalStatsActive() ? stats::intimidate(partyChaMod()) : 0.0);
+    if (bestiary::canFlee(foe.enemyId) && tier >= ai::Tier::TACTICAL && hpFrac < fleeAt) {
         A.move = static_cast<int>(Move::SLIP_AWAY);
         A.lastHitBy = -1;
         dmSay(foe.name + " glances at the way out — it will slip away next turn!");
@@ -4856,6 +4909,18 @@ bool Game::foeStrike(Character& foe, int foeIdx, int heroIdx, double dmgMult, in
     const int avgX10 = std::max(10, static_cast<int>(std::lround(foe.curveAvgDmgX10 * dmgMult)));
     int dmg = curve::rollFoeDamage(avgX10, foe.curveEL, crit, false);
     std::string guard;
+    // v2.31 Evade: DEX cuts telegraphed heavies and area attacks by 3% per mod (max 24%).
+    {
+        const ai::MoveInfo& cur = ai::moveInfo(ai::moveFromInt(foe.ai.move));
+        if (hero.statRules && (exempt || cur.aoe || cur.intent == ai::Intent::HEAVY)) {
+            const double cut = stats::evade(hero.effMod(1));
+            if (cut > 0 && dmg > 1) {
+                const int after = std::max(1, static_cast<int>(std::lround(dmg * (1.0 - cut))));
+                if (after < dmg) guard += " (evaded " + std::to_string(dmg - after) + ")";
+                dmg = after;
+            }
+        }
+    }
     if (!hero.isDowned && !hero.isStable) {
         const int capped = curve::overkillCap(dmg, hero.maxHp, exempt);
         if (capped < dmg) {
@@ -5105,8 +5170,9 @@ void Game::runEnemyMove(Character& foe, int foeIdx) {
                 addChatMessage("Combat", foe.name + " snatches " + std::to_string(took) + " gold from " + h->name + "!");
             }
             if (hit && h && m == Move::SHACKLE && isStanding(h)) {
-                if (ai::savePasses(getRandomInt(1, 20), h->effectiveAttr(2), el)) {
-                    addChatMessage("Combat", h->name + " shrugs off the shackle (CON save).");
+                const bool strSave = h->statRules; // v2.31: STR resists Shackle (was CON)
+                if (ai::savePasses(getRandomInt(1, 20), h->effectiveAttr(strSave ? 0 : 2), el)) {
+                    addChatMessage("Combat", h->name + std::string(" shrugs off the shackle (") + (strSave ? "STR" : "CON") + " save).");
                 } else {
                     h->status.shackled = 1;
                     addChatMessage("Combat", h->name + " is shackled — no class feature next turn.");
@@ -5180,7 +5246,10 @@ void Game::runEnemyMove(Character& foe, int foeIdx) {
         case Move::MARK: case Move::TALLY: {
             Character* h = heroAt(t);
             if (m == Move::TALLY) A.flags |= ai::F_CALL2;
-            if (h && isStanding(h)) {
+            if (h && isStanding(h) && h->statRules && ai::savePasses(getRandomInt(1, 20), h->effectiveAttr(4), el)) {
+                lastEvent_ = h->name + " stays unseen (WIS save) — " + foe.name + "'s mark slides off.";
+                addChatMessage("Combat", lastEvent_);
+            } else if (h && isStanding(h)) {
                 h->status.marked = (m == Move::TALLY) ? 3 : 2;
                 lastEvent_ = foe.name + (m == Move::TALLY ? " tallies " : " marks ") + h->name + " — foes +2 to hit them.";
                 addChatMessage("Combat", lastEvent_);
@@ -5200,6 +5269,8 @@ void Game::runEnemyMove(Character& foe, int foeIdx) {
             } else if (m == Move::CROWN_FLARE) {
                 h->status.blind = 1;
                 lastEvent_ = foe.name + "'s crown flares — " + h->name + " is blinded (-4 to hit next turn).";
+            } else if (h->statRules && ai::savePasses(getRandomInt(1, 20), h->effectiveAttr(4), el)) {
+                lastEvent_ = h->name + " tears free of " + foe.name + "'s webs (WIS save).";
             } else {
                 if (h->status.slowed <= 0) {
                     h->status.slowedFromInit = h->initiative;
@@ -5406,3 +5477,148 @@ void Game::simBeginFight(const std::vector<std::string>& enemyIds, bool surprise
 
 } // namespace dnd
 
+
+
+namespace dnd {
+
+// =============================================================================================
+// v2.31 universal stats (PR 3). Pure numbers live in StatRules.h; docs/STATS.md.
+// =============================================================================================
+
+void Game::syncStatRules() {
+    const bool on = universalStatsActive();
+    std::string note;
+    int refunded = 0;
+    for (auto& p : players_) {
+        if (!p) continue;
+        const bool was = p->statRules;
+        p->statRules = on;
+        if (on) {
+            std::string one;
+            const int r = p->clampAttributesToCaps(&one);
+            if (r > 0) {
+                refunded += r;
+                if (!note.empty()) note += "; ";
+                note += p->name + ": " + one + " (" + std::to_string(r) + " point" + (r == 1 ? "" : "s") + " refunded)";
+            }
+        }
+        if (was != on) {
+            // AC uses the DEX cap only under the new rules; HP formula is unchanged.
+            const int hp = p->currentHp;
+            p->calculateAC();
+            p->recomputeMaxHp();
+            p->currentHp = std::min(p->maxHp, hp);
+        }
+    }
+    if (refunded > 0) {
+        statMigrationNote_ = "Stat caps (v2.31): " + note + ". Spend the points on another stat.";
+        addChatMessage("System", statMigrationNote_);
+        lastEvent_ = statMigrationNote_;
+    }
+}
+
+bool Game::specialAvailable(const Character& c) const {
+    if (c.characterClass == CharacterClass::FIGHTER) {
+        if (!c.specialUsedThisCombat) return c.resources > 0 || c.signatureUses > 0;
+        return c.signatureUses > 0; // the Signature second surge
+    }
+    return c.resources > 0 || c.signatureUses > 0;
+}
+
+void Game::spendSpecialUse(Character& c) {
+    // Fighter: the first surge spends a supply as before; the Signature use is the extra one.
+    if (c.characterClass == CharacterClass::FIGHTER && !c.specialUsedThisCombat && c.resources > 0) {
+        c.resources--;
+        return;
+    }
+    if (c.signatureUses > 0) { c.signatureUses--; return; }
+    if (c.resources > 0) c.resources--;
+}
+
+int Game::partyChaMod(const Character* except) const {
+    int best = 0;
+    bool any = false;
+    for (const auto& p : players_) {
+        if (!p || p.get() == except || p->isDead || !p->statRules) continue;
+        const int m = p->effMod(5);
+        if (!any || m > best) { best = m; any = true; }
+    }
+    return any ? best : 0;
+}
+
+int Game::luckGold(int gold) const {
+    if (gold <= 0 || !universalStatsActive()) return gold;
+    const double b = stats::goldBonus(partyChaMod());
+    return b > 0 ? static_cast<int>(std::lround(gold * (1.0 + b))) : gold;
+}
+
+std::string Game::getStatGuide(const std::string& playerName) const {
+    const Character* h = nullptr;
+    for (const auto& p : players_) if (p && p->name == playerName) { h = p.get(); break; }
+    if (!h) return "";
+    const bool on = universalStatsActive();
+    const int main = h->mainStatIndex();
+    const std::string cls = h->getClassName();
+    auto sgn = [](int v) { return (v >= 0 ? "+" : "") + std::to_string(v); };
+    auto pct = [](double v) { return std::to_string(static_cast<int>(std::lround(v * 100))) + "%"; };
+    std::ostringstream ss;
+    ss << (on ? 1 : 0) << "|" << main << "|";
+    for (int i = 0; i < 6; ++i) ss << (i ? "," : "") << (on ? h->attrCapFor(i) : 0);
+    ss << "|";
+    for (int i = 0; i < 6; ++i) ss << (i ? "," : "") << h->baseAttr(i);
+    ss << "|";
+    for (int i = 0; i < 6; ++i) ss << (i ? "," : "") << h->effectiveAttr(i);
+    const std::string special = h->getSpecialAbilityName();
+    std::string lines[6];
+    const int strM = h->effMod(0), dexM = h->effMod(1), conM = h->effMod(2), intM = h->effMod(3),
+              wisM = h->effMod(4), chaM = h->effMod(5);
+    auto mainLine = [&](int i) -> std::string {
+        if (i != main) return "";
+        return "Main for " + cls + ": hit, damage and " + special + ". ";
+    };
+    if (!on) {
+        // Online tables keep the old rules.
+        lines[0] = mainLine(0) + "Online: main stat only.";
+        lines[1] = mainLine(1) + "AC " + sgn(dexM) + ", initiative " + sgn(dexM) + ".";
+        lines[2] = "HP " + sgn(conM) + " per level; Short Rest.";
+        lines[3] = mainLine(3) + "Search " + sgn(intM) + ".";
+        lines[4] = mainLine(4) + (h->characterClass == CharacterClass::CLERIC ? "Healing Word " + sgn(wisM) + "." : "Online: main stat only.");
+        lines[5] = mainLine(5) + "Online: main stat only.";
+    } else {
+        lines[0] = mainLine(0) + "Everyone: Heft +" + std::to_string(stats::heft(strM)) + " weapon damage"
+                 + (stats::breaksGuard(strM) ? "; your hits break shield-walls" : "; breaks shield-walls at STR 16")
+                 + "; STR saves resist Shackle.";
+        lines[1] = mainLine(1) + "Everyone: AC " + sgn(stats::acFromDex(dexM)) + " (max +6), initiative " + sgn(dexM)
+                 + "; Evade " + pct(stats::evade(dexM)) + " off heavy and area hits; DEX saves.";
+        lines[2] = mainLine(2) + "Everyone: HP " + sgn(conM) + " per level and on Short Rest; Grit: CON saves vs Burn; death saves +"
+                 + std::to_string(stats::deathSaveBonus(conM)) + ".";
+        const int cm = stats::critMin(intM, false);
+        lines[3] = mainLine(3) + "Everyone: Search " + sgn(intM) + "; Weak point: crits on "
+                 + (cm < 20 ? std::to_string(cm) + "–20" : std::string("20 (19+ at INT 18)"))
+                 + "; Read intent: " + (intM >= stats::kReadIntentMod ? "exact numbers on foe chips." : "rough ranges on foe chips (exact at INT 14).");
+        lines[4] = mainLine(4) + "Everyone: Mending +" + pct(stats::mending(wisM)) + " healing received; WIS saves resist Rattled, Marked and Slowed"
+                 + (stats::restResourceBonus(wisM) ? "; +1 use on Short Rest." : "; +1 use on Short Rest at WIS 18.");
+        lines[5] = mainLine(5) + "Everyone: Barter −" + pct(stats::buyDiscount(chaM)) + " shop prices, +" + std::to_string(stats::sellBonusPct(chaM))
+                 + "% sell (cap 75%); Luck +" + pct(stats::goldBonus(chaM)) + " gold; Inspire +" + std::to_string(stats::inspire(chaM))
+                 + " companion hit; Intimidate: foes flee " + pct(stats::intimidate(chaM)) + " sooner.";
+        if (h->characterClass == CharacterClass::WIZARD)
+            lines[3] += " Magic Missile darts 1d4+" + std::to_string(stats::dartBonus(intM)) + ".";
+        if (h->characterClass == CharacterClass::FIGHTER)
+            lines[0] += " Action Surge's second swing +" + std::to_string(stats::heft(strM)) + ".";
+    }
+    auto pipeSafe = [](std::string v) { for (char& c : v) if (c == '|' || c == '\n') c = ' '; return v; };
+    for (const auto& l : lines) ss << "|" << pipeSafe(l);
+    std::string sig;
+    if (on) {
+        const int tier = h->signatureTier();
+        sig = "Signature (main " + std::to_string(h->effectiveAttr(main)) + "): ";
+        sig += std::string(tier >= 1 ? "✓" : "·") + " 20 +1 " + special + " per battle  ";
+        sig += std::string(tier >= 2 ? "✓" : "·") + " 24 " + special + " +25%  ";
+        sig += std::string(tier >= 3 ? "✓" : "·") + " 28 special crits 19–20  ";
+        sig += std::string(tier >= 4 ? "✓" : "·") + " 32 Lantern Arts −1 cooldown (coming soon)";
+    }
+    ss << "|" << pipeSafe(sig);
+    return ss.str();
+}
+
+} // namespace dnd

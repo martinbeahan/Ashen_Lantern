@@ -84,7 +84,7 @@ object BeginnerGuide {
         |Tip: XP fills as you clear rooms; level-ups grant attribute points.
     """.trimMargin()
 
-    /** Plain-English blurbs matching this build's C++ rules (SRD-safe wording). */
+    /** Plain-English blurbs matching this build's C++ rules (SRD-safe wording). Classic = online tables. */
     fun statBlurb(statIndex: Int): String = when (statIndex) {
         0 -> "Strength — attack rolls & weapon damage for Fighters (and most melee)."
         1 -> "Dexterity — Rogue attacks/damage; everyone's Armor Class and initiative."
@@ -95,7 +95,26 @@ object BeginnerGuide {
         else -> "Attribute score — higher is usually better."
     }
 
-    fun statShortHint(statIndex: Int): String = when (statIndex) {
+    /** v2.31 solo rules: every stat helps every class (docs/STATS.md). */
+    fun universalStatBlurb(statIndex: Int): String = when (statIndex) {
+        0 -> "Strength — Fighter's main stat. Everyone: Heft (+1 weapon damage per 4 STR over 10), break shield-walls at STR 16, STR saves resist Shackle."
+        1 -> "Dexterity — Rogue's main stat. Everyone: AC (max +6 from DEX), initiative, Evade (up to 24% off telegraphed heavies and area attacks), DEX saves."
+        2 -> "Constitution — no class's main stat. Everyone: HP each level and on Short Rest, CON saves vs Burn, a bonus on death saves."
+        3 -> "Intelligence — Wizard's main stat (Magic Missile darts grow with it). Everyone: Search, Weak point (crit on 19–20 at INT 18, 18–20 at INT 26), exact foe intent numbers at INT 14."
+        4 -> "Wisdom — Cleric's main stat. Everyone: Mending (up to +40% healing received), WIS saves vs Rattled, Marked and Webs, +1 use on Short Rest at WIS 18."
+        5 -> "Charisma — Bard's main stat. Everyone: Barter (up to 20% off, better sell price up to 75%), Luck (up to +30% gold), Inspire (companions hit more), Intimidate (foes flee sooner)."
+        else -> "Attribute score — higher is usually better."
+    }
+
+    fun statShortHint(statIndex: Int, universal: Boolean = false): String = if (universal) when (statIndex) {
+        0 -> "Heft damage, break guards, STR saves"
+        1 -> "AC (max +6), initiative, Evade"
+        2 -> "HP, rests, CON & death saves"
+        3 -> "Search, crits, read foe intents"
+        4 -> "Healing received, WIS saves, rests"
+        5 -> "Prices, gold, Inspire, Intimidate"
+        else -> ""
+    } else when (statIndex) {
         0 -> "Melee hits & damage (Fighter)"
         1 -> "AC, initiative, Rogue hits"
         2 -> "More HP; better rests"
@@ -105,7 +124,14 @@ object BeginnerGuide {
         else -> ""
     }
 
-    fun classStatTip(classId: Int): String = when (classId) {
+    fun classStatTip(classId: Int, universal: Boolean = false): String = if (universal) when (classId) {
+        0 -> "Fighter: Strength is your main stat (hits, damage, Action Surge; cap +2). Every other stat helps too — CON for HP, DEX for AC."
+        1 -> "Wizard: Intelligence is your main stat (hits, damage, Magic Missile; cap +2). CON and DEX keep you alive; WIS makes healing land harder."
+        2 -> "Rogue: Dexterity is your main stat (hits, damage, Sneak Attack; cap +2). STR adds Heft, CON adds HP."
+        3 -> "Cleric: Wisdom is your main stat (hits, damage, Healing Word; cap +2). CON and DEX keep you standing."
+        4 -> "Bard: Charisma is your main stat (hits, damage, Cutting Quip; cap +2) and also lowers prices and inspires allies."
+        else -> "Your main stat drives hits, damage and your special; every stat helps."
+    } + " Main stat 20 / 24 / 28 / 32 unlocks Signature bonuses." else when (classId) {
         0 -> "Fighter tip: prioritize Strength, then Constitution. Dexterity still helps AC."
         1 -> "Wizard tip: prioritize Intelligence, then Constitution. Dexterity helps AC (light armor)."
         2 -> "Rogue tip: prioritize Dexterity (hits, damage, AC), then Constitution."
@@ -114,17 +140,34 @@ object BeginnerGuide {
         else -> "Boost your class's main attack stat and Constitution for survivability."
     }
 
-    fun statsHelpMessage(): String = buildString {
-        appendLine("How stats work in this game")
+    /**
+     * Help → Stats. Solo (universal) shows the v2.31 rules and, when the native guide is
+     * available, what every stat does for the current hero right now.
+     */
+    fun statsHelpMessage(universal: Boolean = false, forHero: StatGuide? = null, heroName: String = ""): String = buildString {
+        if (!universal) {
+            appendLine("How stats work in this game (online tables use the classic rules)")
+            appendLine()
+            for (i in 0..5) appendLine("• ${statBlurb(i)}")
+            appendLine()
+            appendLine("By class")
+            for (c in 0..4) appendLine("• ${classStatTip(c)}")
+            appendLine()
+            append("Level-up: clear rooms → earn XP → open Sheet when you (or an ally) level up and spend points.")
+            return@buildString
+        }
+        appendLine("How stats work (solo)")
+        appendLine("Every stat helps every class. Your class's main stat still drives hits, damage and your special.")
         appendLine()
-        for (i in 0..5) appendLine("• ${statBlurb(i)}")
+        if (forHero != null && forHero.active) {
+            appendLine(forHero.helpText(heroName))
+            appendLine()
+            appendLine("All stats")
+        }
+        for (i in 0..5) appendLine("• ${universalStatBlurb(i)}")
         appendLine()
-        appendLine("By class")
-        appendLine("• ${classStatTip(0)}")
-        appendLine("• ${classStatTip(1)}")
-        appendLine("• ${classStatTip(2)}")
-        appendLine("• ${classStatTip(3)}")
-        appendLine("• ${classStatTip(4)}")
+        appendLine("Caps: 18 + half your level (max 30 at level 24); your main stat can go 2 higher. Gear can push past a cap.")
+        appendLine("Signature (main stat): 20 = one free special per battle · 24 = special +25% · 28 = special crits on 19–20 · 32 = Lantern Arts cooldown −1 (coming soon).")
         appendLine()
         append("Level-up: clear rooms → earn XP → open Sheet when you (or an ally) level up and spend points.")
     }

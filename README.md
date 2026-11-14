@@ -6,7 +6,21 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.30 / 69) — Enemy AI
+## What's new (v2.31 / 70) — Universal stats
+
+- **Every stat helps every class** (solo) — your class's main stat still drives hits, damage and your special, but no point is wasted any more:
+  - **STR** — *Heft* (+1 weapon damage per 4 STR over 10), hits from STR 16 **break shield-walls**, STR saves resist Shackle
+  - **DEX** — AC (up to +6 from DEX), initiative, *Evade* (up to 24% off telegraphed heavies and area attacks), DEX saves
+  - **CON** — HP and Short Rest as before, CON saves vs Burn, a bonus on death saves
+  - **INT** — Search, *Weak point* (crit on 19–20 at INT 18, 18–20 at INT 26), foe intent chips show exact numbers at INT 14 and a rough range below that
+  - **WIS** — *Mending* (up to +40% healing received), WIS saves vs Rattled, Marked and Webs, +1 use on Short Rest at WIS 18
+  - **CHA** — *Barter* (up to 20% off in shops, sell price up to 75%), *Luck* (up to +30% gold), *Inspire* (companions hit more), *Intimidate* (foes flee sooner)
+- **Stat caps** — 18 + half your level (max 30 at level 24); your main stat can go 2 higher (32). Gear can push past a cap. The level-up screen shows each cap, greys out **+** at the cap, and says what every stat does for *your* class
+- **Signature bonuses** — main stat 20: one free special per battle (a Fighter gets a second Action Surge) · 24: special +25% · 28: specials crit on 19–20 · 32: Lantern Arts cooldown −1 (Arts arrive in the next update). Magic Missile darts grow with INT; Action Surge's second swing adds Heft
+- **Fights rebalanced** — foes get a little more HP in solo so fights keep their length; the hard Medium boss + escort fight at level 20 goes from 26% to about 77% wins
+- **Your hero is kept** — a stat already above its cap is lowered to the cap and **every point is refunded** to spend again (a chat line lists the changes). Old saves (including one saved mid-fight in v2.30) load straight away; the new field is appended. Host / Join and the online Keeper table keep the classic rules and never touch a solo save. See [`docs/STATS.md`](docs/STATS.md)
+
+## Previous (v2.30 / 69) — Enemy AI
 
 - **Foes show their next move** — a small **intent chip** sits above each foe: ⚔ attack, ⚒ heavy hit, 🛡 guard, 🔥 spell, ♥ heal, ◉ mark, ➜ flee (plus ✚ buff, ✦ summon, ✖ hex). Long-press a chip for the full line ("Snuff → Mira (next turn)"). Once your party's best **INT is 14+** the chip also shows the number (damage or healing). Both are Settings toggles under **Combat**. Heroes show their statuses (🔥 Burning, ◉ Marked, ⛓ Shackled, ⌛ Slowed…)
 - **Every foe has a role and a plan** — all 27 enemy IDs are mapped to the seven roles. Foes focus fire on healers and wounded heroes and go after whoever just hit them; Wickthieves snatch gold and **slip away** at low HP (you keep half the XP, and the gold comes back if you kill them first); hounds hunt as a pack and can flee too; Ashbound raise shield-walls; Criers rally and knit bones; Watchers mark and cast; the Millstone Brute winds up a **Millstone Slam** you can break by hitting it hard. Undead and bosses never flee
@@ -164,6 +178,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Dungeon Crawl** — procedural rooms from the start (skip the scripted quest)
 - **Difficulty** — Easy / Medium / Hard / Nightmare (locked for the run; wipe rules differ by tier)
 - **Enemy AI** — solo foes show intent chips (exact numbers at party INT 14+), play their role (focus fire, guard, heal, mark, flee), bosses change phase at 66% / 33%, and smartness scales from Easy to Nightmare
+- **Universal stats** — in solo every stat helps every class (Heft, Evade, Grit, Weak point, Mending, Barter…), stats cap at 18 + half your level (30, main stat 32) and the main stat unlocks Signature bonuses at 20 / 24 / 28 / 32; the level-up screen explains each stat for your class
 - **How combat scales** — solo fights use an Encounter Level from your level and gear (gear at 50%), foe roles and per-room threat budgets, a 15–90% hit clamp, a 45% one-hit guard, Pressure / Rekindle comeback rules and warned surprise bosses. Levels to 50
 - **Classes** — Fighter, Wizard, Rogue, Cleric, and **Bard** (CHA-based; Cutting Quip special)
 - **Companion** — AI or player-controlled ally; change class in-run where supported
@@ -270,6 +285,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`docs/ACT4_ASHWAKE_VIGIL.md`](docs/ACT4_ASHWAKE_VIGIL.md) | Act 4 Ashwake Vigil |
 | [`docs/COMBAT_CURVE.md`](docs/COMBAT_CURVE.md) | Combat curve: Encounter Level, roles, budgets, hit clamp, Pressure / Rekindle, save fields, `tools/combat_sim` |
 | [`docs/ENEMY_AI.md`](docs/ENEMY_AI.md) | Enemy AI: tiers, targeting score, behaviours per enemy ID, boss phases, statuses, intent chips, save fields, `tools/combat_sim/ai_sim` |
+| [`docs/STATS.md`](docs/STATS.md) | Universal stats: formula table, caps, Signature tiers, save migration (clamp + refund), balance tables, `tools/migration_test/stats_test` |
 | [`docs/DAILY_QUESTS.md`](docs/DAILY_QUESTS.md) | Daily Quests |
 | [`docs/CHALLENGE_DUNGEON.md`](docs/CHALLENGE_DUNGEON.md) | Challenge Dungeon / Cinder Crucible |
 | [`docs/ARENA.md`](docs/ARENA.md) | Arena / Ember Ring |

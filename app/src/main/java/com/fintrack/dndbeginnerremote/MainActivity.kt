@@ -259,6 +259,8 @@ class MainActivity : AppCompatActivity() {
     external fun doLongRest()
     external fun doUseInventoryPotion(playerName: String, invIndex: Int): Boolean
     external fun doIncreaseStat(playerName: String, statIndex: Int)
+    /** v2.31: per-class stat help + caps (StatGuide.parse). */
+    external fun getStatGuide(playerName: String): String
     external fun doBuyItem(playerName: String, itemIndex: Int): Boolean
     external fun getInventoryManifest(playerName: String): String
     external fun doEquipItem(playerName: String, invIndex: Int): Boolean
@@ -3264,8 +3266,10 @@ class MainActivity : AppCompatActivity() {
         view.findViewById<TextView>(R.id.sheetStatInt).text = stat("INT")
         view.findViewById<TextView>(R.id.sheetStatWis).text = stat("WIS")
         view.findViewById<TextView>(R.id.sheetStatCha).text = stat("CHA")
+        val sheetGuide = try { StatGuide.parse(getStatGuide(forName)) } catch (_: Throwable) { null }
         view.findViewById<TextView>(R.id.sheetStatTips).text =
-            (0..5).joinToString("\n") { "• ${BeginnerGuide.statShortHint(it)}" }
+            if (sheetGuide?.active == true) sheetGuide.helpText(forName)
+            else (0..5).joinToString("\n") { "• ${BeginnerGuide.statShortHint(it)}" }
         val weapon = sheet.lineSequence().firstOrNull { it.startsWith("Weapon:") }?.removePrefix("Weapon:")?.trim()
         val armor = sheet.lineSequence().firstOrNull { it.startsWith("Armor:") }?.removePrefix("Armor:")?.trim()
         equippedTv.text = buildString {
@@ -3282,7 +3286,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } ?: 1
         }
-        view.findViewById<TextView>(R.id.sheetClassTip).text = BeginnerGuide.classStatTip(classId)
+        view.findViewById<TextView>(R.id.sheetClassTip).text = BeginnerGuide.classStatTip(classId, sheetGuide?.active == true)
         portrait.setImageResource(spriteFor(BattleUnit(true, forName, classId, cur, max)))
         val canLevel = sheet.contains("POINTS TO SPEND")
         if (canLevel) {
@@ -3447,7 +3451,9 @@ class MainActivity : AppCompatActivity() {
             "Wisdom" to "WIS",
             "Charisma" to "CHA"
         )
-        val baseScores = IntArray(6) { i -> parseStatScore(sheet, labels[i].second) }
+        // v2.31: caps + per-class help from the native stat guide (null on old natives / errors).
+        val guide = try { StatGuide.parse(getStatGuide(forName)) } catch (_: Throwable) { null }
+        val baseScores = IntArray(6) { i -> guide?.base?.getOrNull(i) ?: parseStatScore(sheet, labels[i].second) }
         val allocated = IntArray(6)
         var remaining = pending
 
@@ -3457,7 +3463,8 @@ class MainActivity : AppCompatActivity() {
         val confirmBtn = view.findViewById<Button>(R.id.levelUpConfirm)
         val classTipTv = view.findViewById<TextView>(R.id.levelUpClassTip)
         val classIdForTips = classIdFromSheet(sheet, forName)
-        classTipTv.text = BeginnerGuide.classStatTip(classIdForTips)
+        classTipTv.text = BeginnerGuide.classStatTip(classIdForTips, guide?.active == true) +
+            (guide?.signature?.takeIf { it.isNotBlank() }?.let { "\n$it" } ?: "")
         val rowUis = mutableListOf<Triple<Button, TextView, Button>>()
 
         fun refreshUi() {
@@ -3480,9 +3487,9 @@ class MainActivity : AppCompatActivity() {
                 // Update current line on the row
                 val row = list.getChildAt(i)
                 row?.findViewById<TextView>(R.id.statAssignCurrent)?.text =
-                    "Now ${baseScores[i]} → $preview"
+                    guide?.nowLine(i, preview) ?: "Now ${baseScores[i]} → $preview"
                 minus.isEnabled = allocated[i] > 0
-                plus.isEnabled = remaining > 0
+                plus.isEnabled = remaining > 0 && allocated[i] < (guide?.room(i) ?: Int.MAX_VALUE)
                 minus.alpha = if (minus.isEnabled) 1f else 0.4f
                 plus.alpha = if (plus.isEnabled) 1f else 0.4f
             }
@@ -3490,10 +3497,11 @@ class MainActivity : AppCompatActivity() {
 
         labels.forEachIndexed { index, (full, short) ->
             val row = layoutInflater.inflate(R.layout.item_stat_assign_row, list, false)
-            row.findViewById<TextView>(R.id.statAssignName).text = "$short · $full"
+            row.findViewById<TextView>(R.id.statAssignName).text = guide?.rowLabel(index) ?: "$short · $full"
             row.findViewById<TextView>(R.id.statAssignCurrent).text =
                 "Now ${baseScores[index]} → ${baseScores[index]}"
-            row.findViewById<TextView>(R.id.statAssignBlurb).text = BeginnerGuide.statShortHint(index)
+            row.findViewById<TextView>(R.id.statAssignBlurb).text =
+                guide?.takeIf { it.active }?.lines?.getOrNull(index) ?: BeginnerGuide.statShortHint(index)
             val minus = row.findViewById<Button>(R.id.statAssignMinus)
             val addTv = row.findViewById<TextView>(R.id.statAssignAdd)
             val plus = row.findViewById<Button>(R.id.statAssignPlus)
@@ -3505,6 +3513,7 @@ class MainActivity : AppCompatActivity() {
             }
             plus.setOnClickListener {
                 if (remaining <= 0) return@setOnClickListener
+                if (allocated[index] >= (guide?.room(index) ?: Int.MAX_VALUE)) return@setOnClickListener
                 allocated[index]++
                 remaining--
                 refreshUi()
@@ -4965,7 +4974,7 @@ class MainActivity : AppCompatActivity() {
         if (!::enemyColumn.isInitialized || !::partyColumn.isInitialized) return
         val snap = EnemyIntentUi.parseIntents(try { getEnemyIntents() } catch (_: Throwable) { "" })
         val statuses = EnemyIntentUi.parseStatuses(try { getStatusEffects() } catch (_: Throwable) { "" })
-        val numbers = EnemyIntentUi.showNumbers(snap, intentNumbersEnabled)
+        val numbers = EnemyIntentUi.numberMode(snap, intentNumbersEnabled) // v2.31: ranges below INT 14
         val density = resources.displayMetrics.density
         val byFoe = snap.intents.associateBy { it.foeIndex }
         for (i in 0 until enemyColumn.childCount) {
@@ -6367,7 +6376,15 @@ class MainActivity : AppCompatActivity() {
                         .show()
                     2 -> AlertDialog.Builder(this)
                         .setTitle("Stats in this game")
-                        .setMessage(BeginnerGuide.statsHelpMessage())
+                        .setMessage(
+                            BeginnerGuide.statsHelpMessage(
+                                universal = !isOnline(),
+                                forHero = if (nativeReady) try {
+                                    StatGuide.parse(getStatGuide(localPlayerName))
+                                } catch (_: Throwable) { null } else null,
+                                heroName = localPlayerName,
+                            )
+                        )
                         .setPositiveButton("Got it", null)
                         .show()
                     3 -> {
