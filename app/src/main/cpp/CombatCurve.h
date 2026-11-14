@@ -148,7 +148,9 @@ inline bool& legacyReferenceForSim() { static bool v = false; return v; }
 inline Character makeReferenceHero(CharacterClass cls, int level) {
     Character c("Reference", cls, "ref");
     c.level = std::clamp(level, 1, Character::kMaxLevelSafety);
-    const int pts = 2 * (c.level - 1);
+    // v2.32: the model earns stat points like a real hero (+2 a level to 20, then every 5th level).
+    const int pts = (legacyReferenceForSim() || perks::legacyLevelRulesForSim()) ? 2 * (c.level - 1)
+                                                                                : perks::statPointsThrough(c.level);
     const int main = primaryIndex(cls);
     auto add = [&](int idx, int n) {
         switch (idx) {

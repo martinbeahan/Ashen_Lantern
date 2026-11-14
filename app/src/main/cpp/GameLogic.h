@@ -9,6 +9,8 @@
 #include <algorithm>
 #include "Bestiary.h"
 #include "StatRules.h"
+#include "Perks.h"
+#include <array>
 #include "SaveCodec.h"
 #include "AndroidOut.h"
 
@@ -392,6 +394,57 @@ struct Character {
     /** Signature tier 1 (main 20+): free class-special uses left this battle. Player field 31. */
     int signatureUses = 0;
 
+    // --- v2.32 (Kindled Path, PR 4; Perks.h) --------------------------------------------------
+    /** Steady Flame ranks 0..5 (player field 32). Count only under the solo rules. */
+    std::array<int, perks::kFlameCount> flames{};
+    /** Wards: learned bit mask, equipped ids (-1 empty), used this battle (player field 33). */
+    int wardsLearned = 0;
+    std::array<int, perks::kWardSlots> wardEq{{-1, -1}};
+    int wardUsed = 0;
+    /** Lantern Arts of this hero's class: learned mask, equipped (-1 empty), cooldowns (field 34). */
+    int artsLearned = 0;
+    std::array<int, perks::kArtSlots> artEq{{-1, -1}};
+    std::array<int, perks::kArtsPerClass> artCd{};
+    /** Free Re-temper (respec) tokens: 1 for every hero saved before v2.32 (field 35). */
+    int freeRespecs = 0;
+    /** Highest level this hero has reached (field 36; Rekindling catch-up in PR 5). */
+    int peakLevel = 1;
+
+    /** Perks work only for solo heroes (the stat-rules switch); online heroes and foes: never. */
+    bool perksOn() const { return statRules && !isFoe(); }
+    int embersEarned() const { return perks::embersEarned(level, prestigeRank); }
+    int embersSpent() const {
+        int s = 0;
+        for (int r : flames) s += std::clamp(r, 0, perks::kFlameMaxRank);
+        for (int i = 0; i < perks::kWardCount; ++i) if (wardsLearned & (1 << i)) s += perks::kWardCost;
+        for (int i = 0; i < perks::kArtsPerClass; ++i) if (artsLearned & (1 << i)) s += perks::kArtCost;
+        return s;
+    }
+    int embersFree() const { return std::max(0, embersEarned() - embersSpent()); }
+    bool wardEquipped(int id) const {
+        if (!perksOn() || id < 0) return false;
+        for (int w : wardEq) if (w == id) return (wardsLearned & (1 << id)) != 0;
+        return false;
+    }
+    /** An equipped Ward that has not fired this battle. */
+    bool wardReady(int id) const { return wardEquipped(id) && !(wardUsed & (1 << id)); }
+    void spendWard(int id) { if (id >= 0) wardUsed |= (1 << id); }
+    bool artEquipped(int i) const {
+        if (!perksOn() || i < 0 || i >= perks::kArtsPerClass) return false;
+        for (int a : artEq) if (a == i) return (artsLearned & (1 << i)) != 0;
+        return false;
+    }
+    bool artReady(int i) const { return artEquipped(i) && artCd[static_cast<size_t>(i)] <= 0; }
+    /** Bright Edge: +2% damage per rank (solo). */
+    double damageMult() const {
+        return perksOn() ? 1.0 + perks::kBrightEdgePerRank * flames[perks::BRIGHT_EDGE] : 1.0;
+    }
+    /** New battle: Wards re-arm, Arts are ready. */
+    void resetBattlePerks() {
+        wardUsed = 0;
+        artCd.fill(0);
+    }
+
     // --- v2.29 (combat curve, PR 1) ---------------------------------------------------------
     /**
      * Max HP earned outside the level formula, kept through every level-up (audit bug b):
@@ -440,7 +493,24 @@ struct Character {
         int shackled = 0;            // Shackled hero: no special (class feature) this turn
         int inspired = 0;            // Inspired foe (Rally cry): +2 to hit
         int healedRecently = 0;      // hero healed an ally lately (AI focus; not shown)
-        bool any() const { return burn || marked || guarded || blind || slowed || shackled || inspired; }
+        // v2.32 Lantern Arts / Wards (appended to the codec; all end with the battle)
+        int shield = 0;              // hero: HP absorbed before damage (Ember Ward, Wick Ward)
+        int braced = 0;              // hero: Iron Brace rounds — foes must target it, +4 AC (in armorClass)
+        int rallied = 0;             // hero: Warcry / Rallying Verse rounds: +2 to hit and damage
+        int spite = 0;               // hero: Spite Spark rounds: +3 to hit and damage
+        int smoke = 0;               // hero: Smoke Step: untargetable this many rounds
+        int nextCrit = 0;            // hero: the next weapon hit is a crit (Smoke Step)
+        int resist = 0;              // hero: Sanctify rounds: new statuses slide off
+        int overkindle = 0;          // hero: the next special deals double
+        int exhausted = 0;           // hero: after Overkindle, no special or Art for a round
+        int sundered = 0;            // foe: -3 AC rounds (already taken off armorClass)
+        int stunned = 0;             // foe: skips its turns
+        int asleep = 0;              // foe: skips turns until hit
+        int bleed = 0, bleedDmg = 0; // foe: damage at the end of each of its turns
+        int discord = 0;             // foe: its next turn attacks another foe
+        bool any() const { return burn || marked || guarded || blind || slowed || shackled || inspired
+                                  || shield || braced || rallied || spite || smoke || resist || exhausted
+                                  || sundered || stunned || asleep || bleed || discord; }
     } status;
     /**
      * Foe AI state (solo only; EnemyAi.h). The planned move is the intent chip the UI shows.
@@ -537,6 +607,8 @@ struct Character {
     /** Max HP = formula + kept bonus. Never touches currentHp beyond clamping. */
     void recomputeMaxHp() {
         maxHp = std::max(1, formulaMaxHp() + std::max(0, bonusMaxHp));
+        if (perksOn() && flames[perks::THICK_WAX] > 0) // v2.32 Thick Wax: +3% max HP per rank
+            maxHp = static_cast<int>(maxHp * (1.0 + perks::kThickWaxPerRank * flames[perks::THICK_WAX]));
         if (currentHp > maxHp) currentHp = maxHp;
     }
 
@@ -593,8 +665,10 @@ struct Character {
         recomputeMaxHp();
     }
 
-    /** Level ceiling for one award loop (matches the loader clamp; the real cap lands in PR 4). */
+    /** Ceiling for model / legacy levels (the Reference Lamplighter can sit above the cap). */
     static constexpr int kMaxLevelSafety = 100;
+    /** v2.32: heroes stop at level 50 (perks::kLevelCap). */
+    static constexpr int kMaxLevel = perks::kLevelCap;
 
     /**
      * Award XP. One award can now give SEVERAL levels (audit bug c): +2 stat points per level,
@@ -603,12 +677,16 @@ struct Character {
     int addXpLevels(int amount) {
         if (amount > 0) xp += amount;
         int gained = 0;
-        while (level < kMaxLevelSafety && xp >= level * 100) {
-            xp -= level * 100;
+        // v2.32: the cap is 50; XP for the next level follows perks::xpToNext (unchanged below 20).
+        // Stat points: +2 per level to 20, then +2 at 25, 30 ... 50; levels 21-50 give 1 Ember each.
+        while (level < kMaxLevel && xp >= perks::xpToNext(level)) {
+            xp -= perks::xpToNext(level);
             level++;
-            pendingStatPoints += 2;
+            pendingStatPoints += perks::statPointsAt(level);
             ++gained;
         }
+        clampLevelToCap();
+        peakLevel = std::max(peakLevel, level);
         if (gained > 0) {
             applyStatsForLevel();
             currentHp = maxHp;
@@ -827,7 +905,9 @@ struct Character {
             case 5: base = attributes.charisma; break;
             default: return 10;
         }
-        return base + legendaryAttrBonus(which);
+        // v2.32 Steady Flames: +1 per rank on top (like gear, it can pass the cap). Solo only.
+        const int flame = perksOn() ? std::clamp(flames[static_cast<size_t>(which)], 0, perks::kFlameMaxRank) : 0;
+        return base + legendaryAttrBonus(which) + flame;
     }
 
     /** Once-per-fight shield charges (armor Legendary sub-effect). Not persisted mid-fight across saves. */
@@ -841,7 +921,8 @@ struct Character {
         ss << "Lvl " << level << " " << getClassName() << " | Gold: " << gold << "\n";
         if (pendingStatPoints > 0) ss << "POINTS TO SPEND: " << pendingStatPoints << "\n";
         ss << "HP: " << currentHp << "/" << maxHp << " | AC: " << armorClass << "\n";
-        ss << "XP: " << xp << "/" << xpToNextLevel() << " (to Lvl " << (level + 1) << ")\n";
+        if (level >= kMaxLevel && !isFoe()) ss << "XP: " << xp << "/" << xpToNextLevel() << " (level cap " << kMaxLevel << ")\n";
+        else ss << "XP: " << xp << "/" << xpToNextLevel() << " (to Lvl " << (level + 1) << ")\n";
         ss << "Resources: " << resources << "/" << maxResources << "\n";
         ss << "STR: " << attributes.strength << " (" << showMod(attributes.strength) << ")\n";
         ss << "DEX: " << attributes.dexterity << " (" << showMod(attributes.dexterity) << ")\n";
@@ -856,7 +937,14 @@ struct Character {
     }
 
     /** XP required to leave the current level (matches addXp threshold). */
-    int xpToNextLevel() const { return level * 100; }
+    /** XP needed for the next level; at the cap the bar is shown full (never 0, the UI divides). */
+    int xpToNextLevel() const { return level >= kMaxLevel ? perks::xpToNext(kMaxLevel - 1) : perks::xpToNext(level); }
+    /** Level 50 is the top: higher (old, uncapped saves) clamps down, extra XP is a full bar. */
+    void clampLevelToCap() {
+        if (isFoe()) return;
+        if (level > kMaxLevel) level = kMaxLevel;
+        if (level >= kMaxLevel) xp = std::min(std::max(0, xp), perks::xpToNext(kMaxLevel - 1));
+    }
 
     std::string getClassName() const {
         switch(characterClass) {
@@ -931,8 +1019,8 @@ public:
     }
 
     static int proficiencyBonusForLevel(int level) {
-        // 5e proficiency: 2 at 1-4, 3 at 5-8, ...
-        return 2 + (level - 1) / 4;
+        // 2 at 1-4, 3 at 5-8, ... +6 at 17-20; v2.32: frozen at level 20 (power past 20 is perks).
+        return perks::proficiency(level);
     }
 
     /**

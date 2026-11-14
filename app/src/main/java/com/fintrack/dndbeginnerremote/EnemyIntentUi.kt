@@ -191,12 +191,26 @@ object EnemyIntentUi {
         'K' -> "⛓"  // shacKled
         'I' -> "✚"  // Inspired
         'R' -> "≋"  // Rattled
+        // v2.32 Arts / Wards
+        'W' -> "◈"  // shielded
+        'A' -> "▣"  // Iron Brace
+        'V' -> "▲"  // rallied
+        'H' -> "☁"  // hidden (Smoke Step)
+        'C' -> "✧"  // sanctified
+        'X' -> "…"  // exhausted
+        'U' -> "⚒"  // sundered
+        'T' -> "✶"  // stunned
+        'N' -> "z"  // asleep (Ashen Lullaby)
+        'D' -> "♦"  // bleeding
+        'Q' -> "⁇"  // discord
         else -> null
     }
 
     fun statusName(c: Char): String? = when (c) {
         'B' -> "Burning"; 'M' -> "Marked"; 'G' -> "Guarded"; 'L' -> "Blinded"
         'S' -> "Slowed"; 'K' -> "Shackled"; 'I' -> "Inspired"; 'R' -> "Rattled"
+        'W' -> "Shielded"; 'A' -> "Braced"; 'V' -> "Rallied"; 'H' -> "Hidden"; 'C' -> "Sanctified"
+        'X' -> "Exhausted"; 'U' -> "Sundered"; 'T' -> "Stunned"; 'N' -> "Asleep"; 'D' -> "Bleeding"; 'Q' -> "Discord"
         else -> null
     }
 

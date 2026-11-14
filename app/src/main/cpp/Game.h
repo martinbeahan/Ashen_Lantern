@@ -4,6 +4,7 @@
 #include "GameLogic.h"
 #include "QuestScript.h"
 #include <vector>
+#include <sstream>
 #include <string>
 #include <queue>
 #include <deque>
@@ -77,6 +78,20 @@ public:
     void playerAttack(int targetEnemyIndex);
     void playerHeal(int targetPlayerIndex);
     void playerSpecialAction(int targetEnemyIndex);
+    // v2.32 Kindled Path (solo only; GamePerks.cpp). heroIdx = index in the party (0 = you).
+    /** Use the Art in slot 0/1 for the hero whose turn it is; false = refused (turn not spent). */
+    bool playerUseArt(int slot, int targetEnemyIndex);
+    /** kind 0 = Steady Flame (+1 rank), 1 = Ward, 2 = Lantern Art. Outside combat. */
+    bool learnPerk(int heroIdx, int kind, int id, std::string* why = nullptr);
+    /** Put a learned Ward (kind 1) or Art (kind 2) in slot 0/1; id -1 empties it. Outside combat. */
+    bool equipPerk(int heroIdx, int kind, int slot, int id, std::string* why = nullptr);
+    /** Re-temper: refund stat points and Embers. 100 gold x level, or free with a token. */
+    bool retemper(int heroIdx, std::string* why = nullptr);
+    int retemperCostFor(const Character& p) const;
+    /** Kindled Path sheet: "H|…", "F|…", "W|…", "A|…" lines (see GamePerks.cpp). */
+    std::string getPerkState(int heroIdx);
+    /** The current hero's equipped Arts: "slot|art|name|cd|ready|target|baseCd;…" (empty = none). */
+    std::string getArtsBar() const;
     void playerInteract(const std::string& playerName);
     void playerRest(bool force = false);
     /** Full recover (HP, resources/specials). Same rest-opportunity gate as Short Rest. */
@@ -468,6 +483,11 @@ private:
     std::string telegraphLine(const Character& foe) const;
     // v2.30 enemy AI state. Header fields 44 round, 45 foes this room, 46 fled this room.
     bool enemyAiEnabled_ = true;
+    std::string levelCapNote_; // v2.32 load: heroes clamped to level 50 (chat line once)
+    std::string encoreFromUid_; // v2.32 Encore: the Bard whose turn the order resumes after (not saved)
+    double specialMult_ = 1.0;  // v2.32 Overkindle during one class special
+    bool bleedKill_ = false;    // v2.32 Bleeding Cut finished a foe at its end of turn
+    std::string encoreUid_;     // v2.32 Encore: ally who acts next
     bool statRulesEnabled_ = true; // v2.31 universal stats (solo); false only in the sim baseline
     int combatRound_ = 0;
     int roomFoeTotal_ = 0;
@@ -485,6 +505,23 @@ private:
     bool summonFoe(const std::string& enemyId, CharacterClass cl, const Character& summoner);
     void foeSlipsAway(Character& foe);
     void endTurnStatuses(Character* c);
+    // v2.32 Kindled Path internals (GamePerks.cpp)
+    void startBattlePerks();
+    void tickPerkStatuses(Character& c);
+    int bracedHeroIndex() const;
+    bool heroHidden(int heroIdx) const;
+    int perkRallyBonus(const Character& c) const;
+    int perkOutgoingDamage(Character& actor, int dmg, bool special, std::stringstream* note);
+    std::string wardsBeforeHit(Character& hero, int& dmg);
+    void wardsAfterHit(Character& hero, bool wasDowned);
+    void clearHarmful(Character& c);
+    void wardsAfterFoeMove();
+    bool perkFoeTurnTaken(Character& foe, int foeIdx);
+    bool foeSavesVsArt(const Character& foe, const Character& actor);
+    void artDamage(Character& actor, Character& foe, int foeIdx, int dmg);
+    bool runArt(Character& actor, int artIdx, int foeIdx);
+    bool allyTryArt(Character& actor);
+    Character* perkHero(int heroIdx, std::string* why);
     void announceBanner(const std::string& text);
     int heroIndexOf(const Character* c) const;
     int enemyIndexOf(const Character* c) const;
@@ -572,7 +609,7 @@ private:
     int proficiencyBonus() const;
     void resolveEnemyDefeated(Character* actor, int targetEnemyIndex);
     bool performWeaponAttack(Character* actor, Character& target, int attackerVisualIndex, bool targetIsEnemy, int targetIndex, bool sneakAttack,
-                             bool special = false, int flatBonus = 0);
+                             bool special = false, int flatBonus = 0, double artMult = 1.0);
     /** v2.31: can this hero use their class special now (resource, or a Signature free use)? */
     bool specialAvailable(const Character& c) const;
     /** v2.31: spend one use of the special: the free Signature use first, else a resource. */

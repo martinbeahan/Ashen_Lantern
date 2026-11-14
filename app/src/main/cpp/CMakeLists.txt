@@ -15,7 +15,8 @@ add_library(dndbeginnerremote SHARED
         TextureAsset.cpp
         Utility.cpp
         Game.cpp
-        GameSave.cpp)
+        GameSave.cpp
+        GamePerks.cpp)
 
 # L4: keep the warning set the audit used visible in every build (warnings, not errors).
 target_compile_options(dndbeginnerremote PRIVATE -Wall -Wextra)

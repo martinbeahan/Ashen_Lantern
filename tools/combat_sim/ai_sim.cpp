@@ -1,13 +1,14 @@
 // Combat Monte Carlo, built on the SHIPPED game code: every fight is a real Game (Game.cpp +
 // GameSave.cpp) with the whole party on its own AI (attacks, specials, potions and heals, exactly
 // as the companion plays), foes fitted to the encounter curve, and the full turn loop (death saves,
-// statuses, boss phases, summons, flee). Enemy AI is on. Each scenario runs twice with the same
-// seeds: v2.30 stat rules (uncapped model hero, main stat only) and v2.31 universal stats (caps,
-// every stat helps, Signature tiers).
+// statuses, boss phases, summons, flee). Enemy AI is on. v2.32 (PR 4): each scenario runs with the
+// same seeds under the v2.31 level rules, the v2.32 rules without perks, and v2.32 with a Kindled
+// Path loadout (Arts on the companion AI, Wards, Steady Flames) at levels 20 / 30 / 40 / 50.
 // Run tools/combat_sim/run.sh.
 #include "Game.h"
 #include "CombatCurve.h"
 #include "EnemyAi.h"
+#include "Perks.h"
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -39,7 +40,38 @@ struct Scn {
 };
 struct Res { double win = 0, lost = 0, rounds = 0; int el = 0; };
 
-static void buildParty(Game& g, int level, int extraGear) {
+/** Rules for one column: v2.31 (2 points a level, proficiency grows) or v2.32 (cap 50, perks). */
+enum class Rules { V231, V232_BARE, V232 };
+
+/** v2.32 sim loadout: Arts when unlocked, two Wards, then the main-stat and CON flames, Bright Edge, Thick Wax. */
+static void giveLoadout(Character& p) {
+    using namespace perks;
+    const int cls = static_cast<int>(p.characterClass);
+    static const int kArtsPick[5][2] = {{0, 2}, {0, 3}, {1, 3}, {0, 1}, {0, 2}};
+    static const int kWardPick[5][2] = {{ASH_VEIL, LAST_LIGHT}, {EMBER_WARD, LAST_LIGHT}, {KINDLE_RUSH, STEADY_HAND},
+                                         {SECOND_WICK, LAST_LIGHT}, {LAST_LIGHT, SPITE_SPARK}};
+    p.flames.fill(0); p.wardsLearned = 0; p.artsLearned = 0;
+    p.wardEq = {{-1, -1}}; p.artEq = {{-1, -1}};
+    auto learnArt = [&](int i) {
+        if (p.level < kArtUnlock[i] || p.embersFree() < kArtCost || (p.artsLearned & (1 << i))) return;
+        p.artsLearned |= (1 << i);
+        for (int& s : p.artEq) if (s < 0) { s = i; break; }
+    };
+    auto learnWard = [&](int w) {
+        if (p.embersFree() < kWardCost || (p.wardsLearned & (1 << w))) return;
+        p.wardsLearned |= (1 << w);
+        for (int& s : p.wardEq) if (s < 0) { s = w; break; }
+    };
+    learnArt(kArtsPick[cls][0]);
+    learnWard(kWardPick[cls][0]);
+    learnWard(kWardPick[cls][1]);
+    learnArt(kArtsPick[cls][1]);
+    const int order[] = {curve::primaryIndex(p.characterClass), DEEP_TALLOW, BRIGHT_EDGE, THICK_WAX, QUICKWICK};
+    for (int f : order)
+        while (p.embersFree() >= 1 && p.flames[static_cast<size_t>(f)] < kFlameMaxRank) p.flames[static_cast<size_t>(f)]++;
+}
+
+static void buildParty(Game& g, int level, int extraGear, bool perksOn) {
     for (size_t i = 0; i < T::heroes(g); ++i) {
         Character& p = T::hero(g, i);
         const Character ref = curve::makeReferenceHero(p.characterClass, level);
@@ -49,6 +81,8 @@ static void buildParty(Game& g, int level, int extraGear) {
         p.equippedArmor = Item::make(curve::kRefArmorName, ItemType::ARMOR, ref.equippedArmor->bonus + extraGear,
                                      ItemRarity::COMMON, static_cast<int>(p.characterClass));
         p.bonusMaxHp = 0; p.bonusMaxResources = 0;
+        if (perksOn) giveLoadout(p);
+        p.statRules = true; // the stat rules are on in every column here (v2.31+)
         p.applyStatsForLevel();
         p.calculateAC();
         p.currentHp = p.maxHp; p.resources = p.maxResources;
@@ -57,19 +91,20 @@ static void buildParty(Game& g, int level, int extraGear) {
     }
 }
 
-static Res run(const Scn& s, bool v231, int n) {
-    curve::legacyReferenceForSim() = !v231;
+static Res run(const Scn& s, Rules rules, int n, CharacterClass a = CharacterClass::FIGHTER,
+               CharacterClass b = CharacterClass::WIZARD) {
+    curve::legacyReferenceForSim() = false;
+    perks::legacyLevelRulesForSim() = rules == Rules::V231;
     Res r;
     double hpSum = 0, maxSum = 0;
     for (int i = 0; i < n; ++i) {
         Game g;
         g.seedForTesting(2900u + static_cast<unsigned>(i) * 7919u);
-        g.startNewGame(CharacterClass::FIGHTER, "Mira", static_cast<int>(SoloPlayMode::CRAWL), s.diff,
-                       CharacterClass::WIZARD, true);
+        g.startNewGame(a, "Mira", static_cast<int>(SoloPlayMode::CRAWL), s.diff, b, true);
         g.setAsHost(true);
-        g.setStatRulesEnabledForTesting(v231);
+        g.setStatRulesEnabledForTesting(true);
         T::setMode(g, s.mode, s.depth, 6);
-        buildParty(g, s.level, s.extraGear);
+        buildParty(g, s.level, s.extraGear, rules == Rules::V232);
         g.simBeginFight(s.foes, s.surprise);
         if (!g.getEnemies().empty()) r.el = g.getEnemies().front()->curveEL;
         int steps = 0;
@@ -79,6 +114,7 @@ static Res run(const Scn& s, bool v231, int n) {
         r.rounds += g.getCombatRound();
         for (const auto& p : g.getPlayers()) { hpSum += std::max(0, p->currentHp); maxSum += p->maxHp; }
     }
+    perks::legacyLevelRulesForSim() = false;
     r.win = 100.0 * r.win / n;
     r.rounds /= n;
     r.lost = maxSum > 0 ? 100.0 * (1.0 - hpSum / maxSum) : 0;
@@ -86,52 +122,51 @@ static Res run(const Scn& s, bool v231, int n) {
 }
 
 int main(int argc, char** argv) {
-    const int n = argc > 1 ? std::atoi(argv[1]) : 1000;
+    const int n = argc > 1 ? std::atoi(argv[1]) : 600;
+    const int raid = static_cast<int>(SoloPlayMode::RAID);
     const std::vector<std::string> room = {"enemy_wickthief", "enemy_ashbound", "enemy_tithe_watcher"};
     const std::vector<std::string> boss = {"boss_sexton", "enemy_ashbound"};
     const std::vector<std::string> trio = {"enemy_gloamhound", "enemy_gloamhound", "enemy_crier_wick"};
-    std::printf("| Level | Medium room (Wickthief, Ashbound, Watcher): v2.30 → v2.31 win, HP lost | Medium boss (Sexton + Ashbound) | Hard room | Nightmare (2 hounds + crier) |\n");
-    std::printf("|---|---|---|---|---|\n");
-    for (int L : {1, 3, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50}) {
-        auto cell = [&](const std::vector<std::string>& f, int d) {
-            Scn s; s.level = L; s.diff = d; s.foes = f;
-            const Res a = run(s, false, n), b = run(s, true, n);
-            char buf[160];
-            std::snprintf(buf, sizeof buf, "%.0f%% → **%.0f%%**, %.0f%% → %.0f%%", a.win, b.win, a.lost, b.lost);
-            return std::string(buf);
-        };
-        std::printf("| %d | %s | %s | %s | %s |\n", L, cell(room, 1).c_str(), cell(boss, 1).c_str(),
-                    cell(room, 2).c_str(), cell(trio, 3).c_str());
-    }
-    std::printf("\n| Scenario | EL | v2.30 stats: win · HP lost · rounds | v2.31 universal stats: win · HP lost · rounds |\n|---|---|---|---|\n");
-    const int raid = static_cast<int>(SoloPlayMode::RAID), deep = static_cast<int>(SoloPlayMode::ENDLESS);
-    std::vector<Scn> list;
-    auto add = [&](const std::string& name, int L, int d, std::vector<std::string> f, bool surprise = false,
-                   int mode = static_cast<int>(SoloPlayMode::CRAWL), int depth = 0, int gear = 0) {
-        Scn s; s.name = name; s.level = L; s.diff = d; s.foes = std::move(f); s.surprise = surprise;
-        s.mode = mode; s.depth = depth; s.extraGear = gear; list.push_back(s);
+    struct Col { std::string name; std::vector<std::string> foes; int diff; int mode; };
+    const std::vector<Col> cols = {
+        {"Medium room", room, 1, static_cast<int>(SoloPlayMode::CRAWL)},
+        {"Boss + escort (Sexton + Ashbound)", boss, 1, static_cast<int>(SoloPlayMode::CRAWL)},
+        {"Nightmare (2 hounds + crier)", trio, 3, static_cast<int>(SoloPlayMode::CRAWL)},
+        {"Raid: Hollow Crown", {"boss_hollow_crown"}, 1, raid},
+        {"Raid: Ember Hydra", {"boss_ember_hydra"}, 1, raid},
+        {"Raid: Nightfang Matriarch", {"boss_nightfang"}, 1, raid},
     };
-    add("L2 Bone Gallery surprise: Ossuary Prior (Elite, warned)", 2, 1, {"boss_prior"}, true);
-    add("L3 Lantern Sexton", 3, 1, {"boss_sexton"});
-    add("L5 Wick King", 5, 1, {"boss_wick_king"});
-    add("L6 Collector Sallow Venn", 6, 1, {"boss_collector"});
-    add("L8 First Lamplighter (Warden)", 8, 1, {"boss_warden"});
-    add("L9 Bell-Herald", 9, 1, {"boss_herald"});
-    add("L10 Ashen Drake", 10, 1, {"boss_drake"});
-    add("L10 Millstone Brute + Enforcer + Watcher (Hard)", 10, 2, {"enemy_brute", "enemy_tithe_enforcer", "enemy_tithe_watcher"});
-    add("L10 4 Wickthieves (flee + snatch)", 10, 1, {"enemy_wickthief", "enemy_wickthief_scout", "enemy_wickthief_cutpurse", "enemy_wickthief_river"});
-    add("L10 Bone Crier + 2 Ashbound (heals)", 10, 1, {"enemy_crier_bone", "enemy_ashbound", "enemy_ashbound_bonebound"});
-    add("Raid L12 Ember Hydra (+2 EL)", 12, 1, {"boss_ember_hydra"}, false, raid);
-    add("Raid L20 Hollow Crown", 20, 1, {"boss_hollow_crown"}, false, raid);
-    add("Raid L20 Nightfang Matriarch", 20, 1, {"boss_nightfang"}, false, raid);
-    add("Raid L30 +20/+20 gear, Ember Hydra", 30, 1, {"boss_ember_hydra"}, false, raid, 0, 20);
-    add("Ashen Deep depth 14, L14, 6 foes trimmed to 4", 14, 1, {"enemy_wickthief", "enemy_ashbound", "enemy_gloamhound", "enemy_tithe_watcher", "enemy_brute", "enemy_crier_bone"}, false, deep, 14);
-    add("Raid L50 Hollow Crown", 50, 1, {"boss_hollow_crown"}, false, raid);
-    add("Nightmare L20 Brute + 2 Ashbound (finish the fallen)", 20, 3, {"enemy_brute", "enemy_ashbound", "enemy_ashbound"});
-    for (const auto& s : list) {
-        const Res a = run(s, false, n), b = run(s, true, n);
-        std::printf("| %s | %d | %.1f%% · %.0f%% · %.1f | **%.1f%%** · %.0f%% · %.1f |\n", s.name.c_str(), b.el,
-                    a.win, a.lost, a.rounds, b.win, b.lost, b.rounds);
+    std::printf("Fighter + Wizard party, %d fights per cell. Each cell: v2.31 rules → v2.32 without perks → **v2.32 with the sim loadout** (win %%, HP lost %%, rounds).\n\n", n);
+    std::printf("| Level | Scenario | EL | v2.31 | v2.32, no perks | v2.32 + perks |\n|---|---|---|---|---|---|\n");
+    for (int L : {20, 30, 40, 50}) {
+        for (const auto& c : cols) {
+            Scn s; s.level = L; s.diff = c.diff; s.foes = c.foes; s.mode = c.mode;
+            const Res a = run(s, Rules::V231, n), b = run(s, Rules::V232_BARE, n), p = run(s, Rules::V232, n);
+            std::printf("| %d | %s | %d | %.0f%% · %.0f%% · %.1f | %.0f%% · %.0f%% · %.1f | **%.0f%%** · %.0f%% · %.1f |\n",
+                        L, c.name.c_str(), p.el, a.win, a.lost, a.rounds, b.win, b.lost, b.rounds, p.win, p.lost, p.rounds);
+        }
+    }
+    // Other classes, boss + escort, to show every class's Arts pull their weight.
+    std::printf("\n| Party (boss + escort, Medium) | Level | v2.31 | v2.32 + perks |\n|---|---|---|---|\n");
+    const std::pair<CharacterClass, CharacterClass> parties[] = {
+        {CharacterClass::ROGUE, CharacterClass::CLERIC}, {CharacterClass::BARD, CharacterClass::FIGHTER},
+        {CharacterClass::CLERIC, CharacterClass::WIZARD}};
+    const char* pname[] = {"Rogue + Cleric", "Bard + Fighter", "Cleric + Wizard"};
+    for (int pi = 0; pi < 3; ++pi) {
+        for (int L : {30, 50}) {
+            Scn s; s.level = L; s.diff = 1; s.foes = boss;
+            const Res a = run(s, Rules::V231, n, parties[pi].first, parties[pi].second);
+            const Res p = run(s, Rules::V232, n, parties[pi].first, parties[pi].second);
+            std::printf("| %s | %d | %.0f%% · %.0f%% · %.1f | **%.0f%%** · %.0f%% · %.1f |\n", pname[pi], L,
+                        a.win, a.lost, a.rounds, p.win, p.lost, p.rounds);
+        }
+    }
+    // Below the cap nothing changed: the v2.31 checkpoints, same seeds.
+    std::printf("\n| Level 1-20 check (Medium room) | v2.31 | v2.32 |\n|---|---|---|\n");
+    for (int L : {1, 5, 10, 15, 20}) {
+        Scn s; s.level = L; s.diff = 1; s.foes = room;
+        const Res a = run(s, Rules::V231, n), b = run(s, Rules::V232, n);
+        std::printf("| L%d | %.0f%% · %.0f%% | %.0f%% · %.0f%% |\n", L, a.win, a.lost, b.win, b.lost);
     }
     return 0;
 }

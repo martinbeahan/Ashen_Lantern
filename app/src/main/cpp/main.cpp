@@ -369,6 +369,62 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_doSpecial([[maybe_unused]] JNIE
     });
 }
 
+// ---- v2.32 Kindled Path (solo only; the game refuses online) -------------------------------------
+JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_doUseArt([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint slot, jint targetIndex) {
+    return jniGuard<jboolean>("doUseArt", JNI_FALSE, [&]() -> jboolean {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return g_Game.playerUseArt(slot, targetIndex) ? JNI_TRUE : JNI_FALSE;
+    });
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getArtsBar([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuardStr(env, "getArtsBar", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return env->NewStringUTF(g_Game.getArtsBar().c_str());
+    });
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_getPerkState([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint heroIndex) {
+    return jniGuardStr(env, "getPerkState", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return env->NewStringUTF(g_Game.getPerkState(heroIndex).c_str());
+    });
+}
+
+/** Returns "" on success, else the reason shown to the player. */
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_doLearnPerk([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint heroIndex, jint kind, jint id) {
+    return jniGuardStr(env, "doLearnPerk", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        std::string why;
+        const bool ok = g_Game.learnPerk(heroIndex, kind, id, &why);
+        return env->NewStringUTF(ok ? "" : (why.empty() ? "Not now." : why.c_str()));
+    });
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_doEquipPerk([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint heroIndex, jint kind, jint slot, jint id) {
+    return jniGuardStr(env, "doEquipPerk", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        std::string why;
+        const bool ok = g_Game.equipPerk(heroIndex, kind, slot, id, &why);
+        return env->NewStringUTF(ok ? "" : (why.empty() ? "Not now." : why.c_str()));
+    });
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_doRetemper([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jint heroIndex) {
+    return jniGuardStr(env, "doRetemper", [&]() -> jstring {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        std::string why;
+        const bool ok = g_Game.retemper(heroIndex, &why);
+        return env->NewStringUTF(ok ? "" : (why.empty() ? "Not now." : why.c_str()));
+    });
+}
+
 JNIEXPORT void JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_doInteract([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz, jstring playerName) {
     jniGuardVoid("doInteract", [&]() {

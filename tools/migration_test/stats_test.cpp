@@ -37,14 +37,14 @@ static std::string join(const std::vector<std::string>& v, char d) {
     for (size_t i = 0; i < v.size(); ++i) { if (i) s += d; s += v[i]; }
     return s;
 }
-/** Turn a v2.31 save into a v2.30 one: drop player field 31 (Signature uses). */
+/** Turn a v2.31+ save into a v2.30 one: drop player fields 31+ (Signature uses; v2.32 perks). */
 static std::string asV230(const std::string& save) {
     auto sec = split(save, '|');
     auto recs = split(sec[2], ';');
     for (auto& r : recs) {
         if (r.empty()) continue;
         auto f = split(r, ',');
-        if (f.size() == 32) { f.pop_back(); r = join(f, ','); }
+        if (f.size() >= 32) { f.resize(31); r = join(f, ','); }
     }
     sec[2] = join(recs, ';');
     return join(sec, '|');
@@ -134,7 +134,7 @@ int main() {
         Game r2; r2.setAsHost(true);
         CHECK(r2.deserialize(r.serialize()));
         CHECK(T::hero(r2, 0).pendingStatPoints == 7 && r2.getStatMigrationNote().empty());
-        CHECK(playerFieldCount(r.serialize()) == 32);
+        CHECK(playerFieldCount(r.serialize()) == 37); // v2.32: + flames, wards, arts, free Re-temper, peak level
         // Online join of the same save: nothing touched.
         Game j; j.setAsHost(false);
         CHECK(j.deserialize(asV230(s)));
@@ -259,8 +259,9 @@ int main() {
                 Character base("x", cls, "x");
                 int baseTotal = 0;
                 for (int i = 0; i < 6; ++i) baseTotal += base.baseAttr(i);
-                CHECK(total - baseTotal == static_cast<int>(2 * (L - 1) * 0.5) + static_cast<int>(2 * (L - 1) * 0.3)
-                                           + static_cast<int>(2 * (L - 1) * 0.2)); // nothing lost, only moved
+                const int pts = perks::statPointsThrough(L); // v2.32: +2 a level to 20, then every 5th
+                CHECK(total - baseTotal == static_cast<int>(pts * 0.5) + static_cast<int>(pts * 0.3)
+                                           + static_cast<int>(pts * 0.2)); // nothing lost, only moved
             }
         }
         const Character f50 = curve::makeReferenceHero(CharacterClass::FIGHTER, 50);

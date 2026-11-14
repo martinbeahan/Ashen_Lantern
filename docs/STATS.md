@@ -59,7 +59,7 @@ point over the cap (`playerIncreaseStat` says why). Online: no caps.
 | 20 | +1 class special use per battle (`Character::signatureUses`, reset each fight). A Fighter spends a supply for the first Action Surge as before; the Signature use is a **second** surge. Other classes spend the free use before a supply |
 | 24 | Special potency +25% (damage, heal or Quip penalty 2 → 3) |
 | 28 | Special crit range +1 (19–20; with Weak point it stacks, never below 17) on Action Surge, Sneak Attack and Cutting Quip |
-| 32 | Lantern Arts cooldown −1 round — **no effect until Arts ship (PR 4)** |
+| 32 | Lantern Arts recharge 1 round faster (v2.32, [`PERKS.md`](PERKS.md)) |
 
 ## Save migration (append-only)
 
@@ -129,8 +129,8 @@ and main-stat-only rules; v2.31 = caps, universal effects, Signature and the tou
 ## Deviations from the proposal
 
 - **Over-cap stats are clamped and refunded**, not grandfathered with a free Re-temper: the PR 3
-  brief asked for clamp + refund. A full respec (Re-temper) comes with perks in PR 4.
-- **Signature 32** (Arts cooldown −1) is shown but does nothing until Lantern Arts exist (PR 4).
+  brief asked for clamp + refund. A full respec (Re-temper) arrived with perks in v2.32 ([`PERKS.md`](PERKS.md)).
+- **Signature 32** (Arts cooldown −1) is live since v2.32: every Lantern Art recharges 1 round faster.
 - **Signature 28** crit applies to Action Surge, Sneak Attack and Cutting Quip, not Magic Missile
   (auto-hit, no roll) or Healing Word (no attack roll).
 - **Death save bonus** never goes negative (`max(0, floor(CONmod / 2))`).

@@ -6,7 +6,19 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.31 / 70) — Universal stats
+## What's new (v2.32 / 71) — Level cap 50 and the Kindled Path
+
+- **Level cap 50.** Levels 1–20 play as before. Past 20, proficiency stays at +6, stat points come at 25, 30, 35, 40, 45 and 50, and **every level from 21 to 50 gives 1 Ember** (30 in all). The XP curve keeps today's numbers (4,900 XP for the last level, 122,500 to reach 50), and past level 20 each solo room is worth at least 40 + 15 × the Encounter Level. At 50 the XP bar stays full; an old hero above 50 loads at 50
+- **Kindled Path** (Sheet → *Kindled Path*, solo) — spend Embers on three branches:
+  - **Steady Flames** (1 Ember a rank, 5 ranks): +1 STR / DEX / CON / INT / WIS / CHA, +3% max HP or +2% damage
+  - **Wards** (2 Embers, 2 equipped), each fires once a battle on its own: Last Light, Cleanse, Second Wick, Ash Veil, Kindle Rush, Ember Ward, Spite Spark, Steady Hand
+  - **Lantern Arts** (3 Embers, 2 equipped): 4 new actions per class, unlocking at 22 / 26 / 30 / 34 — e.g. Cleave and Iron Brace, Cinder Burst and Ash Bind, Smoke Step and Fan of Knives, Mending Circle and Relight, Rallying Verse and Encore. A new **Arts** button in a fight shows each Art's recharge as plain pips (no flashing); the companion uses its Arts on its own
+- **Ember numbers** — 30 from levels; Rekindling (next update) adds 1 per rank I–X and 2 more at rank IX: **cap 42** of a 68-Ember path
+- **Signature 32** — a main stat of 32 makes every Art recharge 1 round faster
+- **Re-temper** (respec) outside a fight: 100 gold × level refunds every attribute point and Ember. **Every hero from before v2.32 gets one free Re-temper.** Wards and Arts swap for free
+- **Your hero is kept** — old saves load straight away (5 new fields are appended); a level 21+ hero has its Embers waiting. Story padding, Long Rest every 5 rooms and Short Rest after a clear are unchanged. Host / Join and the Keeper table keep the classic rules (no Kindled Path) and never touch a solo save. See [`docs/PERKS.md`](docs/PERKS.md) for every number and the balance tables
+
+## Previous (v2.31 / 70) — Universal stats
 
 - **Every stat helps every class** (solo) — your class's main stat still drives hits, damage and your special, but no point is wasted any more:
   - **STR** — *Heft* (+1 weapon damage per 4 STR over 10), hits from STR 16 **break shield-walls**, STR saves resist Shackle
@@ -16,7 +28,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
   - **WIS** — *Mending* (up to +40% healing received), WIS saves vs Rattled, Marked and Webs, +1 use on Short Rest at WIS 18
   - **CHA** — *Barter* (up to 20% off in shops, sell price up to 75%), *Luck* (up to +30% gold), *Inspire* (companions hit more), *Intimidate* (foes flee sooner)
 - **Stat caps** — 18 + half your level (max 30 at level 24); your main stat can go 2 higher (32). Gear can push past a cap. The level-up screen shows each cap, greys out **+** at the cap, and says what every stat does for *your* class
-- **Signature bonuses** — main stat 20: one free special per battle (a Fighter gets a second Action Surge) · 24: special +25% · 28: specials crit on 19–20 · 32: Lantern Arts cooldown −1 (Arts arrive in the next update). Magic Missile darts grow with INT; Action Surge's second swing adds Heft
+- **Signature bonuses** — main stat 20: one free special per battle (a Fighter gets a second Action Surge) · 24: special +25% · 28: specials crit on 19–20 · 32: Lantern Arts cooldown −1 (live in v2.32). Magic Missile darts grow with INT; Action Surge's second swing adds Heft
 - **Fights rebalanced** — foes get a little more HP in solo so fights keep their length; the hard Medium boss + escort fight at level 20 goes from 26% to about 77% wins
 - **Your hero is kept** — a stat already above its cap is lowered to the cap and **every point is refunded** to spend again (a chat line lists the changes). Old saves (including one saved mid-fight in v2.30) load straight away; the new field is appended. Host / Join and the online Keeper table keep the classic rules and never touch a solo save. See [`docs/STATS.md`](docs/STATS.md)
 
@@ -179,6 +191,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Difficulty** — Easy / Medium / Hard / Nightmare (locked for the run; wipe rules differ by tier)
 - **Enemy AI** — solo foes show intent chips (exact numbers at party INT 14+), play their role (focus fire, guard, heal, mark, flee), bosses change phase at 66% / 33%, and smartness scales from Easy to Nightmare
 - **Universal stats** — in solo every stat helps every class (Heft, Evade, Grit, Weak point, Mending, Barter…), stats cap at 18 + half your level (30, main stat 32) and the main stat unlocks Signature bonuses at 20 / 24 / 28 / 32; the level-up screen explains each stat for your class
+- **Kindled Path** — level cap 50; levels 21–50 give Embers for Steady Flames (stat perks), 8 once-a-battle Wards and 4 Lantern Arts per class (2 Wards + 2 Arts equipped), with a Re-temper respec (solo)
 - **How combat scales** — solo fights use an Encounter Level from your level and gear (gear at 50%), foe roles and per-room threat budgets, a 15–90% hit clamp, a 45% one-hit guard, Pressure / Rekindle comeback rules and warned surprise bosses. Levels to 50
 - **Classes** — Fighter, Wizard, Rogue, Cleric, and **Bard** (CHA-based; Cutting Quip special)
 - **Companion** — AI or player-controlled ally; change class in-run where supported
@@ -285,6 +298,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`docs/ACT4_ASHWAKE_VIGIL.md`](docs/ACT4_ASHWAKE_VIGIL.md) | Act 4 Ashwake Vigil |
 | [`docs/COMBAT_CURVE.md`](docs/COMBAT_CURVE.md) | Combat curve: Encounter Level, roles, budgets, hit clamp, Pressure / Rekindle, save fields, `tools/combat_sim` |
 | [`docs/ENEMY_AI.md`](docs/ENEMY_AI.md) | Enemy AI: tiers, targeting score, behaviours per enemy ID, boss phases, statuses, intent chips, save fields, `tools/combat_sim/ai_sim` |
+| [`docs/PERKS.md`](docs/PERKS.md) | Kindled Path: level cap 50, XP curve, Embers, Steady Flames, Wards, Lantern Arts, Re-temper, save fields, balance tables (`tools/migration_test/perks_test`, `tools/combat_sim/ai_sim`) |
 | [`docs/STATS.md`](docs/STATS.md) | Universal stats: formula table, caps, Signature tiers, save migration (clamp + refund), balance tables, `tools/migration_test/stats_test` |
 | [`docs/DAILY_QUESTS.md`](docs/DAILY_QUESTS.md) | Daily Quests |
 | [`docs/CHALLENGE_DUNGEON.md`](docs/CHALLENGE_DUNGEON.md) | Challenge Dungeon / Cinder Crucible |
