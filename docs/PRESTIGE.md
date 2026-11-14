@@ -103,8 +103,12 @@ rank's +2% HP / +1 CON, and the max-uses check counts rank VI's +1, so nothing i
 
 **Debug builds only.** Settings → **Debug: level 50 + story complete** (works in a solo adventure, outside a
 fight) puts the hero and companion at level 50, marks Acts 1–4 done (post-story beat in Story mode) and clears
-the "explainer shown" flag. The level-up dialog appears first; tap **Later** and the Rekindle explainer opens
-(or Sheet → **Ready to Rekindle**).
+the "explainer shown" flag. **v2.34 rebalance:** it also builds both like a real player — every stat point
+spent (half main stat, 30% CON, 20% DEX, the rest where a stat is capped), weapon and armor raised to the
+normal bonus for the level (+25; the old pieces go to the bag) and every Ember spent (two Arts, two Wards,
+then the main-stat flame, CON, Bright Edge, Thick Wax, DEX). Before, it left all of that unspent with
+starter gear, and that hero lost every fight at level 50 even on Easy. Pressing it again on a level-50 hero
+fills in anything still unspent. The Rekindle explainer opens right away (or Sheet → **Ready to Rekindle**).
 
 - Kotlin: `app/src/debug/…/DebugShortcuts.kt` (the button + `external fun nativeJumpToRekindleReady`);
   `app/src/release/…/DebugShortcuts.kt` is a no-op with no native method.
@@ -124,16 +128,19 @@ the "explainer shown" flag. The level-up dialog appears first; tap **Later** and
 ## Balance (tools/combat_sim/run.sh 600)
 
 Fighter + Wizard, perks spent with the sim loadout (the rank's extra Embers into flames, the 3rd Ward /
-Art when unlocked). Win %, party HP lost %, Encounter Level.
+Art when unlocked). Win %, party HP lost %, Encounter Level. **v2.34 rebalance:** these tables are re-run
+with the sim's reference-table bug fixed (the earlier PR #85 / #86 tables past level 20 were built against
+foes far tougher than the game's — COMBAT_CURVE.md) and include the new EL (+0.1 per spent Ember, so a
+level-50 rank-0 hero is EL 53).
 
-| L50 | rank 0 | I | V | X |
-|---|---|---|---|---|
-| Medium room | 99% · 23% · EL 50 | 100% · 19% · EL 50 | 100% · 13% · EL 51 | 100% · 7% · EL 52 |
-| Boss + escort (Sexton + Ashbound) | 66% · 73% · EL 50 | 82% · 63% · EL 50 | 98% · 43% · EL 51 | 100% · 33% · EL 52 |
-| Nightmare (2 hounds + crier) | 80% · 71% · EL 50 | 90% · 61% · EL 50 | 99% · 48% · EL 51 | 100% · 37% · EL 52 |
-| Raid: Hollow Crown | 93% · 47% · EL 52 | 97% · 38% · EL 52 | 100% · 20% · EL 53 | 100% · 15% · EL 54 |
-| Raid: Ember Hydra | 70% · 57% · EL 52 | 84% · 45% · EL 52 | 99% · 23% · EL 53 | 100% · 17% · EL 54 |
-| Raid: Nightfang Matriarch | 95% · 42% · EL 52 | 99% · 33% · EL 52 | 100% · 17% · EL 53 | 100% · 12% · EL 54 |
+| L50, v2.32 + perks | Scenario | rank 0 | I | V | X |
+|---|---|---|---|---|---|
+| 50 | Medium room | 100% · 14% · EL 53 | 100% · 11% · EL 53 | 100% · 9% · EL 54 | 100% · 5% · EL 56 |
+| 50 | Boss + escort (Sexton + Ashbound) | 99% · 42% · EL 53 | 100% · 35% · EL 53 | 100% · 41% · EL 54 | 100% · 34% · EL 56 |
+| 50 | Nightmare (2 hounds + crier) | 97% · 50% · EL 53 | 100% · 43% · EL 53 | 100% · 47% · EL 54 | 100% · 35% · EL 56 |
+| 50 | Raid: Hollow Crown | 100% · 24% · EL 55 | 100% · 19% · EL 55 | 100% · 15% · EL 56 | 100% · 11% · EL 58 |
+| 50 | Raid: Ember Hydra | 99% · 26% · EL 55 | 100% · 21% · EL 55 | 100% · 16% · EL 56 | 100% · 12% · EL 58 |
+| 50 | Raid: Nightfang Matriarch | 100% · 18% · EL 55 | 100% · 14% · EL 55 | 100% · 11% · EL 56 | 100% · 8% · EL 58 |
 
 The climb after Rekindling (level-50 gear, attuned to **floor(level / 2) + 3** as shipped; the companion is
 attuned too), win % · HP lost %:
@@ -141,26 +148,26 @@ attuned too), win % · HP lost %:
 | Fight | Level | first climb (rank 0) | I | V | X |
 |---|---|---|---|---|---|
 | Boss + escort | 1 | 100% · 0% | 93% · 5% | 98% · 1% | 100% · 0% |
-| Boss + escort | 10 | 80% · 57% | 88% · 55% | 99% · 30% | 100% · 8% |
-| Boss + escort | 20 | 77% · 63% | 88% · 48% | 100% · 20% | 100% · 11% |
-| Boss + escort | 30 | 68% · 69% | 96% · 42% | 100% · 27% | 100% · 16% |
-| Boss + escort | 40 | 80% · 65% | 96% · 41% | 100% · 31% | 100% · 25% |
-| Nightmare trio | 10 | 90% · 54% | 97% · 45% | 100% · 34% | 100% · 14% |
-| Nightmare trio | 20 | 90% · 56% | 93% · 48% | 100% · 22% | 100% · 17% |
-| Nightmare trio | 30 | 68% · 79% | 92% · 54% | 100% · 31% | 100% · 23% |
-| Nightmare trio | 40 | 85% · 68% | 97% · 46% | 100% · 32% | 100% · 27% |
+| Boss + escort | 10 | 80% · 57% | 88% · 55% | 99% · 30% | 100% · 9% |
+| Boss + escort | 20 | 77% · 63% | 98% · 34% | 100% · 13% | 100% · 10% |
+| Boss + escort | 30 | 92% · 47% | 100% · 31% | 100% · 24% | 100% · 19% |
+| Boss + escort | 40 | 92% · 53% | 100% · 34% | 100% · 34% | 100% · 28% |
+| Nightmare trio | 10 | 92% · 52% | 98% · 45% | 100% · 34% | 100% · 17% |
+| Nightmare trio | 20 | 90% · 54% | 99% · 33% | 100% · 16% | 100% · 16% |
+| Nightmare trio | 30 | 93% · 60% | 99% · 43% | 100% · 30% | 100% · 26% |
+| Nightmare trio | 40 | 91% · 63% | 98% · 45% | 100% · 33% | 100% · 27% |
 
 Medium rooms stay 100% at every level and rank. For comparison, the first draft of this PR used **level + 3**:
-rank I won the L20 boss 100% · 10% (vs 77% on a first climb), so the climb back was trivial; Martin picked the
-stricter cap. At level 50 the cap (28) is above any normal gear, so the L50 grid above is unchanged.
+rank I won the L20 boss 100% · 10%, so the climb back was trivial; Martin picked the stricter cap. At level
+50 the cap (28) is above any normal gear.
 
 Rooms cleared to reach level 50 again (room counter carrying on from room 60): first climb 113 (43 to
 level 20); rank I 70 (16); rank IV 64 (14); rank X 39 (8).
 
-**Trade-offs.** Each rank is a real power step: by rank V every L50 fight is ≥ 98%. With the stricter
-attunement, rank I re-climbs about one tier easier than a first climb (boss +8–28 points, mostly from +1
-attributes, HP and the attuned +3 over normal gear); rank V and up still re-climb very comfortably, which is
-the intended reward for repeated Rekindles. The fast re-climb also comes from room XP (50 + 15 × room)
+**Trade-offs.** Each rank is a real power step: a built level-50 hero already wins ~97–100% on Medium,
+and every rank adds to that. With the stricter attunement, rank I re-climbs easier than a first climb (boss
++8–22 points at L10–30, mostly from +1 attributes, HP and the attuned +3 over normal gear); rank V and up
+re-climb very comfortably, which is the intended reward for repeated Rekindles. The fast re-climb also comes from room XP (50 + 15 × room)
 carrying on from the post-story room count.
 
 ## Deviations from the proposal

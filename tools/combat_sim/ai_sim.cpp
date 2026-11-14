@@ -40,6 +40,8 @@ struct Scn {
     int depth = 0;
     int extraGear = 0;
     int rank = 0;      // v2.33 Rekindling rank (hero full, companion half)
+    bool raw = false;  // v2.34 rebalance: under-geared + unspent (starter gear, class base stats, no Embers)
+    bool debugJump = false; // v2.33: the debug-build level-50 shortcut on a fresh hero (debug code, not in release)
 };
 struct Res { double win = 0, lost = 0, rounds = 0; int el = 0; };
 
@@ -78,6 +80,30 @@ static void giveLoadout(Character& p) {
         while (p.embersFree() >= 1 && p.flames[static_cast<size_t>(f)] < p.flameCap()) p.flames[static_cast<size_t>(f)]++;
 }
 
+/** v2.34 rebalance: the "debug shortcut" hero — level L, but the class base stats with every point unspent,
+ *  starter gear (+0 / armor base) and no Embers spent. */
+static void buildRaw(Game& g, int level) {
+    for (size_t i = 0; i < T::heroes(g); ++i) {
+        Character& p = T::hero(g, i);
+        p.prestigeRank = 0; p.prestigeHalf = i != 0;
+        p.statRules = true;
+        const Character fresh(p.name, p.characterClass, "raw");
+        p.level = std::clamp(level, 1, Character::kMaxLevel); p.xp = 0; p.attributes = fresh.attributes;
+        p.pendingStatPoints = perks::statPointsThrough(p.level);
+        p.equippedWeapon = Item::make(curve::kRefWeaponName, ItemType::WEAPON, 0, ItemRarity::COMMON, static_cast<int>(p.characterClass));
+        p.equippedArmor = Item::make(curve::kRefArmorName, ItemType::ARMOR, curve::starterArmorBase(p.characterClass),
+                                     ItemRarity::COMMON, static_cast<int>(p.characterClass));
+        p.flames.fill(0); p.wardsLearned = 0; p.artsLearned = 0;
+        p.wardEq = {{-1, -1, -1}}; p.artEq = {{-1, -1, -1}};
+        p.bonusMaxHp = 0; p.bonusMaxResources = 0;
+        p.applyStatsForLevel();
+        p.calculateAC();
+        p.currentHp = p.maxHp; p.resources = p.maxResources;
+        p.isDowned = p.isDead = p.isStable = false;
+        p.aiControlled = true;
+    }
+}
+
 static void buildParty(Game& g, int level, int extraGear, bool perksOn, int rank = 0) {
     for (size_t i = 0; i < T::heroes(g); ++i) {
         Character& p = T::hero(g, i);
@@ -113,7 +139,12 @@ static Res run(const Scn& s, Rules rules, int n, CharacterClass a = CharacterCla
         g.setAsHost(true);
         g.setStatRulesEnabledForTesting(true);
         T::setMode(g, s.mode, s.depth, 6);
-        buildParty(g, s.level, s.extraGear, rules == Rules::V232, s.rank);
+        if (s.debugJump) {
+            g.syncStatRules();
+            T::clearRoomAt(g, 6); // out of the opening fight, as the shortcut needs
+            for (size_t k = 0; k < T::heroes(g); ++k) T::hero(g, k).aiControlled = true;
+            if (!g.debugJumpToRekindleReady()) std::printf("(debug shortcut refused)\n");
+        } else if (s.raw) buildRaw(g, s.level); else buildParty(g, s.level, s.extraGear, rules == Rules::V232, s.rank);
         g.simBeginFight(s.foes, s.surprise);
         if (!g.getEnemies().empty()) r.el = g.getEnemies().front()->curveEL;
         int steps = 0;
@@ -145,6 +176,37 @@ int main(int argc, char** argv) {
         {"Raid: Ember Hydra", {"boss_ember_hydra"}, 1, raid},
         {"Raid: Nightfang Matriarch", {"boss_nightfang"}, 1, raid},
     };
+    // v2.34 rebalance: every difficulty, levels 1-50, a built hero (model stats + gear + perks) and the
+    // under-geared, unspent one (what the debug shortcut used to make). Arg 2 "grid" prints only this.
+    {
+        static const char* kDiffName[] = {"Easy", "Medium", "Hard", "Nightmare"};
+        std::printf("| Difficulty | Level | room: built | room: unspent | boss + escort: built | boss + escort: unspent |\n|---|---|---|---|---|---|\n");
+        for (int d = 0; d < 4; ++d) {
+            for (int L : {1, 10, 20, 30, 40, 50}) {
+                std::printf("| %s | %d |", kDiffName[d], L);
+                for (const auto* foes : {&room, &boss}) {
+                    for (bool raw : {false, true}) {
+                        Scn s; s.level = L; s.diff = d; s.foes = *foes; s.raw = raw;
+                        const Res p = run(s, Rules::V232, n);
+                        std::printf(" %.0f%% · %.0f%% · %.1f r · EL %d |", p.win, p.lost, p.rounds, p.el);
+                    }
+                }
+                std::printf("\n");
+            }
+        }
+        std::printf("\n| Debug shortcut (fresh hero → level 50) | room | boss + escort |\n|---|---|---|\n");
+        for (int d = 0; d < 4; ++d) {
+            std::printf("| %s |", kDiffName[d]);
+            for (const auto* foes : {&room, &boss}) {
+                Scn s; s.level = 50; s.diff = d; s.foes = *foes; s.debugJump = true;
+                const Res p = run(s, Rules::V232, n);
+                std::printf(" %.0f%% · %.0f%% · %.1f r · EL %d |", p.win, p.lost, p.rounds, p.el);
+            }
+            std::printf("\n");
+        }
+        std::printf("\n");
+        if (argc > 2 && std::string(argv[2]) == "grid") return 0;
+    }
     std::printf("Fighter + Wizard party, %d fights per cell. Each cell: v2.31 rules → v2.32 without perks → **v2.32 with the sim loadout** (win %%, HP lost %%, rounds).\n\n", n);
     std::printf("| Level | Scenario | EL | v2.31 | v2.32, no perks | v2.32 + perks |\n|---|---|---|---|---|---|\n");
     for (int L : {20, 30, 40, 50}) {
@@ -216,7 +278,7 @@ int main(int argc, char** argv) {
             g.setStatRulesEnabledForTesting(true);
             g.syncStatRules();
             T::story(g);
-            for (int r = 0; r < rank; ++r) { g.debugJumpToRekindleReady(); T::clearRoomAt(g, 0); g.rekindle(); }
+            for (int r = 0; r < rank; ++r) { g.debugJumpToRekindleReady(false); T::clearRoomAt(g, 0); g.rekindle(); }
             int rooms = 0, room = startRoom, to20 = 0;
             while (T::hero(g, 0).level < 50 && rooms < 5000) {
                 T::clearRoomAt(g, room++);

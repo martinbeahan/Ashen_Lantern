@@ -4520,11 +4520,15 @@ int Game::encounterModeBonus() const {
     return 0;
 }
 
-int Game::currentEncounterLevel() const {
+int Game::currentEncounterLevel() const { return currentEncounterLevels().el; }
+
+curve::EncounterLevels Game::currentEncounterLevels() const {
+    // v2.33: solo play measures the party's real numbers (offense / defense levels); online
+    // Keeper tables keep the v2.32 level + gear EL.
     std::vector<curve::PartyMember> party;
-    for (const auto& p : players_) if (p && !p->isDead) party.push_back(curve::memberOf(*p));
-    if (party.empty()) for (const auto& p : players_) if (p) party.push_back(curve::memberOf(*p));
-    return curve::encounterLevel(party, encounterModeBonus());
+    for (const auto& p : players_) if (p && !p->isDead) party.push_back(curve::memberOf(*p, universalStatsActive()));
+    if (party.empty()) for (const auto& p : players_) if (p) party.push_back(curve::memberOf(*p, universalStatsActive()));
+    return curve::encounterLevels(party, encounterModeBonus());
 }
 
 double Game::currentRoomType() const {
@@ -4584,13 +4588,10 @@ void Game::applyEncounterCurve() {
     const int el = currentEncounterLevel();
     // Mode bonuses (Raid +2, Challenge +3, Arena finale +2, Deep +depth/5) raise HP and damage to
     // the bonus EL; hit odds (AC / to-hit) stay at the party's own EL so the 15–90% clamp and the
-    // ~60/50% targets hold in every mode.
-    int accuracyEl = el;
-    {
-        std::vector<curve::PartyMember> pm;
-        for (const auto& p : players_) if (p && !p->isDead) pm.push_back(curve::memberOf(*p));
-        if (!pm.empty()) accuracyEl = curve::encounterLevel(pm, 0);
-    }
+    // ~60/50% targets hold in every mode. v2.33: foe HP + AC follow the party's offense level and
+    // damage + to-hit its defense level (CombatCurve.h encounterLevels), so an under-built hero
+    // never meets full-power foes.
+    const curve::EncounterLevels lv = currentEncounterLevels();
     const double budget = curve::roomBudget(party, difficulty_, currentRoomType());
 
     // Comeback / pressure.
@@ -4652,7 +4653,7 @@ void Game::applyEncounterCurve() {
             }
         }
         if (universalStatsActive()) s *= curve::statsToughness(el, r == curve::Role::BOSS, addsCost > 0); // v2.31
-        const curve::FoeStats st = curve::foeStats(r, el, difficulty_, party, s, accuracyEl);
+        const curve::FoeStats st = curve::foeStatsSplit(r, lv.offEl, lv.defEl, lv.mode, difficulty_, party, s);
         e->maxHp = st.maxHp;
         e->currentHp = st.maxHp;
         e->armorClass = st.ac;
@@ -5073,12 +5074,18 @@ bool Game::summonFoe(const std::string& enemyId, CharacterClass cl, const Charac
     auto f = newEnemy(enemyId, cl, "call");
     int party = 0;
     std::vector<curve::PartyMember> pm;
-    for (const auto& p : players_) if (p && !p->isDead) { ++party; pm.push_back(curve::memberOf(*p)); }
+    for (const auto& p : players_) if (p && !p->isDead) { ++party; pm.push_back(curve::memberOf(*p, universalStatsActive())); }
     party = std::max(1, party);
-    const int accuracyEl = pm.empty() ? summoner.curveEL : curve::encounterLevel(pm, 0);
     const curve::Role r = curve::roleFromInt(bestiary::role(enemyId));
-    const curve::FoeStats st = curve::foeStats(r, std::max(1, summoner.curveEL), difficulty_, party,
-                                               ai::kSummonScale, accuracyEl);
+    curve::FoeStats st;
+    if (pm.empty()) {
+        st = curve::foeStats(r, std::max(1, summoner.curveEL), difficulty_, party, ai::kSummonScale);
+    } else {
+        // v2.33: the summons match the party on both axes too (the summoner's mode bonus kept).
+        const curve::EncounterLevels lv = curve::encounterLevels(pm, 0);
+        st = curve::foeStatsSplit(r, lv.offEl, lv.defEl, std::max(0, summoner.curveEL - lv.el), difficulty_, party,
+                                  ai::kSummonScale);
+    }
     f->maxHp = st.maxHp; f->currentHp = st.maxHp; f->armorClass = st.ac;
     f->curveEL = std::max(1, summoner.curveEL);
     f->curveRole = static_cast<int>(r);
@@ -5235,11 +5242,13 @@ void Game::runEnemyMove(Character& foe, int foeIdx) {
     if (moveNeedsHero(m)) {
         if (m == Move::FINISH_DOWNED) {
             Character* h = heroAt(t);
-            if (!h || h->isDead || !(h->isDowned || h->currentHp <= 0)) { m = Move::STRIKE; t = -1; }
+            // v2.33 fix: the marked hero died or stood up — strike someone else (was t = -1, which
+            // ended the turn without a new plan, so the same dead target stalled the fight forever).
+            if (!h || h->isDead || !(h->isDowned || h->currentHp <= 0)) { m = Move::STRIKE; t = pickAiHeroTarget(foe, beh); }
         } else if (!isStanding(heroAt(t)) || heroHidden(t) || (bracedHeroIndex() >= 0 && bracedHeroIndex() != t)) {
             t = pickAiHeroTarget(foe, beh); // v2.32: also when the target hid or another hero braced
         }
-        if (t < 0 || !heroAt(t) || heroAt(t)->isDead) { checkPartyDefeat(); return; }
+        if (t < 0 || !heroAt(t) || heroAt(t)->isDead) { checkPartyDefeat(); if (!gameOver_) planEnemyMove(foe); return; }
         if (m == Move::SWARM_BITE && !isStanding(heroAt(t))) {
             addChatMessage("Combat", foe.name + " circles, hissing — it won't touch the fallen.");
             A.lastTarget = t;

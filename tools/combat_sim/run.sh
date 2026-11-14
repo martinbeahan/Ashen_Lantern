@@ -16,8 +16,10 @@ if [[ -n "$ndk_bin" && -x "$ndk_bin/clang++" ]]; then
 else
   cxx=("${CXX:-c++}")
 fi
+if [[ "${2:-}" != grid ]]; then
 "${cxx[@]}" -std=c++17 -O2 -o "$work/combat_sim" "$work/combat_sim.cpp"
 "$work/combat_sim"
 echo
+fi
 "${cxx[@]}" -std=c++17 -O2 -o "$work/ai_sim" "$work/ai_sim.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
-"$work/ai_sim" "${1:-1000}"
+"$work/ai_sim" "${1:-1000}" ${2:-}

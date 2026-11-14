@@ -806,7 +806,7 @@ std::string Game::clearPrestigeInSave(const std::string& data) {
 
 #ifndef NDEBUG
 // DEBUG BUILDS ONLY. Compiled out of release (NDEBUG): the symbol does not exist in the shipped .so.
-bool Game::debugJumpToRekindleReady() {
+bool Game::debugJumpToRekindleReady(bool buildLikeAPlayer) {
     syncStatRules();
     if (!universalStatsActive() || players_.empty() || isInCombat()) return false;
     questComplete_ = true;
@@ -814,13 +814,70 @@ bool Game::debugJumpToRekindleReady() {
     questAct3Complete_ = questAct3SealFound_ = true;
     questAct4Complete_ = questAct4EmberFound_ = true;
     if (soloPlayMode_ == static_cast<int>(SoloPlayMode::STORY)) questBeat_ = static_cast<int>(SoloQuestBeat::POST_QUEST);
-    for (auto& p : players_) {
+    for (size_t i = 0; i < players_.size(); ++i) {
+        Character* p = players_[i].get();
         if (!p || p->isFoe()) continue;
         while (p->level < Character::kMaxLevel) p->addXpLevels(perks::xpToNext(p->level));
         p->rekindleOffered = false;
+        if (buildLikeAPlayer) debugBuildLikeAPlayer(static_cast<int>(i));
     }
     addChatMessage("System", "[debug] Party set to level 50 with the story complete.");
     return true;
+}
+
+/**
+ * v2.34 rebalance: make a debug level-50 hero look like a real one — every stat point spent
+ * like the model hero (half main stat, 30% CON, 20% DEX, overflow when capped), gear at least the
+ * normal bonus for the level (the old pieces go to the bag), and every Ember spent on two Arts,
+ * Wards and Steady Flames (the same loadout tools/combat_sim uses).
+ */
+void Game::debugBuildLikeAPlayer(int heroIdx) {
+    if (heroIdx < 0 || static_cast<size_t>(heroIdx) >= players_.size() || !players_[static_cast<size_t>(heroIdx)]) return;
+    Character& p = *players_[static_cast<size_t>(heroIdx)];
+    const int main = p.mainStatIndex();
+    static const int kPattern[10] = {-1, -1, -1, -1, -1, 2, 2, 2, 1, 1}; // -1 = main stat
+    for (int k = 0, guard = 0; p.pendingStatPoints > 0 && guard < 1000; ++k, ++guard) {
+        const int want = kPattern[k % 10] < 0 ? main : kPattern[k % 10];
+        if (p.increaseAttribute(want)) continue;
+        bool any = false;
+        for (int idx : {main, 2, 1, 0, 3, 4, 5}) if (p.increaseAttribute(idx)) { any = true; break; }
+        if (!any) break; // every stat at its cap: the rest stay to spend later
+    }
+    const int cls = static_cast<int>(p.characterClass);
+    const int gear = p.level / 2;
+    if (!p.equippedWeapon || p.equippedWeapon->type != ItemType::WEAPON || p.equippedWeapon->bonus < gear) {
+        if (p.equippedWeapon) p.inventory.push_back(p.equippedWeapon);
+        p.equippedWeapon = Item::make("Lampwright's Blade", ItemType::WEAPON, gear, ItemRarity::RARE, cls);
+    }
+    const int armor = curve::starterArmorBase(p.characterClass) + gear;
+    if (!p.equippedArmor || p.equippedArmor->type != ItemType::ARMOR || p.equippedArmor->bonus < armor) {
+        if (p.equippedArmor) p.inventory.push_back(p.equippedArmor);
+        p.equippedArmor = Item::make("Lampwright's Mail", ItemType::ARMOR, armor, ItemRarity::RARE, cls);
+    }
+    static const int kArtsPick[5][3] = {{0, 2, 3}, {0, 3, 1}, {1, 3, 0}, {0, 1, 2}, {0, 2, 3}};
+    static const int kWardPick[5][3] = {{perks::ASH_VEIL, perks::LAST_LIGHT, perks::SECOND_WICK},
+                                        {perks::EMBER_WARD, perks::LAST_LIGHT, perks::ASH_VEIL},
+                                        {perks::KINDLE_RUSH, perks::STEADY_HAND, perks::LAST_LIGHT},
+                                        {perks::SECOND_WICK, perks::LAST_LIGHT, perks::ASH_VEIL},
+                                        {perks::LAST_LIGHT, perks::SPITE_SPARK, perks::ASH_VEIL}};
+    const int c = std::clamp(cls, 0, 4);
+    std::string why;
+    learnPerk(heroIdx, 2, kArtsPick[c][0], &why);
+    learnPerk(heroIdx, 1, kWardPick[c][0], &why);
+    learnPerk(heroIdx, 1, kWardPick[c][1], &why);
+    learnPerk(heroIdx, 2, kArtsPick[c][1], &why);
+    if (p.artSlots() > 2) learnPerk(heroIdx, 2, kArtsPick[c][2], &why);
+    if (p.wardSlots() > 2) learnPerk(heroIdx, 1, kWardPick[c][2], &why);
+    // Steady Flames: the main stat's flame (flame ids 0-5 follow the stats), CON, Bright Edge, Thick Wax, DEX.
+    for (int id : {main, static_cast<int>(perks::DEEP_TALLOW), static_cast<int>(perks::BRIGHT_EDGE),
+                   static_cast<int>(perks::THICK_WAX), static_cast<int>(perks::QUICKWICK)}) {
+        while (p.embersFree() >= 1 && p.flames[static_cast<size_t>(id)] < p.flameCap())
+            if (!learnPerk(heroIdx, 0, id, &why)) break;
+    }
+    p.calculateAC();
+    p.applyStatsForLevel();
+    p.currentHp = p.maxHp;
+    p.resources = p.maxResources;
 }
 #endif
 

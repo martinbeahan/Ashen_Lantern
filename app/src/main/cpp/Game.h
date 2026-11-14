@@ -2,6 +2,7 @@
 #define DND_GAME_H
 
 #include "GameLogic.h"
+#include "CombatCurve.h"
 #include "QuestScript.h"
 #include <vector>
 #include <sstream>
@@ -110,7 +111,9 @@ public:
     static std::string clearPrestigeInSave(const std::string& data);
 #ifndef NDEBUG
     /** DEBUG BUILDS ONLY (compiled out under NDEBUG): hero + companion to level 50, story complete. */
-    bool debugJumpToRekindleReady();
+    bool debugJumpToRekindleReady(bool buildLikeAPlayer = true);
+    /** Debug builds only: spend points / Embers like a player and bring gear up to the level. */
+    void debugBuildLikeAPlayer(int heroIdx);
 #endif
     void playerInteract(const std::string& playerName);
     void playerRest(bool force = false);
@@ -330,6 +333,8 @@ public:
     bool encounterCurveActive() const { return isHost_ && !dmOnlyTable_; }
     /** The party's Encounter Level right now (incl. mode bonus). */
     int currentEncounterLevel() const;
+    /** v2.33: the EL with its offense / defense axes (foe HP + AC, damage + to-hit). */
+    curve::EncounterLevels currentEncounterLevels() const;
     /** Pressure steps (0..4): +5% room budget and +5% XP/gold each. */
     int getPressure() const { return pressure_; }
     /** Rooms left with the Rekindle comeback (-20% budget). */

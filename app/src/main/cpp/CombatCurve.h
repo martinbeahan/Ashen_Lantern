@@ -20,7 +20,9 @@
 #include "GameLogic.h"
 #include <algorithm>
 #include <array>
+#include <memory>
 #include <cmath>
+#include <utility>
 #include <vector>
 
 namespace dnd {
@@ -76,7 +78,7 @@ inline const DifficultyInfo& difficultyInfo(int d) {
         {0.85, 0.85, -1, 0.9, 4},  // Easy
         {1.00, 1.00, 0, 1.2, 4},   // Medium
         {1.12, 1.08, 1, 1.4, 4},   // Hard
-        {1.25, 1.15, 1, 1.6, 5},   // Nightmare
+        {1.15, 1.22, 1, 1.6, 5},   // Nightmare (v2.33: HP 1.25 -> 1.15 for shorter boss fights, damage 1.15 -> 1.22 keeps the risk)
     };
     return kDiff[std::clamp(d, 0, 3)];
 }
@@ -111,6 +113,8 @@ constexpr int kMaxEL = 64;
 /** EL weights. */
 constexpr double kGearFollow = 0.5;
 constexpr double kPrestigeFollow = 0.25;
+/** v2.33: each spent Ember adds this much EL (30 from levels = +4.5 EL), well under what it buys. */
+constexpr double kEmberFollow = 0.10;
 constexpr int kGearSurplusMin = -4;
 constexpr int kGearSurplusMax = 8;
 constexpr int kElBelowLevel = 2;
@@ -249,12 +253,17 @@ inline const RefStats& reference(int el) {
         legacyReferenceForSim() = saved;
         return t;
     };
-    static const std::array<RefStats, kMaxEL + 1> kTable = build(false);
-    if (legacyReferenceForSim()) {
-        static const std::array<RefStats, kMaxEL + 1> kLegacy = build(true);
-        return kLegacy[static_cast<size_t>(std::clamp(el, 1, kMaxEL))];
+    // v2.33: one table per sim-flag combination (the app only ever uses {false, false}). Before,
+    // the first caller's perks::legacyLevelRulesForSim() leaked into the shipped table in the sims.
+    // The app's table is a function-local static (thread-safe init); the sim-only ones are lazy.
+    const size_t key = (legacyReferenceForSim() ? 1u : 0u) | (perks::legacyLevelRulesForSim() ? 2u : 0u);
+    if (key == 0) {
+        static const std::array<RefStats, kMaxEL + 1> kTable = build(false);
+        return kTable[static_cast<size_t>(std::clamp(el, 1, kMaxEL))];
     }
-    return kTable[static_cast<size_t>(std::clamp(el, 1, kMaxEL))];
+    static std::array<std::unique_ptr<std::array<RefStats, kMaxEL + 1>>, 4> cache;
+    if (!cache[key]) cache[key] = std::make_unique<std::array<RefStats, kMaxEL + 1>>(build(legacyReferenceForSim()));
+    return (*cache[key])[static_cast<size_t>(std::clamp(el, 1, kMaxEL))];
 }
 
 /** Early-level grace on enemy HP and damage. */
@@ -273,26 +282,41 @@ struct FoeStats {
 };
 
 /**
- * Foe numbers for a role at an EL. hpScale is the room-budget fit (and comeback / pressure);
- * partySize scales a boss's HP (x party/2). accuracyEl (default = el) sets AC and to-hit: mode
- * bonuses raise HP and damage to the bonus EL but keep the hit odds of the party's own EL.
+ * v2.33: foe numbers on two axes. offEl is the level the party's OFFENSE fights at (sets foe AC
+ * and HP, so fights last as long as the model hero's), defEl the level its DEFENSE holds at (sets
+ * foe to-hit and damage, so the risk matches). For a hero built like the model both equal the
+ * EL. modeBonus (Raid +2 ...) raises HP and damage, never the hit odds.
  */
-inline FoeStats foeStats(Role role, int el, int difficulty, int partySize, double hpScale = 1.0,
-                         int accuracyEl = 0) {
-    const RefStats& ref = reference(el);
-    const RefStats& acc = reference(accuracyEl > 0 ? accuracyEl : el);
+inline FoeStats foeStatsSplit(Role role, int offEl, int defEl, int modeBonus, int difficulty, int partySize,
+                              double hpScale = 1.0) {
+    offEl = std::max(1, offEl); defEl = std::max(1, defEl);
+    const RefStats& offRef = reference(offEl + modeBonus);
+    const RefStats& defRef = reference(defEl + modeBonus);
+    const RefStats& offAcc = reference(offEl);
+    const RefStats& defAcc = reference(defEl);
     const RoleInfo& ri = roleInfo(role);
     const DifficultyInfo& di = difficultyInfo(difficulty);
-    const double grace = earlyGrace(el);
-    double hp = ref.dmg * ri.hitsToKill * di.hp * grace * hpScale;
+    double hp = offRef.dmg * ri.hitsToKill * di.hp * earlyGrace(offEl + modeBonus) * hpScale;
     if (role == Role::BOSS) hp *= std::max(1, partySize) / 2.0;
-    const double dmg = std::max(3.0, ref.hp / ri.hitsToDown * di.dmg * grace);
+    const double dmg = std::max(3.0, defRef.hp / ri.hitsToDown * di.dmg * earlyGrace(defEl + modeBonus));
     FoeStats s;
-    s.ac = static_cast<int>(std::lround(acc.atk + 8 + ri.dAC));
-    s.toHit = static_cast<int>(std::lround(acc.ac - 11 + ri.dHit + di.hit));
+    s.ac = static_cast<int>(std::lround(offAcc.atk + 8 + ri.dAC));
+    s.toHit = static_cast<int>(std::lround(defAcc.ac - 11 + ri.dHit + di.hit));
     s.maxHp = std::max(4, static_cast<int>(hp));
     s.avgDmgX10 = static_cast<int>(std::lround(dmg * 10));
     return s;
+}
+
+/**
+ * Foe numbers for a role at an EL. hpScale is the room-budget fit (and comeback / pressure);
+ * partySize scales a boss's HP (x party/2). accuracyEl (default = el) sets AC and to-hit: mode
+ * bonuses raise HP and damage to the bonus EL but keep the hit odds of the party's own EL.
+ * (Single-axis form of foeStatsSplit; same numbers as v2.29-v2.32.)
+ */
+inline FoeStats foeStats(Role role, int el, int difficulty, int partySize, double hpScale = 1.0,
+                         int accuracyEl = 0) {
+    const int acc = accuracyEl > 0 ? accuracyEl : el;
+    return foeStatsSplit(role, acc, acc, el - acc, difficulty, partySize, hpScale);
 }
 
 /** Room budget in threat units. */
@@ -303,40 +327,111 @@ inline double roomBudget(int partySize, int difficulty, double roomType) {
 /** Expected total gear bonus (weapon + armor above its base) at level L: L/2 per slot. */
 inline double expectedGear(int level) { return 2.0 * (level / 2); }
 
-struct PartyMember { int level; int weaponBonus; int armorBonus; int armorBase; int prestige; };
+/** v2.33: measured = the character's own numbers (to-hit, AC, HP, damage per hit) are in
+ *  `actual` (solo only); embers = Embers spent on the Kindled Path. */
+struct PartyMember {
+    int level; int weaponBonus; int armorBonus; int armorBase; int prestige;
+    bool measured = false; RefStats actual{0, 0, 0, 0};
+    int embers = 0;
+};
+
+inline double hitChance(int bonus, int ac);
+constexpr double kPowerMatch = 0.97;
+/** Class features that grow with level alone (special uses, heals, potions scaling with max HP)
+ *  aren't in the swing-by-swing defense measure, so a share of the level counts there. Offense
+ *  gets none: foe HP and AC past what the party can actually hit turn fights hopeless. */
+constexpr double kDefenseLevelShare = 0.15;
+struct AxisPower { double off, def; };
+/** The party's numbers against the standard foe built for the Reference Lamplighter at L,
+ *  relative to the Reference Lamplighter itself (1.0 = exactly the model). */
+inline AxisPower powerVs(const RefStats& me, const RefStats& ref) {
+    const RoleInfo& ri = roleInfo(Role::SKIRMISHER);
+    const int foeAc = static_cast<int>(std::lround(ref.atk + 8 + ri.dAC));
+    const int foeHit = static_cast<int>(std::lround(ref.ac - 11 + ri.dHit));
+    auto chance = [](double bonus, int ac) { return std::max(0.05, hitChance(static_cast<int>(std::lround(bonus)), ac)); };
+    auto struck = [&](double ac) { return std::max(0.05, hitChance(foeHit, static_cast<int>(std::lround(ac)))); };
+    const double off = chance(me.atk, foeAc) * std::max(1.0, me.dmg) / (chance(ref.atk, foeAc) * std::max(1.0, ref.dmg));
+    const double def = (std::max(1.0, me.hp) / struck(me.ac)) / (std::max(1.0, ref.hp) / struck(ref.ac));
+    return {off, def};
+}
+/** How many levels below `level` the party's offense / defense really sit (0 = at the model). */
+inline std::pair<double, double> powerGaps(const RefStats& me, int level) {
+    const RefStats& atLevel = reference(level);
+    const AxisPower top = powerVs(me, atLevel);
+    int off = top.off >= kPowerMatch ? level : 1, def = top.def >= kPowerMatch ? level : 1;
+    for (int L = level - 1; L > 1 && (off == 1 || def == 1); --L) {
+        const AxisPower p = powerVs(me, reference(L));
+        if (off == 1 && p.off >= kPowerMatch) off = L;
+        if (def == 1 && p.def >= kPowerMatch) def = L;
+    }
+    const double defBlend = def + kDefenseLevelShare * (level - def);
+    return {static_cast<double>(level - off), level - defBlend};
+}
+
+/** v2.33: the EL on both axes. el (with the mode bonus) is shown, saved and pays XP; offEl /
+ *  defEl (no mode bonus) set the foes' HP + AC and damage + to-hit (foeStatsSplit). */
+struct EncounterLevels { int el = 1; int offEl = 1; int defEl = 1; int mode = 0; };
 
 /**
  * Encounter Level:
  *   EL = round(avgLevel + 0.5 x clamp(gearSurplus, -4, +8) + 0.25 x prestige)
- *   clamped to [avgLevel - 2, avgLevel + 6] (min 1), then + modeBonus.
+ *   clamped to [avgLevel - 2, avgLevel + 6] (min 1).
+ *   v2.33: + 0.15 x Embers spent (solo; 30 Embers = +4.5, far less than they buy).
+ * v2.33: the foes follow the party's ACTUAL power on two axes, never above that EL:
+ *   offEl = min(EL, round(avgLevel - offense gap + 0.25 x prestige + 0.15 x Embers))  (foe HP, AC)
+ *   defEl = min(EL, round(avgLevel - defense gap + ...))                           (foe damage, to-hit)
+ *   where a gap is how many levels below its own level the hero's numbers really sit.
+ * A hero built like the model hero of its level has offEl = defEl = EL (no change); one with
+ * points or Embers unspent or old gear faces foes matched to what it actually hits and survives.
+ * The shown EL is round((offEl + defEl) / 2) + modeBonus.
  */
-inline int encounterLevel(const std::vector<PartyMember>& party, int modeBonus) {
-    if (party.empty()) return std::clamp(1 + modeBonus, 1, kMaxEL);
-    double lv = 0, surplus = 0, prestige = 0;
+inline EncounterLevels encounterLevels(const std::vector<PartyMember>& party, int modeBonus) {
+    EncounterLevels out;
+    out.mode = modeBonus;
+    if (party.empty()) {
+        out.el = std::clamp(1 + modeBonus, 1, kMaxEL);
+        return out;
+    }
+    double lv = 0, surplus = 0, prestige = 0, embers = 0;
+    RefStats me{0, 0, 0, 0};
+    bool measured = true;
     for (const auto& m : party) {
         lv += m.level;
         surplus += (m.weaponBonus + m.armorBonus - m.armorBase) - expectedGear(m.level);
         prestige += m.prestige;
+        embers += std::max(0, m.embers);
+        measured = measured && m.measured;
+        me.atk += m.actual.atk; me.ac += m.actual.ac; me.hp += m.actual.hp; me.dmg += m.actual.dmg;
     }
     const double n = static_cast<double>(party.size());
-    lv /= n; surplus /= n; prestige /= n;
+    lv /= n; surplus /= n; prestige /= n; embers /= n;
+    me.atk /= n; me.ac /= n; me.hp /= n; me.dmg /= n;
+    // The party's average numbers against the Reference Lamplighter (the Fighter / Wizard average
+    // every foe is built from) — so a weak-hitting party (Cleric + Wizard) gets shorter fights too.
+    double offGap = 0, defGap = 0;
+    if (measured) {
+        const auto g = powerGaps(me, std::clamp(static_cast<int>(std::lround(lv)), 1, kTableMaxLevel));
+        offGap = g.first; defGap = g.second;
+    }
     surplus = std::clamp(surplus, static_cast<double>(kGearSurplusMin), static_cast<double>(kGearSurplusMax));
-    double el = std::round(lv + kGearFollow * surplus + kPrestigeFollow * prestige);
+    double el = std::round(lv + kGearFollow * surplus + kPrestigeFollow * prestige + kEmberFollow * embers);
     el = std::clamp(el, lv - kElBelowLevel, lv + kElAboveLevel);
     const int base = std::max(1, static_cast<int>(std::lround(el)));
-    return std::clamp(base + modeBonus, 1, kMaxEL);
+    auto axis = [&](double gap) {
+        if (gap < 0.5) return base; // built like the model (or better): the EL as is
+        const double a = lv - gap + kPrestigeFollow * prestige + kEmberFollow * embers;
+        return std::clamp(static_cast<int>(std::lround(a)), 1, base);
+    };
+    out.offEl = axis(offGap);
+    out.defEl = axis(defGap);
+    const int shown = static_cast<int>(std::lround((out.offEl + out.defEl) / 2.0));
+    out.el = std::clamp(shown + modeBonus, 1, kMaxEL);
+    return out;
+}
+inline int encounterLevel(const std::vector<PartyMember>& party, int modeBonus) {
+    return encounterLevels(party, modeBonus).el;
 }
 
-inline PartyMember memberOf(const Character& c) {
-    PartyMember m;
-    m.level = c.level;
-    // v2.33: a Rekindled hero's gear counts as attuned (level / 2 + 3); the companion's rank is half.
-    m.weaponBonus = c.weaponBonusEff();
-    m.armorBonus = c.armorBonusEff();
-    m.armorBase = starterArmorBase(c.characterClass);
-    m.prestige = c.prestigeShare();
-    return m;
-}
 
 /**
  * Hit clamp. die = natural d20, bonus = everything added to it, ac = target AC.
@@ -386,6 +481,45 @@ inline double pressureMultiplier(int pressure) {
 inline double fitScale(double target, double cost) {
     if (cost <= 0) return 1.0;
     return std::clamp(target / cost, 0.5, 1.75);
+}
+
+/** v2.33: a character's own numbers, read like the model hero's (CombatCurve.h referenceFor). */
+/** How much damage per turn each class really deals next to a swing-by-swing hit, measured with
+ *  the shipped party AI in tools/combat_sim (boss + escort rounds by party). The Reference
+ *  Lamplighter is the Fighter / Wizard average (1.4 + 0.6 = 2 x 1.0), so that party is unchanged.
+ *  Only used to measure power, never on real damage. */
+inline double classOffenseFactor(CharacterClass c) {
+    switch (c) {
+        case CharacterClass::FIGHTER: return 1.4;  // Action Surge, Second Wind, heavy hits
+        case CharacterClass::WIZARD: return 0.6;   // (Fighter + Wizard average to 1.0: the model)
+        case CharacterClass::CLERIC: return 0.45;  // most turns go to heals and support
+        case CharacterClass::ROGUE: return 2.0;    // Sneak Attack
+        case CharacterClass::BARD: return 0.8;     // inspiration and heals
+    }
+    return 1.0;
+}
+inline RefStats actualStats(const Character& c) {
+    const int mod = CombatSystem::getPrimaryModifier(c);
+    const int pb = CombatSystem::proficiencyBonusForLevel(c.level);
+    const int wb = c.weaponBonusEff();
+    return {static_cast<double>(mod + pb + wb), static_cast<double>(c.armorClass), static_cast<double>(c.maxHp),
+            ((c.weaponDamageDie() + 1) / 2.0 + mod + wb) * classOffenseFactor(c.characterClass)};
+}
+/** measurePower = false (online Keeper tables, the classic rules): EL from level and gear only, as v2.32. */
+inline PartyMember memberOf(const Character& c, bool measurePower = true) {
+    PartyMember m;
+    m.level = c.level;
+    // v2.33: a Rekindled hero's gear counts as attuned (level / 2 + 3); the companion's rank is half.
+    m.weaponBonus = c.weaponBonusEff();
+    m.armorBonus = c.armorBonusEff();
+    m.armorBase = starterArmorBase(c.characterClass);
+    m.prestige = c.prestigeShare();
+    if (measurePower) {
+        m.measured = true;
+        m.actual = actualStats(c);
+        m.embers = std::min(c.embersSpent(), c.embersEarned());
+    }
+    return m;
 }
 
 } // namespace curve
