@@ -25,7 +25,7 @@ intents or statuses (`getEnemyIntents()` returns only its header).
 
 | Difficulty | Tier | Rules |
 |---|---|---|
-| Easy | Sloppy | 30% random target, ±30% score noise, never weights healers, tricks only half the time they are ready, cooldowns +1, never flees |
+| Easy | Sloppy | 45% random target (v2.33; was 30%), half the pull toward a wounded hero and no "finish the weak one" bonus (v2.33), ±30% score noise, never weights healers, tricks only half the time they are ready, cooldowns +1, never flees |
 | Medium | Tactical | Role rules, ±15% noise, heals allies below 40%, flees when allowed |
 | Hard | Coordinated | No noise; foes share a focus target (+25 per other foe on the same hero, up to 2); casters rattle the healer |
 | Nightmare | Ruthless | As Hard, heals below 50%, cooldowns −1, a brute may **finish a downed hero** — only after a `WARNING!` banner a turn ahead |

@@ -88,6 +88,10 @@ int main() {
         CHECK(ai::pickTarget({fighter, cleric}, ai::Tier::TACTICAL, 0, flat, 0.9) == 1); // healer focus
         CHECK(ai::scoreTarget(cleric, ai::Tier::SLOPPY, 0) == ai::scoreTarget(fighter, ai::Tier::SLOPPY, 0)); // never on Easy
         CHECK(ai::pickTarget({fighter, hurt}, ai::Tier::COORDINATED, 0, flat, 0.9) == 1); // wounded
+        // v2.33: Easy foes feel the wounded hero's pull far less (no gang-up on the weak one).
+        CHECK(ai::scoreTarget(hurt, ai::Tier::SLOPPY, 0) - ai::scoreTarget(fighter, ai::Tier::SLOPPY, 0)
+              < 0.5 * (ai::scoreTarget(hurt, ai::Tier::TACTICAL, 0) - ai::scoreTarget(fighter, ai::Tier::TACTICAL, 0)));
+        CHECK(ai::kSloppyRandomTarget > 0.30);
         ai::HeroView down = fighter; down.downed = true; down.hp = 0;
         CHECK(ai::pickTarget({down, fighter}, ai::Tier::RUTHLESS, 0, flat, 0.9) == 1); // standing first
         CHECK(ai::pickTarget({down}, ai::Tier::RUTHLESS, 0, flat, 0.9) == 0);
@@ -231,6 +235,24 @@ int main() {
             T::plan(g, 0);
             CHECK(moveOf(g, 0) != ai::Move::FINISH_DOWNED);
             CHECK(T::foe(g, 0).ai.target != 1);
+        }
+        // v2.33 fix: the marked hero died before the blow — the brute strikes the other fallen hero
+        // instead (it used to end its turn with no new plan and stall the fight forever).
+        {
+            Game g; setup(g, 3, {"enemy_brute"}, 7);
+            Character& hero = T::hero(g, 0);
+            Character& comp = T::hero(g, 1);
+            hero.takeDamage(hero.maxHp); hero.isStable = true;  // stable, unconscious
+            comp.takeDamage(comp.maxHp); comp.isDead = true;    // the planned target is gone
+            T::foe(g, 0).ai.move = static_cast<int>(ai::Move::FINISH_DOWNED);
+            T::foe(g, 0).ai.target = 1;
+            T::foe(g, 0).curveToHit = 200;
+            T::run(g, 0);
+            CHECK(!hero.isStable || hero.isDead || hero.deathSaveFailures > 0);
+            CHECK(moveOf(g, 0) != ai::Move::FINISH_DOWNED || T::foe(g, 0).ai.target != 1);
+            int steps = 0;
+            while (!g.isGameOver() && !g.getEnemies().empty() && steps < 400) { g.processTurn(); ++steps; }
+            CHECK(g.isGameOver()); // the fight ends (party falls) instead of looping
         }
         std::cout << "DOWNED: only a Nightmare brute strikes the fallen, warned a turn ahead\n";
     }

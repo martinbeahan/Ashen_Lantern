@@ -175,19 +175,24 @@ struct HeroView {
     int focus = 0;          // other foes already aiming at this hero (Coordinated focus fire)
 };
 
-/** 40·missing% + 30·healer + 20·[<35%] + 2·(15−AC) + 15·Marked + 25·hit me (+ focus share). */
+/** Easy (Sloppy) foes swing at a random standing hero this often (v2.33: was 30%). */
+constexpr double kSloppyRandomTarget = 0.45;
+/** 40·missing% + 30·healer + 20·[<35%] + 2·(15−AC) + 15·Marked + 25·hit me (+ focus share).
+ *  v2.33 Easy (Sloppy): half the missing-HP pull and no "finish the weak one" bonus, so Easy
+ *  foes don't gang up on a hurt hero. */
 inline double scoreTarget(const HeroView& h, Tier tier, int behaviour) {
     if (!h.alive) return -1e9;
+    const bool sloppy = tier == Tier::SLOPPY;
     const double missing = h.maxHp > 0 ? 1.0 - static_cast<double>(h.hp) / h.maxHp : 0.0;
-    double s = 40.0 * missing;
-    if ((h.healer || h.healedRecently) && tier != Tier::SLOPPY) s += 30.0; // Sloppy never focuses healers
-    if (h.maxHp > 0 && h.hp * 100 < h.maxHp * 35) s += 20.0;
+    double s = (sloppy ? 20.0 : 40.0) * missing;
+    if ((h.healer || h.healedRecently) && !sloppy) s += 30.0; // Sloppy never focuses healers
+    if (!sloppy && h.maxHp > 0 && h.hp * 100 < h.maxHp * 35) s += 20.0;
     s += 2.0 * (15 - h.ac);
     if (h.marked) s += 15.0;
     if (h.hitMe) s += 25.0;
     if (tier >= Tier::COORDINATED) s += 25.0 * std::min(h.focus, 2); // share one focus target
     switch (behaviour) {
-        case bestiary::BEH_FINISHER: s += 80.0 * missing; break;          // lowest HP%
+        case bestiary::BEH_FINISHER: s += (sloppy ? 30.0 : 80.0) * missing; break; // lowest HP%
         case bestiary::BEH_BACKSTAB: s += 6.0 * (15 - h.ac); break;      // lowest AC
         case bestiary::BEH_PACK: s += 20.0 * std::min(h.focus, 3) + 20.0 * missing; break;
         default: break;
@@ -212,7 +217,7 @@ inline int pickTarget(const std::vector<HeroView>& heroes, Tier tier, int behavi
             if (heroes[i].alive) { best = static_cast<int>(i); break; }
         return best;
     }
-    if (tier == Tier::SLOPPY && roll01 < 0.30) {
+    if (tier == Tier::SLOPPY && roll01 < kSloppyRandomTarget) {
         const int pick = std::min(static_cast<int>(up.size()) - 1, static_cast<int>(noise01.empty() ? 0 : noise01[0] * up.size()));
         return up[static_cast<size_t>(std::max(0, pick))];
     }

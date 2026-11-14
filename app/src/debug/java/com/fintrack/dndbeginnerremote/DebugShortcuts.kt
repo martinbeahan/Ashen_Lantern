@@ -9,7 +9,8 @@ import android.widget.Toast
 /**
  * DEBUG BUILDS ONLY (src/debug). Test shortcut for v2.33 Rekindling: in Settings, during a solo
  * adventure, "Debug: level 50 + story complete" puts the hero and companion at level 50 with the
- * story finished, so the Rekindle explainer can be tested without a 120,000 XP climb.
+ * story finished, so the Rekindle explainer can be tested without a 120,000 XP climb. v2.33 rebalance:
+ * the native side also spends every stat point and Ember and gives level-50 gear, like a real player.
  *
  * The release source set has a no-op [DebugShortcuts] instead, and the native entry point is
  * compiled out of release (NDEBUG). app/build.gradle.kts `verifyReleaseHasNoDebugShortcuts` fails
@@ -36,7 +37,7 @@ object DebugShortcuts {
                     Log.e(MARKER, "debug shortcut failed", t); false
                 }
                 if (ok) {
-                    Toast.makeText(activity, "[debug] Party is level 50 and the story is complete.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(activity, "[debug] Party is level 50 (points, Embers and gear filled in) and the story is complete.", Toast.LENGTH_LONG).show()
                     onApplied()
                 } else {
                     Toast.makeText(activity, "[debug] Start or continue a solo adventure (outside a fight) first.", Toast.LENGTH_LONG).show()

@@ -35,7 +35,8 @@ object GearIcons {
     /** Every item name the native game can create (see GearIconsTest). Names are untouched here. */
     val BY_NAME: Map<String, String> = linkedMapOf(
         *(names(SWORD, "Longsword", "Champion's Longsword", "Fighter's Arming Sword", "Steel Blade",
-            "Runed Blade", "Traveler Blade", "Traveler's Blade", "Crownbreaker", "Emberdeep Relic Blade") +
+            "Runed Blade", "Traveler Blade", "Traveler's Blade", "Crownbreaker", "Emberdeep Relic Blade",
+            "Lampwright's Blade") +
         names(SHORT_BLADE, "Shortsword", "Silent Shortsword", "Rogue's Stiletto", "Shadow Dirk", "Nightwhisper") +
         names(RAPIER, "Rapier", "Stage Rapier", "Bard's Stage Rapier", "Songsteel Rapier") +
         names(STAFF, "Quarterstaff", "Focus Staff", "Wizard's Focus Rod", "Starfall Focus") +
@@ -49,7 +50,7 @@ object GearIcons {
         names(CLOTH, "Traveler Clothes", "Scholar Robes", "Wizard's Robe", "Temple Vestments",
             "Archsage Mantle", "Sturdy Cloak") +
         names(MAIL, "Chain Shirt", "Scale Mail", "Reinforced Mail", "Bulwark Mail", "Fighter's Mail",
-            "Reliquary Mail", "Emberdeep Relic Mail", "Cleric's Scale") +
+            "Reliquary Mail", "Emberdeep Relic Mail", "Cleric's Scale", "Lampwright's Mail") +
         names(PLATE, "Knight Plate", "Sanctum Plate", "Aegis of Millhollow") +
         names(COAT, "Troubadour Coat") +
         names(POTION, "Healing Draught", "Greater Potion") +

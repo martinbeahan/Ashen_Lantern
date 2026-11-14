@@ -66,7 +66,8 @@ static void solo(Game& g, CharacterClass hero, CharacterClass comp, unsigned see
     T::quiet(g);
 }
 /** Level 50 with the story done, through the debug shortcut (debug builds and tests only). */
-static void ready(Game& g) { CHECK(g.debugJumpToRekindleReady()); }
+// The bare jump (points / Embers left to spend, gear untouched) — the tests spend them by hand.
+static void ready(Game& g) { CHECK(g.debugJumpToRekindleReady(false)); }
 
 int main() {
     // ------------------------------------------------------------ Numbers
@@ -261,7 +262,7 @@ int main() {
         // A v2.32 save (37 fields): rank 0, no 3rd slots, explainer not seen.
         Game o; o.setAsHost(true);
         Game base; solo(base, CharacterClass::ROGUE, CharacterClass::CLERIC, 8);
-        base.debugJumpToRekindleReady();
+        base.debugJumpToRekindleReady(false);
         const std::string v232 = editPlayers(base.serialize(), 37);
         CHECK(playerFieldCount(v232) == 37);
         CHECK(o.deserialize(v232));
@@ -344,6 +345,60 @@ int main() {
         }
         CHECK(finished == fights);
         std::cout << "FIGHTS: " << finished << "/" << fights << " level-1 fights at ranks I / V / X finished (" << won << " won)\n";
+    }
+
+    // ------------------------------------------------------------ v2.33 rebalance: EL follows real power
+    {
+        // The bare jump: level 50, every point and Ember unspent, starter gear (the old shortcut).
+        Game bare; solo(bare, CharacterClass::FIGHTER, CharacterClass::WIZARD, 21);
+        T::storyDone(bare, true);
+        CHECK(bare.debugJumpToRekindleReady(false));
+        const curve::EncounterLevels b = bare.currentEncounterLevels();
+        CHECK(b.offEl < 20 && b.defEl < 35 && b.el < 30);  // no full-power level-50 foes
+        CHECK(b.offEl <= b.defEl);                        // offense is what's missing most
+        // Online Keeper rules: no measuring, the v2.32 level + gear EL (gear floor: level - 2).
+        {
+            std::vector<curve::PartyMember> pm;
+            for (const auto& p : bare.getPlayers()) pm.push_back(curve::memberOf(*p, false));
+            const curve::EncounterLevels o = curve::encounterLevels(pm, 0);
+            CHECK(o.el == 48 && o.offEl == 48 && o.defEl == 48);
+        }
+        // The debug shortcut now builds the hero like a player: points, Embers and gear all used.
+        Game built; solo(built, CharacterClass::FIGHTER, CharacterClass::WIZARD, 21);
+        T::storyDone(built, true);
+        CHECK(built.debugJumpToRekindleReady());
+        for (size_t i = 0; i < 2; ++i) {
+            const Character& p = T::hero(built, i);
+            CHECK(p.level == 50 && p.embersFree() == 0 && p.wardsLearned != 0 && p.artsLearned != 0);
+            CHECK(p.pendingStatPoints == 0 || !p.canRaise(p.mainStatIndex()));
+            CHECK(p.equippedWeapon && p.equippedWeapon->bonus >= 25);
+            CHECK(p.equippedArmor && p.equippedArmor->bonus >= curve::starterArmorBase(p.characterClass) + 25);
+            CHECK(p.inventory.size() >= 2); // the starter pieces went to the bag
+        }
+        const curve::EncounterLevels k = built.currentEncounterLevels();
+        CHECK(k.offEl == k.defEl && k.el >= 50 && k.el <= 56); // at (or above) the model: full EL
+        // A model hero is measured at its own level on both axes (no change for built heroes).
+        {
+            std::vector<curve::PartyMember> pm;
+            for (CharacterClass c : {CharacterClass::FIGHTER, CharacterClass::WIZARD}) {
+                Character r = curve::makeReferenceHero(c, 30);
+                r.statRules = true;
+                pm.push_back(curve::memberOf(r, true));
+            }
+            const curve::EncounterLevels m = curve::encounterLevels(pm, 2);
+            CHECK(m.offEl == 30 && m.defEl == 30 && m.el == 32 && m.mode == 2);
+        }
+        // Spent Embers count a little (+0.1 EL each), never as much as they buy.
+        CHECK(std::abs(curve::kEmberFollow - 0.10) < 1e-9);
+        // Split foe numbers: a low offense level means less HP and AC; defense sets the hits.
+        const curve::FoeStats lo = curve::foeStatsSplit(curve::Role::SKIRMISHER, 10, 30, 0, 1, 2);
+        const curve::FoeStats hi = curve::foeStatsSplit(curve::Role::SKIRMISHER, 30, 30, 0, 1, 2);
+        CHECK(lo.maxHp < hi.maxHp && lo.ac < hi.ac && lo.toHit == hi.toHit && lo.avgDmgX10 == hi.avgDmgX10);
+        CHECK(curve::foeStats(curve::Role::BOSS, 32, 1, 2, 1.0, 30).maxHp
+              == curve::foeStatsSplit(curve::Role::BOSS, 30, 30, 2, 1, 2).maxHp); // single-axis form unchanged
+        std::cout << "REBALANCE: EL follows the party's real offense / defense (bare L50: EL " << b.el
+                  << ", off " << b.offEl << ", def " << b.defEl << "); debug shortcut builds like a player (EL "
+                  << k.el << "); online unmeasured\n";
     }
 
     if (failures) { std::cerr << failures << " failure(s)\n"; return 1; }

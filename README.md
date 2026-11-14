@@ -8,6 +8,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 ## What's new (v2.33 / 72) — Rekindling (prestige)
 
+- **Rebalance: the Encounter Level follows your real power.** Foes used to assume a hero who had spent every point and wore the gear for the level, so an under-geared or unspent hero met full-power foes (a level-50 hero with nothing spent lost every fight, even on Easy). Now foe HP and armor follow what your party actually hits, and foe damage follows what it can take; a well-built party sees no change, spent Embers add a little (+0.1 EL each). Nightmare bosses are shorter (HP ×1.15, damage ×1.22), Easy foes gang up less on a wounded hero, and a Nightmare foe can no longer stall a fight by aiming at a hero who already died. Numbers in [`docs/COMBAT_CURVE.md`](docs/COMBAT_CURVE.md)
 - **Rekindling, optional.** At **level 50 with the story complete**, a plain-language explainer offers to *Rekindle*: start again at level 1, stronger for good. **Not now** changes nothing, and the Sheet keeps a **Ready to Rekindle** button; Rekindling happens only after a second confirmation that lists what resets and what's kept. Solo only
 - **What resets / what's kept** — level, attribute points and the Kindled Path reset (every Ember back, plus a free Re-temper). Kept: all gear and upgrades, gold, the story and every mode it unlocked, the Memory Ledger, Raid Keys and records, and the story +2 HP / +1 use padding
 - **10 ranks, I–X** — every rank: +1 to every attribute and every cap, +2% max HP, +1 Ember, +5% XP and gold. II: Steady Flames to rank 6 · III: a **3rd Ward** slot · IV: catch-up XP ×1.5 below your peak level · V: a **3rd Lantern Art** slot · VI: +1 class special use · VIII: ember-white badge · IX: +2 Embers (Ember cap 42) · X: *Everflame*. Rank I also unlocks Mythical gear and The Drowned Vigil — **coming in the next update**
@@ -15,7 +16,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Companion** Rekindles with you at half your rank (rounded down). Each rank adds a quarter level to the Encounter Level
 - **Per save slot** — the rank lives in that slot's save; the Adventures card reads "Lv 12 · Fighter · Rekindled III" with an amber lantern-flame badge (Everflame's gentle pulse is still with *Reduce flashing*)
 - **Nightmare** — a party wipe ends the run and the rank goes with it (an endgame wipe restores the story hero without its rank); the menu, the Rekindle dialogs and every endgame entry warn first
-- **Saves** — 4 player fields appended (37–40); v2.32 heroes load at rank 0. Online Host / Join unchanged. See [`docs/PRESTIGE.md`](docs/PRESTIGE.md) for every number, the balance tables and the debug-build test shortcut
+- **Saves** — 4 player fields appended (37–40); v2.32 heroes load at rank 0. Online Host / Join unchanged. See [`docs/PRESTIGE.md`](docs/PRESTIGE.md) for every number, the balance tables and the debug-build test shortcut (it now spends points and Embers and gives level-50 gear, like a real player)
 
 ## Previous (v2.32 / 71) — Level cap 50 and the Kindled Path
 
