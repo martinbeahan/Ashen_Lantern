@@ -6,7 +6,16 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.29 / 68) — Combat curve
+## What's new (v2.30 / 69) — Enemy AI
+
+- **Foes show their next move** — a small **intent chip** sits above each foe: ⚔ attack, ⚒ heavy hit, 🛡 guard, 🔥 spell, ♥ heal, ◉ mark, ➜ flee (plus ✚ buff, ✦ summon, ✖ hex). Long-press a chip for the full line ("Snuff → Mira (next turn)"). Once your party's best **INT is 14+** the chip also shows the number (damage or healing). Both are Settings toggles under **Combat**. Heroes show their statuses (🔥 Burning, ◉ Marked, ⛓ Shackled, ⌛ Slowed…)
+- **Every foe has a role and a plan** — all 27 enemy IDs are mapped to the seven roles. Foes focus fire on healers and wounded heroes and go after whoever just hit them; Wickthieves snatch gold and **slip away** at low HP (you keep half the XP, and the gold comes back if you kill them first); hounds hunt as a pack and can flee too; Ashbound raise shield-walls; Criers rally and knit bones; Watchers mark and cast; the Millstone Brute winds up a **Millstone Slam** you can break by hitting it hard. Undead and bosses never flee
+- **Bosses fight in phases** — all 10 bosses change at **66%** and **33%** HP with a banner and a Keeper line: the Sexton calls the ash and snuffs the lantern-bearer, the Drake breathes cinders and dives, the Hydra grows heads (sear the stumps with a crit or a spell to stop it regrowing), the Hollow Crown never strikes the same hero twice… Telegraphed heavies show a turn early and are the only hits allowed past the 45% guard
+- **Smarter by difficulty** — Easy foes are sloppy (random targets, tricks only when obvious), Medium are tactical, Hard coordinate their focus fire, and Nightmare is ruthless: a brute may strike a **downed** hero, but only on Nightmare and only after a **WARNING!** a turn ahead
+- **Fixes** — the story's +1 resource is no longer lost at level-up; a companion Fighter no longer wastes turns retrying a spent Action Surge
+- With *Reduce flashing* on, chips, phase banners and warnings are static. Old saves (including one saved mid-fight in v2.29) load straight away; new fields are appended. Host / Join and the online Keeper table are unchanged. See [`docs/ENEMY_AI.md`](docs/ENEMY_AI.md)
+
+## Previous (v2.29 / 68) — Combat curve
 
 - **Fights scale with you** — every solo fight now has an **Encounter Level (EL)** worked out from your party's level and gear. Foes get their AC, to-hit, HP and damage from EL and their role (*Minion, Skirmisher, Caster, Support, Brute, Elite, Boss*), so a Medium room feels about the same at level 3 or 30. Gear still counts, at half weight: +20 gear makes fights easier, not trivial. Level tables now run to 50
 - **Room budgets** — each room gets a threat budget for your difficulty (Easy 0.85×, Medium 1×, Hard 1.12×, Nightmare 1.25×) and the foes are fitted to it. At most 4 foes (5 on Nightmare), ±15% variety, and never two over-budget rooms in a row. The status line shows **EL 7 · ◆◆◇◇**
@@ -154,6 +163,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Save slots** — three adventures (lanterns) side by side on an *Adventures* screen; Continue loads the last one played, New Story / Crawl never overwrite a hero, and Delete / Abandon clear only that hero. Keys, Crucible pity, Ring / Deep bests, the Ledger and the story unlock are per hero; settings, Daily Quests and the daily Raid Key cap are shared
 - **Dungeon Crawl** — procedural rooms from the start (skip the scripted quest)
 - **Difficulty** — Easy / Medium / Hard / Nightmare (locked for the run; wipe rules differ by tier)
+- **Enemy AI** — solo foes show intent chips (exact numbers at party INT 14+), play their role (focus fire, guard, heal, mark, flee), bosses change phase at 66% / 33%, and smartness scales from Easy to Nightmare
 - **How combat scales** — solo fights use an Encounter Level from your level and gear (gear at 50%), foe roles and per-room threat budgets, a 15–90% hit clamp, a 45% one-hit guard, Pressure / Rekindle comeback rules and warned surprise bosses. Levels to 50
 - **Classes** — Fighter, Wizard, Rogue, Cleric, and **Bard** (CHA-based; Cutting Quip special)
 - **Companion** — AI or player-controlled ally; change class in-run where supported
@@ -164,7 +174,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Arena (Ember Ring)** — see Endgame modes below
 - **Endless Deep (Ashen Deep)** — see Endgame modes below
 - **Online multiplayer** — **Host online (Lanternkeeper)** / **Join session** via Firebase Realtime Database (the host narrates as the Lanternkeeper)
-- **Settings** — music on/off, sound effects on/off, reduce flashing (photosensitive-friendly), tutorial, Adventures (save slots), return to main menu, About
+- **Settings** — music on/off, sound effects on/off, reduce flashing (photosensitive-friendly), foe intent chips and exact intent numbers, tutorial, Adventures (save slots), return to main menu, About
 - **Audio beds** — biome / combat / boss loops (CC0); optional Lanternkeeper (narrator) voice via Android Text-to-Speech
 
 ## Endgame modes (story-complete)
@@ -259,6 +269,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`docs/ENDGAME_ACT3_RAIDS.md`](docs/ENDGAME_ACT3_RAIDS.md) | Act 3, Boss Raids, Legendary rules |
 | [`docs/ACT4_ASHWAKE_VIGIL.md`](docs/ACT4_ASHWAKE_VIGIL.md) | Act 4 Ashwake Vigil |
 | [`docs/COMBAT_CURVE.md`](docs/COMBAT_CURVE.md) | Combat curve: Encounter Level, roles, budgets, hit clamp, Pressure / Rekindle, save fields, `tools/combat_sim` |
+| [`docs/ENEMY_AI.md`](docs/ENEMY_AI.md) | Enemy AI: tiers, targeting score, behaviours per enemy ID, boss phases, statuses, intent chips, save fields, `tools/combat_sim/ai_sim` |
 | [`docs/DAILY_QUESTS.md`](docs/DAILY_QUESTS.md) | Daily Quests |
 | [`docs/CHALLENGE_DUNGEON.md`](docs/CHALLENGE_DUNGEON.md) | Challenge Dungeon / Cinder Crucible |
 | [`docs/ARENA.md`](docs/ARENA.md) | Arena / Ember Ring |

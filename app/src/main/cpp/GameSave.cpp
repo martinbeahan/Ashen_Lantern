@@ -5,6 +5,7 @@
 #include "AndroidOut.h"
 #include "SaveCodec.h"
 #include "CombatCurve.h"
+#include "EnemyAi.h"
 #include <sstream>
 #include <algorithm>
 #include <memory>
@@ -104,6 +105,8 @@ std::string Game::serialize() {
        // budget, 43 a hero dropped this room.
        << "," << kCurveSchemaTag << "," << pressure_ << "," << rekindleRooms_ << ",0"
        << "," << lowHpStreak_ << "," << (lastRoomOverBudget_ ? 1 : 0) << "," << (heroDroppedThisRoom_ ? 1 : 0)
+       // v2.30 enemy AI (append-only): 44 combat round, 45 foes this room, 46 foes that fled.
+       << "," << combatRound_ << "," << roomFoeTotal_ << "," << fledFoes_
        << "|";
     // Section 1: Descriptions
     ss << encode(roomDescription_) << "~" << encode(lastEvent_) << "|";
@@ -125,6 +128,8 @@ std::string Game::serialize() {
         }
         // v2.29: 27 prestige rank (0 until PR 5), 28 kept bonus max HP (story padding + CON points).
         ss << "," << p->prestigeRank << "," << p->bonusMaxHp;
+        // v2.30: 29 kept bonus max resources (story +1), 30 statuses (EnemyAi.h codec).
+        ss << "," << p->bonusMaxResources << "," << ai::encodeStatuses(p->status);
         ss << ";";
     }
     ss << "|";
@@ -135,8 +140,10 @@ std::string Game::serialize() {
         // v2.29 (audit bug a): 19 AC (spawn bonuses survive a mid-fight reload), 20 role,
         // 21 EL, 22 to-hit, 23 avg damage x10, 24 boss phase (PR 2; 0 now), 25 telegraph turns
         // left, 26 surprise-boss flag.
+        // v2.30: 24 is now the boss phase; 27 statuses, 28 AI state (planned move, cooldowns...).
         ss << "," << e->armorClass << "," << e->curveRole << "," << e->curveEL << "," << e->curveToHit
-           << "," << e->curveAvgDmgX10 << ",0," << e->curveWarnTurns << "," << (e->curveSurprise ? 1 : 0) << ";";
+           << "," << e->curveAvgDmgX10 << "," << e->ai.phase << "," << e->curveWarnTurns << "," << (e->curveSurprise ? 1 : 0)
+           << "," << ai::encodeStatuses(e->status) << "," << ai::encodeFoeAi(e->ai) << ";";
     }
     ss << "|";
     // Section 4: Chat History
@@ -266,6 +273,9 @@ bool Game::deserialize(const std::string& data, std::string* error) {
     lowHpStreak_ = tmp.lowHpStreak_;
     lastRoomOverBudget_ = tmp.lastRoomOverBudget_;
     heroDroppedThisRoom_ = tmp.heroDroppedThisRoom_;
+    combatRound_ = tmp.combatRound_;
+    roomFoeTotal_ = tmp.roomFoeTotal_;
+    fledFoes_ = tmp.fledFoes_;
     pendingSurprise_ = false;
 
     rebuildTurnOrder();
@@ -348,7 +358,12 @@ bool Game::parseSave(const std::string& data) {
         lowHpStreak_ = savecodec::clampInt(num(41, 0, "lowHpStreak"), 0, 9);
         lastRoomOverBudget_ = flag(42);
         heroDroppedThisRoom_ = flag(43);
+        // v2.30 (44..46); a v2.29 save has none: round 1, no fled foes.
+        combatRound_ = savecodec::clampInt(num(44, 1, "combatRound"), 0, 100000);
+        roomFoeTotal_ = savecodec::clampInt(num(45, 0, "roomFoes"), 0, 99);
+        fledFoes_ = savecodec::clampInt(num(46, 0, "fledFoes"), 0, 99);
     } else {
+        combatRound_ = 1; roomFoeTotal_ = 0; fledFoes_ = 0;
         pressure_ = 0; rekindleRooms_ = 0; lowHpStreak_ = 0;
         lastRoomOverBudget_ = false; heroDroppedThisRoom_ = false;
     }
@@ -431,6 +446,21 @@ bool Game::parseSave(const std::string& data) {
                 p->bonusMaxHp += savedMax - p->maxHp;
                 p->recomputeMaxHp();
             }
+            // v2.30: kept bonus resources (29) and statuses (30). Older saves derive the bonus
+            // from the saved max (story +1 padding); max resources never shrink on load.
+            const int savedMaxRes = p->maxResources;
+            if (f.size() > 29 && savecodec::tryParseInt(f[29], pv)) {
+                p->bonusMaxResources = savecodec::clampInt(pv, 0, 1000);
+            } else {
+                p->bonusMaxResources = std::max(0, savedMaxRes - p->formulaMaxResources());
+            }
+            p->maxResources = p->formulaMaxResources() + p->bonusMaxResources;
+            if (p->maxResources < savedMaxRes) {
+                p->bonusMaxResources += savedMaxRes - p->maxResources;
+                p->maxResources = savedMaxRes;
+            }
+            if (p->resources > p->maxResources + 10) p->resources = p->maxResources;
+            if (f.size() > 30) p->status = ai::decodeStatuses(f[30]);
             players_.push_back(std::move(p));
         }
     }
@@ -469,6 +499,11 @@ bool Game::parseSave(const std::string& data) {
                 }
                 if (intAt(25, v)) e->curveWarnTurns = savecodec::clampInt(v, 0, 3);
                 e->curveSurprise = (f.size() > 26 && f[26] == "1");
+                // v2.30: phase (24), statuses (27), AI state (28). v2.29 foes plan on their turn.
+                int phase = 0;
+                if (intAt(24, v)) phase = v;
+                if (f.size() > 27) e->status = ai::decodeStatuses(f[27]);
+                e->ai = ai::decodeFoeAi(f.size() > 28 ? f[28] : std::string(), phase);
             }
             e->curvePending = false; // a loaded foe is never re-fitted
             enemies_.push_back(std::move(e));

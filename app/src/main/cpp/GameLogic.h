@@ -399,6 +399,47 @@ struct Character {
     bool curvePending = false;
     bool isFoe() const { return !enemyId.empty(); }
 
+    // --- v2.30 (enemy AI, PR 2) -------------------------------------------------------------
+    /**
+     * Extra max resources outside the class formula (the story's +1 potion/feature padding),
+     * kept through every level-up like bonusMaxHp. Saved as player field 29; legacy saves derive
+     * it on load (saved max - formula).
+     */
+    int bonusMaxResources = 0;
+    /**
+     * Short combat statuses (EnemyAi.h). Rounds left; each ticks down at the end of the bearer's
+     * own turn. Saved as one '.'-joined field (player 30 / enemy 27). Rattled stays the existing
+     * nextAttackPenalty.
+     */
+    struct Statuses {
+        int burn = 0, burnDmg = 0;   // Burn: burnDmg at the end of each of the bearer's turns
+        int marked = 0;              // Marked hero: foes +2 to hit it
+        int guarded = 0;             // Guarded foe: +3 AC (already added to armorClass)
+        int blind = 0;               // Blinded hero: -4 to hit
+        int slowed = 0, slowedFromInit = 0; // Slowed hero: acts last; initiative restored after
+        int shackled = 0;            // Shackled hero: no special (class feature) this turn
+        int inspired = 0;            // Inspired foe (Rally cry): +2 to hit
+        int healedRecently = 0;      // hero healed an ally lately (AI focus; not shown)
+        bool any() const { return burn || marked || guarded || blind || slowed || shackled || inspired; }
+    } status;
+    /**
+     * Foe AI state (solo only; EnemyAi.h). The planned move is the intent chip the UI shows.
+     * Saved as one '.'-joined field (enemy 28); the boss phase is enemy field 24.
+     */
+    struct FoeAi {
+        int move = 0;         // ai::Move planned for this foe's next turn (0 = plan on its turn)
+        int target = -1;      // hero index, or 100 + foe index for ally moves, -1 none
+        int cooldown = 0;     // turns before its signature move is ready again
+        int phase = 0;        // bosses: 1..3 (0 = not set yet)
+        int flags = 0;        // once-per-fight moves already used (ai::Flag bits)
+        int stolenGold = 0;   // Snatch: gold carried (returned if it falls, lost if it flees)
+        int stagger = 0;      // damage taken since a telegraphed Slam was planned
+        int lastHitBy = -1;   // hero index that hit it since it last planned
+        int alt = 0;          // alternating patterns (Warden, Drake, Hydra)
+        int lastTarget = -1;  // Hollow Crown: never the same hero twice in a row
+        bool critThisRound = false; // Hydra: a crit since its last turn stops the regrowth
+    } ai;
+
     std::shared_ptr<Item> equippedWeapon;
     std::shared_ptr<Item> equippedArmor;
     std::vector<std::shared_ptr<Item>> inventory;
@@ -498,6 +539,18 @@ struct Character {
     /** Healing Word bonus: effective WIS modifier (audit bug d). */
     int healingWordModifier() const { return Attributes::getModifier(effectiveAttr(4)); }
 
+    /** Class formula max resources for the current level (no bonusMaxResources). */
+    int formulaMaxResources() const {
+        switch (characterClass) {
+            case CharacterClass::ROGUE: return 1 + (level / 3);
+            case CharacterClass::WIZARD:
+            case CharacterClass::CLERIC:
+            case CharacterClass::BARD: return 2 + level;
+            case CharacterClass::FIGHTER:
+            default: return 1 + (level >= 17 ? 1 : 0);
+        }
+    }
+
     /** Recompute HP/resources from current level + attributes. Does NOT reset attributes. */
     void applyStatsForLevel() {
         switch (characterClass) {
@@ -514,6 +567,7 @@ struct Character {
                 maxResources = 1 + (level >= 17 ? 1 : 0); // Action Surge once (twice at 17+), shared with potions
                 break;
         }
+        maxResources += std::max(0, bonusMaxResources); // v2.30: story +1 kept through level-ups
         // Level 1: max hit die + CON; later levels: average hit die + CON (+ kept bonus HP).
         recomputeMaxHp();
     }

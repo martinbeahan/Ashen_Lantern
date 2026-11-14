@@ -299,6 +299,28 @@ public:
     /** Rooms left with the Rekindle comeback (-20% budget). */
     int getRekindleRooms() const { return rekindleRooms_; }
 
+    // --- v2.30 enemy AI (EnemyAi.h, docs/ENEMY_AI.md) ---
+    /** Smart foes (intents, roles, boss phases): solo only, on curve-fitted foes. Online and
+     *  legacy (pre-v2.29) mid-fight foes keep the old AI. */
+    bool enemyAiActive() const { return encounterCurveActive() && enemyAiEnabled_; }
+    /**
+     * Intent chips: "numbers|bannerSeq|bannerText|entries". numbers = 1 when a living hero has
+     * INT 14+ (exact numbers allowed). entries are ';'-joined
+     * "foeIdx,intent,targetSide,targetIdx,label,value,statusCodes" (targetSide 0 hero, 1 foe,
+     * 2 self, 3 every hero, -1 none). Empty entries online / legacy.
+     */
+    std::string getEnemyIntents() const;
+    /** Hero statuses: ';'-joined "heroIdx,codes" (codes as EnemyAi.h statusCodes). */
+    std::string getStatusEffects() const;
+    int getCombatRound() const { return combatRound_; }
+    // Test / simulator hooks (never called from JNI).
+    void seedForTesting(unsigned seed) { rng_.seed(seed); rng::engine().seed(seed + 1); }
+    void setEnemyAiEnabledForTesting(bool on) { enemyAiEnabled_ = on; }
+    /** Replace the room with these foes (fitted to the curve like a normal room) and roll initiative. */
+    void simBeginFight(const std::vector<std::string>& enemyIds, bool surprise = false);
+    /** Every party member is AI-driven (simulator). */
+    void simAllPartyAuto() { for (auto& p : players_) if (p) p->aiControlled = true; }
+
     const std::vector<std::unique_ptr<Character>>& getPlayers() const { return players_; }
     const std::vector<std::unique_ptr<Character>>& getEnemies() const { return enemies_; }
 
@@ -321,6 +343,7 @@ public:
     }
 
 private:
+    friend struct GameTestAccess; // tools/migration_test (deterministic AI tests) only
     struct LoadOnlyTag {};
     explicit Game(LoadOnlyTag);
     /** Parse every section into this (scratch) Game; throws on malformed data. Returns
@@ -425,6 +448,33 @@ private:
     /** Room cleared: update Pressure / low-HP streak / Rekindle. */
     void noteRoomOutcomeForCurve();
     std::string telegraphLine(const Character& foe) const;
+    // v2.30 enemy AI state. Header fields 44 round, 45 foes this room, 46 fled this room.
+    bool enemyAiEnabled_ = true;
+    int combatRound_ = 0;
+    int roomFoeTotal_ = 0;
+    int fledFoes_ = 0;
+    int bannerSeq_ = 0;          // not saved: phase banners for the UI
+    std::string bannerText_;
+    void planEnemyMove(Character& foe);
+    void planBossMove(Character& foe, int tier);
+    void runEnemyMove(Character& foe, int foeIdx);
+    /** One foe attack on hero idx. Returns true if the hero was hit. */
+    bool foeStrike(Character& foe, int foeIdx, int heroIdx, double dmgMult, int hitBonus,
+                   bool exempt, bool autoHit, const std::string& moveLabel, int* dealt = nullptr);
+    void noteFoeDamaged(Character& foe, int dmg, const Character* by, bool crit);
+    void updateBossPhase(Character& foe, bool announce);
+    bool summonFoe(const std::string& enemyId, CharacterClass cl, const Character& summoner);
+    void foeSlipsAway(Character& foe);
+    void endTurnStatuses(Character* c);
+    void announceBanner(const std::string& text);
+    int heroIndexOf(const Character* c) const;
+    int enemyIndexOf(const Character* c) const;
+    int livingFoeCount() const;
+    bool heroHasIntBonus() const;
+    std::string moveChipLabel(const Character& foe) const;
+    int moveChipValue(const Character& foe) const;
+    int pickAiHeroTarget(const Character& foe, int behaviour);
+    void returnStolenGold(Character& foe, Character* looter);
     int soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
     int difficulty_ = static_cast<int>(Difficulty::EASY);
     /** Snapshot when entering raid/challenge from a loaded adventure (-1 = none). */
