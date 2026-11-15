@@ -122,7 +122,7 @@ void Game::startNewGame(CharacterClass selectedClass, const std::string& playerN
         roomCount_ = 20;
         generateRoomDescription();
         // Force an endgame boss immediately
-        enemies_.clear();
+        clearEnemies(); // v2.35 #89: strip their turn slots first (no dangling turnOrder_ pointers)
         isMerchantRoom_ = false;
         roomSearchUsed_ = false; roomRestUsed_ = false;
         {
@@ -476,6 +476,10 @@ bool Game::setCompanionClass(CharacterClass cl) {
         neu->deathSaveFailures = dsf;
         if (dead || down) neu->currentHp = 0;
         // Story padding: if hero had padding, companion already got it at start via applyStarterPaddingForStory on all.
+        // v2.35 #89: repoint the turn order at the new Character BEFORE the old one is freed. After a load the
+        // turn order holds the party even outside a fight, so the companion can own the current slot and
+        // rebuildTurnOrder() below would read the freed Character's uid.
+        std::replace(turnOrder_.begin(), turnOrder_.end(), static_cast<Character*>(old), neu.get());
         p = std::move(neu);
         break;
     }
@@ -509,7 +513,7 @@ void Game::resetSoloQuestState() {
 }
 
 void Game::applySoloQuestRoom() {
-    enemies_.clear();
+    clearEnemies(); // v2.35 #89: strip their turn slots first (no dangling turnOrder_ pointers)
     shopInventory_.clear();
     isMerchantRoom_ = false;
     roomSearchUsed_ = false; roomRestUsed_ = false;
@@ -547,7 +551,7 @@ void Game::applySoloQuestRoom() {
 }
 
 void Game::spawnSoloQuestEnemies() {
-    enemies_.clear();
+    clearEnemies(); // v2.35 #89: strip their turn slots first (no dangling turnOrder_ pointers)
     const auto beat = static_cast<SoloQuestBeat>(questBeat_);
 
     // Solo Ashen Lantern: tune early rooms for beginners. attackStatDelta lowers to-hit/damage
@@ -1256,7 +1260,7 @@ void Game::generateRoomDescription() {
 }
 
 void Game::spawnRoomContent() {
-    enemies_.clear();
+    clearEnemies(); // v2.35 #89: strip their turn slots first (no dangling turnOrder_ pointers)
     shopInventory_.clear();
     isMerchantRoom_ = false;
     roomSearchUsed_ = false; roomRestUsed_ = false;
@@ -1351,7 +1355,8 @@ void Game::rebuildTurnOrder() {
     if (!turnOrder_.empty()
         && currentTurnIndex_ >= 0
         && static_cast<size_t>(currentTurnIndex_) < turnOrder_.size()
-        && turnOrder_[static_cast<size_t>(currentTurnIndex_)] != nullptr) {
+        && turnOrder_[static_cast<size_t>(currentTurnIndex_)] != nullptr
+        && ownsActor(turnOrder_[static_cast<size_t>(currentTurnIndex_)])) { // v2.35 #89: only read a live actor
         currentUid = turnOrder_[static_cast<size_t>(currentTurnIndex_)]->uid;
     }
 
@@ -2108,6 +2113,19 @@ void Game::advanceTurn() {
     }
 }
 
+bool Game::ownsActor(const Character* c) const {
+    // v2.35 #89: address comparison only — never dereferences c, so it is safe on a stale pointer.
+    if (!c) return false;
+    for (const auto& p : players_) if (p.get() == c) return true;
+    for (const auto& e : enemies_) if (e.get() == c) return true;
+    return false;
+}
+
+void Game::clearEnemies() {
+    for (auto& e : enemies_) removeFromTurnOrder(e.get());
+    enemies_.clear();
+}
+
 void Game::removeFromTurnOrder(Character* c) {
     if (!c || turnOrder_.empty()) return;
     Character* cur = nullptr;
@@ -2176,7 +2194,7 @@ void Game::revivePartyForDifficulty() {
 }
 
 void Game::rollbackOneRoomOrBeat() {
-    enemies_.clear();
+    clearEnemies(); // v2.35 #89: strip their turn slots first (no dangling turnOrder_ pointers)
     shopInventory_.clear();
     isMerchantRoom_ = false;
     roomSearchUsed_ = false; roomRestUsed_ = false;
@@ -2245,7 +2263,7 @@ bool Game::beginBossRaidFromCurrent() {
     questAct3Complete_ = true;
     questAct4Complete_ = true;
 
-    enemies_.clear();
+    clearEnemies(); // v2.35 #89: strip their turn slots first (no dangling turnOrder_ pointers)
     shopInventory_.clear();
     isMerchantRoom_ = false;
     roomSearchUsed_ = false; roomRestUsed_ = false;
@@ -2338,7 +2356,7 @@ bool Game::beginChallengeDungeonFromCurrent(int legendaryChancePercent) {
     questAct3Complete_ = true;
     questAct4Complete_ = true;
 
-    enemies_.clear();
+    clearEnemies(); // v2.35 #89: strip their turn slots first (no dangling turnOrder_ pointers)
     shopInventory_.clear();
     isMerchantRoom_ = false;
     roomSearchUsed_ = false; roomRestUsed_ = false;
@@ -2380,7 +2398,7 @@ bool Game::beginChallengeDungeonFromCurrent(int legendaryChancePercent) {
 void Game::finishChallengeDungeonKeepParty() {
     if (!isChallengeDungeon() && preRaidSoloPlayMode_ < 0) return;
 
-    enemies_.clear();
+    clearEnemies(); // v2.35 #89: strip their turn slots first (no dangling turnOrder_ pointers)
     shopInventory_.clear();
     isMerchantRoom_ = false;
     roomSearchUsed_ = false; roomRestUsed_ = false;
@@ -2411,7 +2429,7 @@ void Game::finishChallengeDungeonKeepParty() {
 }
 
 void Game::spawnArenaWave(int wave) {
-    enemies_.clear();
+    clearEnemies(); // v2.35 #89: strip their turn slots first (no dangling turnOrder_ pointers)
     shopInventory_.clear();
     isMerchantRoom_ = false;
     roomSearchUsed_ = false; roomRestUsed_ = false;
@@ -2520,7 +2538,7 @@ bool Game::beginArenaFromCurrent() {
 void Game::finishArenaKeepParty() {
     if (!isArena() && preRaidSoloPlayMode_ < 0) return;
 
-    enemies_.clear();
+    clearEnemies(); // v2.35 #89: strip their turn slots first (no dangling turnOrder_ pointers)
     shopInventory_.clear();
     isMerchantRoom_ = false;
     roomSearchUsed_ = false; roomRestUsed_ = false;
@@ -2555,7 +2573,7 @@ void Game::finishArenaKeepParty() {
 
 void Game::spawnEndlessDepth(int depth) {
     memoryOnDeepDepth(depth);
-    enemies_.clear();
+    clearEnemies(); // v2.35 #89: strip their turn slots first (no dangling turnOrder_ pointers)
     shopInventory_.clear();
     isMerchantRoom_ = false;
     roomSearchUsed_ = false; roomRestUsed_ = false;
@@ -2681,7 +2699,7 @@ bool Game::beginEndlessDeepFromCurrent() {
 void Game::finishEndlessDeepKeepParty() {
     if (!isEndlessDeep() && preRaidSoloPlayMode_ < 0) return;
 
-    enemies_.clear();
+    clearEnemies(); // v2.35 #89: strip their turn slots first (no dangling turnOrder_ pointers)
     shopInventory_.clear();
     isMerchantRoom_ = false;
     roomSearchUsed_ = false; roomRestUsed_ = false;
@@ -3433,8 +3451,15 @@ void Game::playerHeal(int targetPlayerIndex) {
         return;
     }
 
-    actor->resources--;
     Character& target = *players_[static_cast<size_t>(targetPlayerIndex)];
+    // v2.38 (#92): a permanently dead hero can't be healed (heal() returns 0) — refuse before the
+    // potion is spent, and keep the turn so another target can be chosen. Downed heroes still revive.
+    if (target.isDead) {
+        lastEvent_ = target.name + " is beyond a potion's help — choose a living ally.";
+        addChatMessage("Combat", lastEvent_);
+        return;
+    }
+    actor->resources--;
     int amount = getRandomInt(1, 4) + getRandomInt(1, 4) + 2;
     amount = target.heal(amount); // v2.31: Mending (WIS)
     if (&target != actor) actor->status.healedRecently = 2; // v2.30: foes notice healers
@@ -4573,6 +4598,7 @@ void Game::applyEncounterCurve() {
         for (auto it = enemies_.end(); it != enemies_.begin();) {
             --it;
             if (isPending(*it) && bestiary::role((*it)->enemyId) != static_cast<int>(curve::Role::BOSS)) {
+                removeFromTurnOrder(it->get()); // v2.35 #89: never leave a freed foe in the turn order
                 enemies_.erase(it);
                 break;
             }

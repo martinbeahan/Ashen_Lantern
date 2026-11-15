@@ -6,11 +6,10 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.36 / 75) — Save and online number limits (audit)
+## What's new (v2.35 / 74) — Stability hotfix (audit)
 
-- **Absurd numbers can't break a game** — a save or an online host's game state with numbers near the integer limit (room 2,147,483,647, gold or XP at the maximum, a +2-billion weapon) used to overflow: a level-1 hero jumped to level 50 with 1.5 billion gold, or gold turned negative after one kill. Every number is now held to a sane ceiling when a save or online state loads (XP 10 million, gold 100 million, max HP 100,000, uses 1,000, room 1,000,000, initiative −50..100, item bonus −20..+100, upgrade +25), and gold, XP and arena score can no longer overflow in play. Real saves are far below every limit and load exactly as before (#91)
-- **Item fields** in a save no longer use a throwing number parser: a damaged value falls back to the default (an unknown class tag means "any class") instead of being guessed
-- **Online actions** from other players are read safely too: a huge target or class number can no longer wrap round into a real one, and a level-up request spends at most 120 points (the host still checks the hero has them). Online play is otherwise unchanged
+- **Companion class change no longer crashes** — changing the companion's class after loading a save where the companion held the current turn read freed memory (a crash, garbled text, or the wrong hero taking the turn). The turn order now points at the new companion before the old one is freed, foes are taken out of the turn order before they are cleared, and the turn order only ever reads heroes and foes the game still has (#89)
+- **Online sessions can't be crashed by bad data** — a wrong-type value in a shared session (a number where a name, chat line or game state belongs) used to crash every device at the table, and a bad chat line kept doing it on every rejoin. Those values are now ignored, and incoming text has limits: game state 512 KB, chat 500 characters, names 24 characters, actions 32 fields (#88). Online play is otherwise unchanged
 
 ## Previous (v2.34 / 73) — Combat rebalance
 
@@ -225,6 +224,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Arena (Ember Ring)** — see Endgame modes below
 - **Endless Deep (Ashen Deep)** — see Endgame modes below
 - **Online multiplayer** — **Host online (Lanternkeeper)** / **Join session** via Firebase Realtime Database (the host narrates as the Lanternkeeper)
+- **Online security** — anonymous Firebase sign-in, locked-down database rules (only the host writes the game; players write only their own entries, with type and size checks), an authoritative host and unguessable 10-character session codes. See [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md)
 - **Settings** — music on/off, sound effects on/off, reduce flashing (photosensitive-friendly), foe intent chips and exact intent numbers, tutorial, Adventures (save slots), return to main menu, About
 - **Audio beds** — biome / combat / boss loops (CC0); optional Lanternkeeper (narrator) voice via Android Text-to-Speech
 
@@ -295,7 +295,7 @@ Copy the full failure line (e.g. `INSTALL_FAILED_TEST_ONLY`, `INSTALL_FAILED_OLD
 
 ### Firebase / `google-services.json` (local secret)
 
-Online **Host** / **Join** needs Firebase Realtime Database.
+Online **Host** / **Join** needs Firebase Realtime Database and **Anonymous** sign-in (v2.37+). Publish [`firebase/database.rules.json`](firebase/database.rules.json) as described in [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md).
 
 - The Google Services Gradle plugin is **enabled** in the project.
 - **`app/google-services.json` is not in this repository** — it is a local secret. Download it from your own Firebase project and place it at `app/google-services.json`.
@@ -330,6 +330,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`docs/ENDLESS_DEEP.md`](docs/ENDLESS_DEEP.md) | Endless Deep / Ashen Deep |
 | [`BUILD_HELP.md`](BUILD_HELP.md) | Build troubleshooting |
 | [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md) | Online multiplayer setup |
+| [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md) | Online lockdown: anonymous sign-in, database rules (`firebase/database.rules.json`), session codes, console steps, deploy order, Rules Playground checklist, emulator test (`tools/rules_test`) |
 
 ## Legal / trademarks
 

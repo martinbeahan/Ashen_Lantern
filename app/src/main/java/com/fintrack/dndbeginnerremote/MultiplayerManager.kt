@@ -11,8 +11,14 @@ import com.google.firebase.database.ValueEventListener
 /**
  * Firebase Realtime Database session bridge.
  * sessions/{id}/meta, gameState, actions, lobby, chat
+ *
+ * v2.37 (#90): every write carries the writer's anonymous-auth [uid] and matches the locked-down rules
+ * in firebase/database.rules.json:
+ *  - meta {hostUid, hostName, role, sessionId, updatedAt} and gameState: the host (meta/hostUid) only;
+ *  - lobby/{uid}: that uid only; actions/{push} and chat/{push}: created by the uid named inside,
+ *    actions deleted by their author or the host.
  */
-class MultiplayerManager(private val sessionId: String) {
+class MultiplayerManager(private val sessionId: String, private val uid: String = "") {
     private val tag = "Multiplayer"
 
     private var database: FirebaseDatabase? = try {
@@ -38,7 +44,8 @@ class MultiplayerManager(private val sessionId: String) {
     fun publishMeta(hostName: String, role: String = "dm") {
         sessionRef?.child("meta")?.updateChildren(
             mapOf(
-                "hostName" to hostName,
+                "hostUid" to uid,
+                "hostName" to hostName.take(OnlinePolicy.MAX_NAME_CHARS),
                 "role" to role,
                 "sessionId" to sessionId,
                 "updatedAt" to ServerValue.TIMESTAMP
@@ -51,8 +58,11 @@ class MultiplayerManager(private val sessionId: String) {
         metaListener?.let { ref.removeEventListener(it) }
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val name = snapshot.child("hostName").getValue(String::class.java)
-                if (!name.isNullOrBlank()) onMeta(name)
+                // v2.35 #88: a non-String / oversized value is ignored instead of crashing the app.
+                val name = try { RemoteValues.hostName(snapshot.child("hostName").value) } catch (e: Exception) {
+                    Log.w(tag, "meta: unreadable hostName (${e.message})"); null
+                }
+                if (name != null) onMeta(name)
             }
             override fun onCancelled(error: DatabaseError) {}
         }
@@ -71,8 +81,11 @@ class MultiplayerManager(private val sessionId: String) {
         stateListener?.let { ref.removeEventListener(it) }
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val data = snapshot.getValue(String::class.java)
-                if (!data.isNullOrBlank()) onUpdate(data)
+                // v2.35 #88: only a String within RemoteValues.MAX_GAME_STATE_CHARS is applied.
+                val data = try { RemoteValues.gameState(snapshot.value) } catch (e: Exception) {
+                    Log.w(tag, "gameState: unreadable (${e.message})"); null
+                }
+                if (data != null) onUpdate(data) else if (snapshot.value != null) Log.w(tag, "gameState ignored (not a String or too large)")
             }
             override fun onCancelled(error: DatabaseError) {
                 Log.e(tag, "state cancelled: ${error.message}")
@@ -84,38 +97,42 @@ class MultiplayerManager(private val sessionId: String) {
 
     fun pushAction(action: Map<String, Any>) {
         val payload = HashMap<String, Any>(action)
+        payload["uid"] = uid // v2.37: the rules only accept an action created by the uid it names
         payload["ts"] = ServerValue.TIMESTAMP
         sessionRef?.child("actions")?.push()?.setValue(payload)
             ?.addOnFailureListener { Log.e(tag, "pushAction failed: ${it.message}") }
     }
 
-    /** Joiners register here — more reliable than action maps for party sync. */
+    /** Joiners register here — more reliable than action maps for party sync. v2.37: keyed by auth uid. */
     fun publishLobbyJoin(playerName: String, classId: Int) {
-        val safe = playerName.replace("/", "_").replace(".", "_")
-        sessionRef?.child("lobby")?.child(safe)?.setValue(
+        if (uid.isBlank()) return
+        sessionRef?.child("lobby")?.child(uid)?.setValue(
             mapOf(
-                "playerName" to playerName,
+                "playerName" to playerName.take(OnlinePolicy.MAX_NAME_CHARS),
                 "classId" to classId,
                 "ts" to ServerValue.TIMESTAMP
             )
         )?.addOnFailureListener { Log.e(tag, "lobby join failed: ${it.message}") }
     }
 
-    fun listenForLobby(onJoin: (playerName: String, classId: Int) -> Unit) {
+    fun listenForLobby(onJoin: (uid: String, playerName: String, classId: Int) -> Unit) {
         val ref = sessionRef?.child("lobby") ?: return
         lobbyListener?.let { ref.removeEventListener(it) }
         val listener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                val name = snapshot.child("playerName").getValue(String::class.java)
-                    ?: snapshot.key
-                    ?: return
-                val rawClass = try {
-                    snapshot.child("classId").getValue(Long::class.java)?.toInt()
-                } catch (_: Exception) { null } // non-numeric classId from a bad client
+                // v2.35 #88: safe casts — a number / map playerName or a non-numeric classId never crashes.
+                val name: String
+                val rawClass: Int?
+                try {
+                    name = RemoteValues.playerName(snapshot.child("playerName").value, snapshot.key) ?: return
+                    rawClass = RemoteValues.classId(snapshot.child("classId").value)
+                } catch (e: Exception) {
+                    Log.w(tag, "lobby: unreadable join (${e.message})"); return
+                }
                 // H2: only 0..4 are real classes; anything else joins as Fighter.
                 val classId = TextSafety.validClassId(rawClass)
-                if (rawClass != classId) Log.w(tag, "lobby: bad classId $rawClass for '$name' — using 0")
-                onJoin(TextSafety.sanitizeName(name, "Hero"), classId)
+                if (rawClass != classId) Log.w(tag, "lobby: bad classId for '$name' — using 0")
+                onJoin(name, classId)
             }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onChildRemoved(snapshot: DataSnapshot) {}
@@ -128,20 +145,20 @@ class MultiplayerManager(private val sessionId: String) {
         ref.addChildEventListener(listener)
     }
 
-    fun listenForActions(onAction: (actionId: String, action: Map<String, Any>) -> Unit) {
+    fun listenForActions(onAction: (actionId: String, fromUid: String?, action: Map<String, Any>) -> Unit) {
         val ref = sessionRef?.child("actions") ?: return
         actionListener?.let { ref.removeEventListener(it) }
         val listener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val id = snapshot.key ?: return
-                val raw = hashMapOf<String, Any>()
-                for (child in snapshot.children) {
-                    val k = child.key ?: continue
-                    val v = child.value ?: continue
-                    raw[k] = v
+                // v2.35 #88: only String (length-capped) / number / boolean fields, at most 32 of them.
+                val raw = try {
+                    RemoteValues.action(snapshot.children.map { it.key to it.value })
+                } catch (e: Exception) {
+                    Log.w(tag, "actions: unreadable (${e.message})"); return
                 }
                 if (raw.isEmpty()) return
-                onAction(id, raw)
+                onAction(id, raw["uid"] as? String, raw)
             }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onChildRemoved(snapshot: DataSnapshot) {}
@@ -158,8 +175,12 @@ class MultiplayerManager(private val sessionId: String) {
         sessionRef?.child("actions")?.child(actionId)?.removeValue()
     }
 
+    /** v2.37: chat entries are {uid, text, ts} (the rules refuse a bare string or another uid). */
     fun sendChat(message: String) {
-        sessionRef?.child("chat")?.push()?.setValue(message)
+        if (uid.isBlank()) return
+        sessionRef?.child("chat")?.push()?.setValue(
+            mapOf("uid" to uid, "text" to OnlinePolicy.outgoingChat(message), "ts" to ServerValue.TIMESTAMP)
+        )
     }
 
     fun listenForChat(callback: (String) -> Unit) {
@@ -167,7 +188,10 @@ class MultiplayerManager(private val sessionId: String) {
         chatListener?.let { ref.removeEventListener(it) }
         val listener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                val msg = snapshot.getValue(String::class.java)
+                // v2.35 #88: a non-String chat child is skipped (it used to crash every rejoin); cut to 500 chars.
+                val msg = try { RemoteValues.chat(snapshot.value) } catch (e: Exception) {
+                    Log.w(tag, "chat: unreadable (${e.message})"); null
+                }
                 if (msg != null) callback(msg)
             }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}

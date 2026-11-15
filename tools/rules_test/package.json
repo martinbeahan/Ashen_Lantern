@@ -1,0 +1,14 @@
+{
+  "name": "ashen-lantern-rules-test",
+  "private": true,
+  "description": "v2.37 #90: Realtime Database rules tests against the local Firebase emulator (no real project).",
+  "type": "module",
+  "scripts": {
+    "test": "firebase --project demo-ashen-lantern --config ../../firebase/firebase.json emulators:exec --only database \"node rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "firebase": "^10.14.1",
+    "firebase-tools": "^13.35.1"
+  }
+}

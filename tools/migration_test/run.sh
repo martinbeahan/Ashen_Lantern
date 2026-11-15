@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Save-migration + save-safety + Rekindling (v2.33, prestige_test) + Kindling (v2.25 story) + Memory Ledger (v2.26) + save slots (v2.28) + combat curve (v2.29) tests for the native game core (Bestiary IDs, legacy/renamed
+# Save-migration + save-safety + turn-order pointer safety (v2.35 #89, turnorder_test) + Rekindling (v2.33, prestige_test) + Kindling (v2.25 story) + Memory Ledger (v2.26) + save slots (v2.28) + combat curve (v2.29) tests for the native game core (Bestiary IDs, legacy/renamed
 # names, escaped text fields, transactional load, class validation).
 # Builds Game.cpp + GameSave.cpp + the tests for the host with the NDK clang (x86_64, static)
 # or a system clang++/g++, using a stub AndroidOut.h. Usage: tools/migration_test/run.sh
@@ -43,3 +43,6 @@ cp "$here/perks_test.cpp" "$work"/
 cp "$here/prestige_test.cpp" "$work"/
 "${cxx[@]}" -std=c++17 -O0 -o "$work/prestige_test" "$work/prestige_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/prestige_test"
+cp "$here/turnorder_test.cpp" "$work"/
+"${cxx[@]}" -std=c++17 -O0 -o "$work/turnorder_test" "$work/turnorder_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
+"$work/turnorder_test"

@@ -210,6 +210,8 @@ class MainActivity : AppCompatActivity() {
     /** True when joined someone else's session. */
     private var isOnlineClient = false
     private var onlineSessionId = ""
+    /** v2.37 #90 (host): Firebase uid -> the hero name that uid joined as. */
+    private val onlineJoinedUids = mutableMapOf<String, String>()
     private var remoteDmName = ""
 
     companion object {
@@ -545,7 +547,8 @@ class MainActivity : AppCompatActivity() {
         btnReset.text = "Menu"
 
         findViewById<View>(R.id.topBar).setOnLongClickListener {
-            val sid = getSessionId()
+            // v2.37: online, copy the (grouped) online code; solo, the save's own id as before.
+            val sid = if (isOnline() && onlineSessionId.isNotBlank()) SessionIds.display(onlineSessionId) else getSessionId()
             val clip = android.content.ClipData.newPlainText("AL_SESSION", sid)
             (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
             Toast.makeText(this, "Session ID $sid Copied!", Toast.LENGTH_SHORT).show()
@@ -864,10 +867,11 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun setupMultiplayer(id: String, asHost: Boolean) {
+    private fun setupMultiplayer(id: String, asHost: Boolean, uid: String) {
         Log.d(TAG, "Setting up multiplayer session=$id asHost=$asHost")
         multiplayer?.detach()
-        val mp = MultiplayerManager(id)
+        val mp = MultiplayerManager(id, uid) // v2.37 #90: every write carries this anonymous-auth uid
+        onlineJoinedUids.clear()
         multiplayer = mp
         onlineSessionId = id
         isOnlineHost = asHost
@@ -883,9 +887,15 @@ class MainActivity : AppCompatActivity() {
 
         if (asHost) {
             mp.publishMeta(localPlayerName, role = "dm")
-            mp.listenForLobby { name, classId ->
+            mp.listenForLobby { joinUid, name, classId ->
                 runOnUiThread {
                     try {
+                        // v2.37 #90: one hero name per uid; a second uid can't join as an existing hero.
+                        val lobbyName = TextSafety.sanitizeName(name, "Hero")
+                        if (!OnlinePolicy.claim(onlineJoinedUids, joinUid, lobbyName, setOf(localPlayerName))) {
+                            Log.w(TAG, "lobby: '$name' is already held by another player — ignored")
+                            return@runOnUiThread
+                        }
                         admitPlayer(name, classId)
                         syncAndSave()
                     } catch (e: Exception) {
@@ -893,9 +903,19 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            mp.listenForActions { actionId, action ->
+            mp.listenForActions { actionId, fromUid, action ->
                 runOnUiThread {
                     try {
+                        // v2.37 #90: an action only moves the hero its sender joined as.
+                        val type = action["type"]?.toString().orEmpty()
+                        val who = TextSafety.sanitizeName(action["playerName"]?.toString(), "Hero")
+                        if (type == "join" && !OnlinePolicy.claim(onlineJoinedUids, fromUid, who, setOf(localPlayerName))) {
+                            mp.ackAction(actionId); return@runOnUiThread
+                        }
+                        if (!OnlinePolicy.actionAllowed(type, fromUid, who, onlineJoinedUids)) {
+                            Log.w(TAG, "action '$type' for '$who' from a different player — ignored")
+                            mp.ackAction(actionId); return@runOnUiThread
+                        }
                         applyHostAction(action)
                         mp.ackAction(actionId)
                         syncAndSave()
@@ -913,7 +933,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        mp.listenForUpdates { data ->
+        // v2.37 #90: the host is authoritative — it publishes state and never loads it from the database.
+        if (OnlinePolicy.appliesRemoteState(asHost)) mp.listenForUpdates { data ->
             runOnUiThread {
                 if (data.isBlank() || isUpdatingFromRemote) return@runOnUiThread
                 // Host ignores echoes of its own publishes
@@ -1250,13 +1271,15 @@ class MainActivity : AppCompatActivity() {
         // Successful deserialize + live status — do not treat as unclean exit.
         prefs().edit().putBoolean("crash_guard", false).apply()
 
-        val resumeOnline = savedSid.isNotBlank() && (wasHost || wasClient) && firebaseReady()
+        // v2.37 #90: resume online only with a new-style code and an existing anonymous sign-in.
+        val resumeUid = if (SessionIds.isValid(savedSid) && (wasHost || wasClient)) OnlineAuth.currentUid() else null
+        val resumeOnline = resumeUid != null && firebaseReady()
         if (resumeOnline && wasHost) {
             setHost(true)
             activateSession()
             prefs().edit().putBoolean("crash_guard", false).apply()
             btnReset.visibility = View.GONE
-            setupMultiplayer(savedSid, asHost = true)
+            setupMultiplayer(savedSid, asHost = true, uid = resumeUid!!)
             if (!isOnlineHost || multiplayer?.isAvailable != true) {
                 // Fall back to local authority with the loaded state.
                 setHost(true)
@@ -1274,7 +1297,7 @@ class MainActivity : AppCompatActivity() {
             activateSession()
             prefs().edit().putBoolean("crash_guard", false).apply()
             btnReset.visibility = View.GONE
-            setupMultiplayer(savedSid, asHost = false)
+            setupMultiplayer(savedSid, asHost = false, uid = resumeUid!!)
             if (!isOnlineClient || multiplayer?.isAvailable != true) {
                 setHost(true) // keep playing the snapshot solo
                 isOnlineHost = false
@@ -2843,12 +2866,35 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    /**
+     * v2.37 #90: anonymous Firebase sign-in before any online session (the database rules refuse
+     * unauthenticated reads and writes). Runs [onReady] with the uid on the main thread, or shows why
+     * it failed and runs [onFail].
+     */
+    private fun withOnlineSignIn(onReady: (uid: String) -> Unit, onFail: () -> Unit) {
+        OnlineAuth.ensureSignedIn { uid, error ->
+            runOnUiThread {
+                if (uid != null) onReady(uid)
+                else AlertDialog.Builder(this)
+                    .setTitle("Online sign-in failed")
+                    .setMessage(OnlinePolicy.signInFailedMessage(error))
+                    .setPositiveButton("OK") { _, _ -> onFail() }
+                    .setCancelable(false)
+                    .show()
+            }
+        }
+    }
+
     private fun startHostingAsDm() {
         if (!nativeReady) {
             Toast.makeText(this, "Native library not ready.", Toast.LENGTH_LONG).show()
             showStartDialog()
             return
         }
+        withOnlineSignIn(onReady = { uid -> startHostingAsDmSignedIn(uid) }, onFail = { showStartDialog() })
+    }
+
+    private fun startHostingAsDmSignedIn(uid: String) {
         detachOnlineSession()
         try {
             startDmSession(localPlayerName)
@@ -2862,8 +2908,10 @@ class MainActivity : AppCompatActivity() {
         // Do not arm crash_guard / write save_state — solo Continue must survive Host.
         activateSession(armCrashGuard = false)
         btnReset.visibility = View.GONE
-        val sidNow = try { getSessionId() } catch (_: Exception) { "" }
-        setupMultiplayer(sidNow, asHost = true)
+        // v2.37 #90: a fresh unguessable online code (SecureRandom, 10 characters) for every table —
+        // separate from the save's own session id, which the Memory Ledger keys on.
+        val sidNow = SessionIds.newId()
+        setupMultiplayer(sidNow, asHost = true, uid = uid)
         if (!isOnlineHost || multiplayer?.isAvailable != true) {
             Toast.makeText(this, "Could not start online session — check Firebase.", Toast.LENGTH_LONG).show()
             detachOnlineSession()
@@ -2891,41 +2939,44 @@ class MainActivity : AppCompatActivity() {
             localClassId = which
             when (mode) {
                 "solo", "crawl", "raid" -> showCompanionSetup(mode = mode, heroClass = which)
-                "join" -> {
-                    detachOnlineSession()
-                    setHost(false)
-                    try { prepareClientJoin() } catch (e: Exception) {
-                        Log.e(TAG, "prepareClientJoin failed", e)
-                    }
-                    // Do not arm crash_guard / write save_state — solo Continue must survive Join.
-                    activateSession(armCrashGuard = false)
-                    btnReset.visibility = View.GONE
-                    lastBattleRoster = ""
-                    setupMultiplayer(sid, asHost = false)
-                    if (multiplayer?.isAvailable != true) {
-                        Toast.makeText(this, "Could not connect — check Firebase.", Toast.LENGTH_LONG).show()
-                        resetToStartMenu()
-                        return@setItems
-                    }
-                    multiplayer?.publishLobbyJoin(localPlayerName, which)
-                    multiplayer?.pushAction(
-                        mapOf(
-                            "type" to "join",
-                            "playerName" to localPlayerName,
-                            "classId" to which,
-                            "targetIndex" to 0
-                        )
-                    )
-                    scheduleJoinTimeout(sid, resuming = false)
-                    updateUi()
-                    Toast.makeText(
-                        this,
-                        "Joining $sid — waiting for the Lanternkeeper to admit you…",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
+                "join" -> withOnlineSignIn(onReady = { uid -> joinSignedIn(sid, which, uid) }, onFail = { showStartDialog() })
             }
         }.setNegativeButton("Back") { _, _ -> showStartDialog() }.show()
+    }
+
+    /** v2.37 #90: the Join flow after anonymous sign-in (unchanged otherwise). */
+    private fun joinSignedIn(sid: String, which: Int, uid: String) {
+        detachOnlineSession()
+        setHost(false)
+        try { prepareClientJoin() } catch (e: Exception) {
+            Log.e(TAG, "prepareClientJoin failed", e)
+        }
+        // Do not arm crash_guard / write save_state — solo Continue must survive Join.
+        activateSession(armCrashGuard = false)
+        btnReset.visibility = View.GONE
+        lastBattleRoster = ""
+        setupMultiplayer(sid, asHost = false, uid = uid)
+        if (multiplayer?.isAvailable != true) {
+            Toast.makeText(this, "Could not connect — check Firebase.", Toast.LENGTH_LONG).show()
+            resetToStartMenu()
+            return
+        }
+        multiplayer?.publishLobbyJoin(localPlayerName, which)
+        multiplayer?.pushAction(
+            mapOf(
+                "type" to "join",
+                "playerName" to localPlayerName,
+                "classId" to which,
+                "targetIndex" to 0
+            )
+        )
+        scheduleJoinTimeout(sid, resuming = false)
+        updateUi()
+        Toast.makeText(
+            this,
+            "Joining ${SessionIds.display(sid)} — waiting for the Lanternkeeper to admit you…",
+            Toast.LENGTH_LONG
+        ).show()
     }
 
     private fun companionDisplayName(classId: Int): String = when (classId) {
@@ -3015,12 +3066,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showJoinDialog() {
-        val input = EditText(this).apply { hint = "Session ID (e.g. AL-A1B2)" }
+        val input = EditText(this).apply { hint = "Session code (e.g. AL-7KQ2M-X9D4R)" }
         AlertDialog.Builder(this).setTitle("Join a Lanternkeeper session").setView(input)
             .setPositiveButton("Join") { _, _ ->
-                val sid = input.text.toString().trim().uppercase()
-                if (sid.isNotEmpty()) showClassSelection(mode = "join", sid = sid)
-                else showStartDialog()
+                val typed = input.text.toString()
+                // v2.37 #90: 10-character codes; dashes, spaces and case don't matter, O = 0, I / L = 1.
+                val sid = SessionIds.normalize(typed)
+                when {
+                    sid != null -> showClassSelection(mode = "join", sid = sid)
+                    typed.isBlank() -> showStartDialog()
+                    else -> {
+                        val why = if (SessionIds.looksLegacy(typed))
+                            "That's an old 4-character code. Ask the Lanternkeeper to update to v2.37 and share the new code."
+                        else "Session codes look like AL-7KQ2M-X9D4R (10 letters and digits after AL-)."
+                        AlertDialog.Builder(this).setTitle("Check the code").setMessage(why)
+                            .setPositiveButton("Try again") { _, _ -> showJoinDialog() }
+                            .setNegativeButton("Back") { _, _ -> showStartDialog() }
+                            .show()
+                    }
+                }
             }
             .setNegativeButton("Back") { _, _ -> showStartDialog() }
             .show()
@@ -3083,7 +3147,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("You are the Lanternkeeper")
             .setMessage(
-                "Session ID:\n\n$sid\n\n" +
+                "Session code:\n\n${SessionIds.display(sid)}\n\n" +
                     "You are the Lanternkeeper — not a hero on the battle map.\n" +
                     "Friends: Join session, enter this ID, pick a class.\n" +
                     "Use the Keeper button for Begin dungeon / Advance / Narrate.\n\n" +
@@ -4974,8 +5038,8 @@ class MainActivity : AppCompatActivity() {
         // v2.29: Encounter Level + Pressure pips (solo only — the core never sends it online).
         val curveBadge = CombatCurveUi.parse(status)?.let { CombatCurveUi.roomBadge(it) }
         statusText.text = when {
-            isOnlineHost && onlineSessionId.isNotBlank() -> "$roomBit · ID $onlineSessionId"
-            isOnlineClient && onlineSessionId.isNotBlank() -> "$roomBit · joined $onlineSessionId"
+            isOnlineHost && onlineSessionId.isNotBlank() -> "$roomBit · ID ${SessionIds.display(onlineSessionId)}"
+            isOnlineClient && onlineSessionId.isNotBlank() -> "$roomBit · joined ${SessionIds.display(onlineSessionId)}"
             curveBadge != null -> "$roomBit · $curveBadge"
             else -> roomBit
         }
