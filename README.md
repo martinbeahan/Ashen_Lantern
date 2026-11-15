@@ -224,6 +224,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Arena (Ember Ring)** — see Endgame modes below
 - **Endless Deep (Ashen Deep)** — see Endgame modes below
 - **Online multiplayer** — **Host online (Lanternkeeper)** / **Join session** via Firebase Realtime Database (the host narrates as the Lanternkeeper)
+- **Online security** — anonymous Firebase sign-in, locked-down database rules (only the host writes the game; players write only their own entries, with type and size checks), an authoritative host and unguessable 10-character session codes. See [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md)
 - **Settings** — music on/off, sound effects on/off, reduce flashing (photosensitive-friendly), foe intent chips and exact intent numbers, tutorial, Adventures (save slots), return to main menu, About
 - **Audio beds** — biome / combat / boss loops (CC0); optional Lanternkeeper (narrator) voice via Android Text-to-Speech
 
@@ -294,7 +295,7 @@ Copy the full failure line (e.g. `INSTALL_FAILED_TEST_ONLY`, `INSTALL_FAILED_OLD
 
 ### Firebase / `google-services.json` (local secret)
 
-Online **Host** / **Join** needs Firebase Realtime Database.
+Online **Host** / **Join** needs Firebase Realtime Database and **Anonymous** sign-in (v2.37+). Publish [`firebase/database.rules.json`](firebase/database.rules.json) as described in [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md).
 
 - The Google Services Gradle plugin is **enabled** in the project.
 - **`app/google-services.json` is not in this repository** — it is a local secret. Download it from your own Firebase project and place it at `app/google-services.json`.
@@ -329,6 +330,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`docs/ENDLESS_DEEP.md`](docs/ENDLESS_DEEP.md) | Endless Deep / Ashen Deep |
 | [`BUILD_HELP.md`](BUILD_HELP.md) | Build troubleshooting |
 | [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md) | Online multiplayer setup |
+| [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md) | Online lockdown: anonymous sign-in, database rules (`firebase/database.rules.json`), session codes, console steps, deploy order, Rules Playground checklist, emulator test (`tools/rules_test`) |
 
 ## Legal / trademarks
 

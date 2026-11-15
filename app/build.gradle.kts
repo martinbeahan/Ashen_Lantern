@@ -110,8 +110,12 @@ dependencies {
     // Firebase is optional until google-services.json is present
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.database)
+    // v2.37 #90: anonymous sign-in before Host / Join (the database rules require auth).
+    implementation(libs.firebase.auth)
 
     testImplementation(libs.junit)
+    // v2.37: real org.json for the database-rules structure test (Android's is a stub on the JVM).
+    testImplementation(libs.org.json)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
