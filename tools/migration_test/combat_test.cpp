@@ -318,6 +318,55 @@ int main() {
         std::cout << "BUDGET: " << rooms << " crawl rooms fitted, <= 4 foes each\n";
     }
 
+    // ---------------------------------------------------------------- v2.38 #92: potion on a dead ally
+    {
+        // Bring a crawl to the hero's own turn in a live fight; returns false if it never got there.
+        auto heroTurn = [](Game& g) {
+            g.startNewGame(CharacterClass::FIGHTER, "Hero", 1, 0, CharacterClass::WIZARD, true);
+            for (int step = 0; step < 60; ++step) {
+                if (g.getEnemies().empty() || g.isGameOver()) return false;
+                if (g.getCurrentActor() == g.getPlayers().front().get()) return true;
+                g.processTurn();
+            }
+            return false;
+        };
+        int dead = 0, downed = 0;
+        for (int run = 0; run < 20 && (dead < 3 || downed < 3); ++run) {
+            Game g;
+            if (!heroTurn(g) || g.getPlayers().size() < 2) continue;
+            Character& hero = const_cast<Character&>(*g.getPlayers()[0]);
+            Character& ally = const_cast<Character&>(*g.getPlayers()[1]);
+            hero.resources = 3;
+            if (run % 2 == 0) {
+                // Permanently dead ally: refused, potion kept, still the hero's turn, ally unchanged.
+                ally.currentHp = 0; ally.isDowned = true; ally.isDead = true; ally.deathSaveFailures = 3;
+                g.playerHeal(1);
+                CHECK(hero.resources == 3);
+                CHECK(g.getCurrentActor() == &hero);
+                CHECK(ally.isDead && ally.currentHp == 0);
+                CHECK(contains(g.getLastEvent(), "beyond a potion's help"));
+                // The hero can still drink it on a living target that turn (unchanged path).
+                hero.currentHp = 1;
+                g.playerHeal(0);
+                CHECK(hero.resources == 2);
+                CHECK(hero.currentHp > 1);
+                CHECK(g.getCurrentActor() != &hero);
+                ++dead;
+            } else {
+                // Downed (dying, not dead) ally: the potion still revives — unchanged behaviour.
+                ally.currentHp = 0; ally.isDowned = true; ally.isDead = false; ally.deathSaveFailures = 1;
+                g.playerHeal(1);
+                CHECK(hero.resources == 2);
+                CHECK(!ally.isDowned && ally.currentHp > 0);
+                CHECK(g.getCurrentActor() != &hero);
+                ++downed;
+            }
+        }
+        CHECK(dead >= 3 && downed >= 3);
+        std::cout << "POTION: dead ally refused before spending (" << dead << " runs), downed ally still revived ("
+                  << downed << " runs)\n";
+    }
+
     if (failures) { std::cerr << failures << " failure(s)\n"; return 1; }
     std::cout << "combat_test OK\n";
     return 0;
