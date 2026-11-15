@@ -305,7 +305,7 @@ bool Game::runArt(Character& actor, int artIdx, int foeIdx) {
         case 22: { // Lift Purse
             if (!needFoe()) return false;
             const int gold = 10 + 3 * std::max(1, foe->curveEL);
-            actor.gold += gold;
+            actor.gainGold(gold);
             foe->ai.move = static_cast<int>(ai::Move::STRIKE);
             say(actor.name + " lifts " + std::to_string(gold) + " gold from " + foe->name + " — its plan falls apart.");
             return true;

@@ -727,7 +727,7 @@ void Game::grantAshenLantern(Character* actor) {
     if (hero) {
         // Thematic quest item: modest weapon blessing without replacing class identity harshly.
         hero->equippedWeapon = Item::make("Ashen Lantern", ItemType::WEAPON, 1, ItemRarity::RARE, -1);
-        hero->gold += 25;
+        hero->gainGold(25);
     }
     dmSay("You lift the Ashen Lantern from the plinth. It is barely warm, and Wren is barely breathing.");
     addJournalEntry("Recovered the Ashen Lantern (questLanternRecovered).");
@@ -767,7 +767,7 @@ void Game::maybeFinishAct2OnSettledEnter() {
         addJournalEntry("The Tithe Broken — the soul-ledger burned; Hesk confessed the elders chose who was kindled.");
         addChatMessage("Quest", "Act 2 done — The Tithe. Act 3 awaits.");
         if (players_.empty() == false && players_[0]) {
-            players_[0]->gold += 40;
+            players_[0]->gainGold(40);
         }
     }
 }
@@ -789,7 +789,7 @@ void Game::maybeFinishAct3OnSealedEnter() {
         addJournalEntry("Emberdeep complete — the First Lamplighter named Abbess Maren Vey, founder of Millhollow.");
         addChatMessage("Quest", "Act 3 done — Emberdeep. Act 4 awaits.");
         if (!players_.empty() && players_[0]) {
-            players_[0]->gold += 60;
+            players_[0]->gainGold(60);
         }
     }
 }
@@ -822,7 +822,7 @@ void Game::maybeFinishAct4OnKindledEnter() {
         addJournalEntry("Ashwake Vigil complete — Maren Vey took a shard of Wren and descended. Follow the ash.");
         addChatMessage("Quest", "Act 4 done — Story complete! Endgame unlocked.");
         if (!players_.empty() && players_[0]) {
-            players_[0]->gold += 80;
+            players_[0]->gainGold(80);
         }
     }
 }
@@ -1123,7 +1123,7 @@ bool Game::trySoloQuestSearch(Character* hero) {
     const auto beat = static_cast<SoloQuestBeat>(questBeat_);
 
     if (beat == SoloQuestBeat::MILLHOLLOW) {
-        hero->gold += 8;
+        hero->gainGold(8);
         lastEvent_ = hero->name + " finds a black funeral ribbon snagged on a thorn — Wren's. Her trail runs toward Hollowbarrow Crypt.";
         dmSay("The thieves ran for Hollowbarrow Crypt, and Wren ran after them. Follow.");
         addJournalEntry("Clue: Wren's funeral ribbon on the road; the thieves fled toward Hollowbarrow Crypt.");
@@ -1139,7 +1139,7 @@ bool Game::trySoloQuestSearch(Character* hero) {
         return true;
     }
     if (beat == SoloQuestBeat::LANTERN_VAULT && questLanternRecovered_) {
-        hero->gold += 12;
+        hero->gainGold(12);
         lastEvent_ = hero->name + " finds spare oil and 12 gold near the plinth.";
         dmSay("A pouch of oil and coin — useful, but the lantern itself is the true prize.");
         addJournalEntry(lastEvent_);
@@ -1154,7 +1154,7 @@ bool Game::trySoloQuestSearch(Character* hero) {
         return true;
     }
     if (beat == SoloQuestBeat::ACT2_GREEN) {
-        hero->gold += 10;
+        hero->gainGold(10);
         lastEvent_ = hero->name + " overhears a collector mutter: \"The loft ledger above the weir seals every name.\"";
         dmSay("A clue: the Tithe keeps its book in the mill loft above the weir. Every name is in it.");
         addJournalEntry("Clue: the Tithe's ledger is in the mill loft above the weir.");
@@ -1163,7 +1163,7 @@ bool Game::trySoloQuestSearch(Character* hero) {
     }
     if (beat == SoloQuestBeat::ACT2_LOFT) {
         questAct2LedgerFound_ = true;
-        hero->gold += 15;
+        hero->gainGold(15);
         lastEvent_ = hero->name + " takes the soul-ledger from the shelf. Your name is the next entry, the ink still wet.";
         dmSay("You have the ledger. Onward to the Collector's Hall — Sallow Venn holds the ledger-seal.");
         wrenSay("Surplus. They wrote surplus.");
@@ -1179,7 +1179,7 @@ bool Game::trySoloQuestSearch(Character* hero) {
         return true;
     }
     if (beat == SoloQuestBeat::ACT3_RUMOR) {
-        hero->gold += 12;
+        hero->gainGold(12);
         lastEvent_ = hero->name + " hears: \"Past the roots there's a seal — the First Lamplighter's signet. It's the only key that shuts the well kindly.\"";
         dmSay("Clue: the Ember Seal lies past the Root Labyrinth. Recover it, then face what guards the wound.");
         addJournalEntry("Clue: the First Lamplighter's Ember Seal lies past the Root Labyrinth.");
@@ -1188,7 +1188,7 @@ bool Game::trySoloQuestSearch(Character* hero) {
     }
     if (beat == SoloQuestBeat::ACT3_RELIC) {
         questAct3SealFound_ = true;
-        hero->gold += 20;
+        hero->gainGold(20);
         lastEvent_ = hero->name + " lifts the Ember Seal. Around the rim: \"Maren Vey bound me here. Do not let her drink again.\"";
         dmSay("You have the Ember Seal. Onward to the Breach Threshold — the First Lamplighter waits.");
         wrenSay("She has a name. The watcher from the crypt has a name.");
@@ -1204,7 +1204,7 @@ bool Game::trySoloQuestSearch(Character* hero) {
         return true;
     }
     if (beat == SoloQuestBeat::ACT4_WATCH) {
-        hero->gold += 14;
+        hero->gainGold(14);
         lastEvent_ = hero->name + " hears an elder whisper: \"Under the fen-tower there's an ember. It isn't a flame to light. It's the valve.\"";
         dmSay("Clue: the Vigil Ember is the siphon's valve. Recover it past Greyfen and reverse the draw.");
         addJournalEntry("Clue: the Vigil Ember under the fen-tower is the valve of the siphon.");
@@ -1213,7 +1213,7 @@ bool Game::trySoloQuestSearch(Character* hero) {
     }
     if (beat == SoloQuestBeat::ACT4_EMBER) {
         questAct4EmberFound_ = true;
-        hero->gold += 25;
+        hero->gainGold(25);
         lastEvent_ = hero->name + " lifts the Vigil Ember, and a scrap of Tithe rite in an old, careful hand.";
         dmSay("You have the Vigil Ember. Onward to the Ashwake Threshold — the Bell-Herald waits.");
         wrenSay("This isn't a light. It's a throat.");
@@ -1636,7 +1636,7 @@ bool Game::sellInventoryItem(const std::string& playerName, int invIndex) {
     int price = item->sellPrice(hero->statRules ? hero->effMod(5) : 0); // v2.31 Barter
     std::string itemName = item->getDescription();
     hero->inventory.erase(hero->inventory.begin() + invIndex);
-    hero->gold += price;
+    hero->gainGold(price);
     lastEvent_ = hero->name + " sells " + itemName + " for " + std::to_string(price) + "g.";
     addJournalEntry(lastEvent_);
     return true;
@@ -1657,7 +1657,7 @@ bool Game::sellEquippedItem(const std::string& playerName, int slot) {
     // Unequip first: clear slot so combat falls back to fists / unarmored AC.
     *ptr = nullptr;
     hero->refreshDerivedStats();
-    hero->gold += price;
+    hero->gainGold(price);
     lastEvent_ = hero->name + " sells " + itemName + " for " + std::to_string(price) + "g."
         + (slot == 0 ? " (fists ready)" : "");
     addJournalEntry(hero->name + " sold equipped " + itemName + " for " + std::to_string(price) + "g.");
@@ -2819,7 +2819,7 @@ void Game::grantKillLoot(Character* actor, const std::string& foeName, const std
         gold = static_cast<int>(std::lround(gold * curve::pressureMultiplier(pressure_)));
     }
     gold = luckGold(gold); // v2.31 Luck of the Lantern (CHA)
-    looter->gold += gold;
+    looter->gainGold(gold);
     // Kill beat first so UI juice can toast "Felled …" then gold line stays in the feed.
     std::string msg = "Felled " + foeName + "! " + looter->name + " loots " +
                       std::to_string(gold) + " gold.";
@@ -2882,17 +2882,17 @@ void Game::enterClearedRoom(Character* actor) {
             }
         }
         if (purse) {
-            purse->gold += setPieceGold;
+            purse->gainGold(setPieceGold);
             dmSay(purse->name + " claims +" + std::to_string(setPieceGold) + " gold from the set-piece cache.");
             addChatMessage("Combat", purse->name + " claims +" + std::to_string(setPieceGold) + " set-piece gold.");
         }
     }
     // Ember Ring: score the cleared wave; luck bump on 1–4 (Rare/Epic); Wave 5 uses boss Legendary gate.
     if (isArena() && arenaWave_ >= 1) {
-        arenaScore_ += 100 * arenaWave_;
+        arenaScore_ = savecodec::saturatingAdd(arenaScore_, 100LL * arenaWave_, 0, savecodec::limits::kMaxArenaScore); // v2.36 #91
         arenaWavesCleared_ = std::max(arenaWavesCleared_, arenaWave_);
         if (arenaWave_ >= ARENA_MAX_WAVES) {
-            arenaScore_ += 200; // finale bonus
+            arenaScore_ = savecodec::saturatingAdd(arenaScore_, 200, 0, savecodec::limits::kMaxArenaScore); // finale bonus
         } else {
             pendingBossLootLuck_ += 10 + arenaWave_ * 4;
         }
@@ -2918,7 +2918,7 @@ void Game::enterClearedRoom(Character* actor) {
             }
         }
         if (purse) {
-            purse->gold += depthGold;
+            purse->gainGold(depthGold);
             dmSay(purse->name + " claims +" + std::to_string(depthGold)
                   + " gold from the Ashen Deep (depth " + std::to_string(endlessDepth_) + ").");
             addChatMessage("Endless", purse->name + " +" + std::to_string(depthGold) + " gold (depth "
@@ -3824,7 +3824,7 @@ void Game::playerInteract(const std::string& playerName) {
         memoryOnStorySearch();
     } else if (hero->performSavingThrow(hero->searchScore(), 12)) { // v2.29: effective INT (bug d)
         int found = luckGold(15 + roomCount_ * 2 + getRandomInt(0, 10)); // v2.31 Luck (CHA)
-        hero->gold += found;
+        hero->gainGold(found);
         lastEvent_ = hero->name + " searched and found " + std::to_string(found) + " gold pieces!";
         addChatMessage("Combat", lastEvent_);
         dmSay("A successful Investigation check reveals a hidden pouch.");
@@ -4503,7 +4503,7 @@ bool Game::grantDailyQuestSpoils(int gold, bool giveLoot) {
     }
     if (!purse) return false;
     if (gold > 0) {
-        purse->gold += gold;
+        purse->gainGold(gold);
         dmSay(purse->name + " claims " + std::to_string(gold) + " gold from today's errands.");
         addChatMessage("Quest", purse->name + " claims " + std::to_string(gold) + " daily-quest gold.");
         addJournalEntry("Daily quests: +" + std::to_string(gold) + " gold.");
@@ -4766,7 +4766,7 @@ void Game::returnStolenGold(Character& foe, Character* looter) {
         for (auto& p : players_) if (p && !p->isDead) { to = p.get(); break; }
     }
     if (to) {
-        to->gold += foe.ai.stolenGold;
+        to->gainGold(foe.ai.stolenGold);
         addChatMessage("Combat", to->name + " takes back " + std::to_string(foe.ai.stolenGold) + " stolen gold.");
     }
     foe.ai.stolenGold = 0;

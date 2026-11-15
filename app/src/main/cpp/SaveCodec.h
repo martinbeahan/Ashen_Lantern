@@ -101,6 +101,41 @@ inline int parseInt(const std::string& s, const char* field) {
 
 inline int clampInt(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
+/**
+ * v2.36 (#91): ceilings for numbers read from a save or a remote player's game state. Legitimate play
+ * stays far below every one of them (level-50 XP total ~120k, gold in the tens of thousands, boss HP in
+ * the low thousands), so a real save loads unchanged; a hand-edited or hostile value is pulled in so
+ * later int arithmetic can never overflow (signed overflow is undefined behaviour).
+ */
+namespace limits {
+constexpr int kMaxXp = 10000000;
+constexpr int kMaxHp = 100000;
+constexpr int kMaxResources = 1000;
+constexpr int kMaxGold = 100000000;
+constexpr int kMaxRoomCount = 1000000;
+constexpr int kMinInitiative = -50;
+constexpr int kMaxInitiative = 100;
+constexpr int kMaxTurnIndex = 64;
+constexpr int kMaxModeCounter = 1000000;   // arena wave / waves cleared, Endless depth, Long Rest rooms
+constexpr int kMaxArenaScore = 1000000000;
+constexpr int kMinItemBonus = -20;
+constexpr int kMaxItemBonus = 100;
+constexpr int kMaxSubEffect = 64;
+constexpr int kMaxUpgradeLevel = 25;    // Legendary's cap, the highest of any rarity
+} // namespace limits
+
+/** a + b in 64 bits, clamped to [lo, hi] (never overflows). */
+inline int saturatingAdd(int a, long long b, int lo, int hi) {
+    const long long r = static_cast<long long>(a) + b;
+    return r < lo ? lo : (r > hi ? hi : static_cast<int>(r));
+}
+
+/** Lenient int: a number in range, else def (never throws). */
+inline int parseIntOr(const std::string& s, int def) {
+    int v = 0;
+    return tryParseInt(s, v) ? v : def;
+}
+
 /** Class ordinal 0..4 (FIGHTER..BARD); anything else is invalid. */
 inline bool isValidClassId(int c) { return c >= 0 && c <= 4; }
 

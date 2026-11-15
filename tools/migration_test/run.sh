@@ -17,7 +17,10 @@ else
 fi
 "${cxx[@]}" -std=c++17 -O0 -o "$work/migration_test" "$work/migration_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/migration_test"
-"${cxx[@]}" -std=c++17 -O0 -o "$work/save_safety_test" "$work/save_safety_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
+# v2.36 #91: save_safety_test traps on any signed int overflow (the INT_MAX / fuzz cases must stay UB-free).
+trap_ub=()
+if [[ -n "$ndk_bin" && -x "$ndk_bin/clang++" ]]; then trap_ub=(-fsanitize=signed-integer-overflow -fsanitize-trap=signed-integer-overflow); fi
+"${cxx[@]}" "${trap_ub[@]}" -std=c++17 -O0 -o "$work/save_safety_test" "$work/save_safety_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/save_safety_test"
 "${cxx[@]}" -std=c++17 -O0 -o "$work/kindling_test" "$work/kindling_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/kindling_test"
