@@ -978,6 +978,23 @@ Java_com_fintrack_dndbeginnerremote_MainActivity_finishEndlessDeepKeepParty([[ma
     });
 }
 
+// v2.40 The Drowned Vigil (Kotlin spends the Raid Key first; native refuses below Rekindled I).
+JNIEXPORT jboolean JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_beginDrownedVigilFromCurrent([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    return jniGuard("beginDrownedVigilFromCurrent", static_cast<jboolean>(JNI_FALSE), [&]() -> jboolean {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        return g_Game.beginDrownedVigilFromCurrent() ? JNI_TRUE : JNI_FALSE;
+    });
+}
+
+JNIEXPORT void JNICALL
+Java_com_fintrack_dndbeginnerremote_MainActivity_finishDrownedVigilKeepParty([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
+    jniGuardVoid("finishDrownedVigilKeepParty", [&]() {
+        std::lock_guard<std::mutex> lock(g_RendererMutex);
+        g_Game.finishDrownedVigilKeepParty();
+    });
+}
+
 JNIEXPORT jint JNICALL
 Java_com_fintrack_dndbeginnerremote_MainActivity_getEndlessDepth([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz) {
     return jniGuard("getEndlessDepth", static_cast<jint>(0), [&]() -> jint {

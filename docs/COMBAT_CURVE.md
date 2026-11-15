@@ -191,3 +191,8 @@ A v2.28 mid-fight foe has no curve fields and keeps the old rules until that fig
 Abilities / intents / AI and statuses (PR 2), XP formula (PR 4), level cap 50 and optional prestige
 with the Rekindle / Not now dialog (later PRs). The story +1 resource padding is still lost at level-up
 (noticed, not fixed here).
+
+## v2.40: Mythical follow
+
+Each equipped Mythical piece (0..2) adds `kMythicFollow = 1.5` to the encounter level, its upper
+clamp and the axis value, so the bands hold with Mythical gear. See docs/MYTHICAL.md.

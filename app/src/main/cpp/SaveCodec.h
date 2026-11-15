@@ -121,7 +121,9 @@ constexpr int kMaxArenaScore = 1000000000;
 constexpr int kMinItemBonus = -20;
 constexpr int kMaxItemBonus = 100;
 constexpr int kMaxSubEffect = 64;
-constexpr int kMaxUpgradeLevel = 25;    // Legendary's cap, the highest of any rarity
+constexpr int kMaxUpgradeLevel = 25;    // Legendary's cap, the highest of any rarity below Mythical
+constexpr int kMaxMythicUpgradeLevel = 32; // v2.40 Mythical: +30, +32 at Rekindled VII
+constexpr int kMaxMythicEffect = 5;     // v2.40 MythicEffect::LANTERNS_DUE
 } // namespace limits
 
 /** a + b in 64 bits, clamped to [lo, hi] (never overflows). */

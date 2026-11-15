@@ -3,7 +3,7 @@
 #  1) combat_sim — the v2.29 curve primitives (CombatCurve.h + GameLogic.h), basic attacks only.
 #  2) ai_sim     — v2.32 (levels 20-50, perks) on full Game fights (Game.cpp) with the party on auto and the enemy AI on,
 #                  v2.30 stat rules vs v2.31 universal stats. Optional arg: fights per cell (default 1000).
-# Prints the markdown tables used in the PRs. Usage: tools/combat_sim/run.sh [fights]
+# Prints the markdown tables used in the PRs. Usage: tools/combat_sim/run.sh [fights] [grid|mythic]
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 src="$here/../../app/src/main/cpp"
@@ -16,7 +16,7 @@ if [[ -n "$ndk_bin" && -x "$ndk_bin/clang++" ]]; then
 else
   cxx=("${CXX:-c++}")
 fi
-if [[ "${2:-}" != grid ]]; then
+if [[ "${2:-}" != grid && "${2:-}" != mythic ]]; then
 "${cxx[@]}" -std=c++17 -O2 -o "$work/combat_sim" "$work/combat_sim.cpp"
 "$work/combat_sim"
 echo

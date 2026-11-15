@@ -346,6 +346,9 @@ class MainActivity : AppCompatActivity() {
     external fun getArenaWavesCleared(): Int
     external fun beginEndlessDeepFromCurrent(): Boolean
     external fun finishEndlessDeepKeepParty()
+    // v2.40 The Drowned Vigil (native refuses below Rekindled I or online).
+    external fun beginDrownedVigilFromCurrent(): Boolean
+    external fun finishDrownedVigilKeepParty()
     external fun getEndlessDepth(): Int
     external fun getEndlessBestDepthThisRun(): Int
     external fun getDailyQuestCounters(): String
@@ -1120,7 +1123,7 @@ class MainActivity : AppCompatActivity() {
             // Raid victory / finishBossRaidKeepParty leaves soloPlayMode != RAID.
             if (prefs().getBoolean("raid_active", false)) {
                 val mode = try { getSoloPlayMode() } catch (_: Exception) { 2 }
-                if (mode != 2) clearRaidSessionFlags()
+                if (mode != 2 && mode != DrownedVigil.MODE) clearRaidSessionFlags() // v2.40: the Vigil shares the raid flags
             }
             // Challenge Dungeon clear/wipe leaves soloPlayMode != CHALLENGE (3).
             if (prefs().getBoolean("challenge_active", false)) {
@@ -1340,7 +1343,7 @@ class MainActivity : AppCompatActivity() {
         val merchant = try { isMerchantRoom() } catch (_: Exception) { false }
         val raid = try {
             val m = getSoloPlayMode()
-            m == 2 || m == 3 || m == 4
+            m == 2 || m == 3 || m == 4 || m == DrownedVigil.MODE
         } catch (_: Exception) { false }
         val resolved = when {
             onMenu -> GameAudio.Track.TOWN
@@ -2295,13 +2298,15 @@ class MainActivity : AppCompatActivity() {
             return
         }
         val hero = heroNameFromSave(save)
-        AlertDialog.Builder(this)
+        val rank = rankAndDifficulty(save).first
+        val dialog = AlertDialog.Builder(this)
             .setTitle("Boss Raid")
             .setMessage(nightmareRankWarning(save) +
                 "Spend 1 Raid Key to enter a focused endgame boss fight with $hero?\n\n" +
                 "Keys held: $keys/3 · ${raidKeyCountdownLabel(keys)}\n" +
                 "Your saved stats, gear, inventory, gold, companion, level, and Legendary upgrades carry over.\n" +
-                "Rewards: gold, XP, Legendary chance, possible key drop."
+                "Rewards: gold, XP, Legendary chance, possible key drop.\n\n" +
+                DrownedVigil.entryLine(rank)
             )
             .setPositiveButton("Enter raid") { _, _ ->
                 if (!spendRaidKey()) {
@@ -2318,14 +2323,30 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton("Cancel", null)
-            .show()
+        if (DrownedVigil.canEnter(rank, keys)) {
+            // v2.40: the same key, the same saved hero; native mode 6 (three chambers).
+            dialog.setNeutralButton("Drowned Vigil") { _, _ ->
+                if (!spendRaidKey()) {
+                    Toast.makeText(this, "No Raid Key.", Toast.LENGTH_SHORT).show()
+                    refreshMainMenuButtons()
+                    return@setNeutralButton
+                }
+                if (!startBossRaidFromSave(vigil = true)) {
+                    prefs().edit().putInt("raid_keys", DrownedVigil.keysAfterRefund(raidKeysHeld())).apply()
+                    Toast.makeText(this, "Could not start the Drowned Vigil with your saved hero.", Toast.LENGTH_LONG).show()
+                    refreshMainMenuButtons()
+                    showStartDialog()
+                }
+            }
+        }
+        dialog.show()
     }
 
     /**
      * Load Continue save, stash pre-raid snapshot, then spawn raid boss on the SAME party.
      * Never calls resetGame / class select for raids.
      */
-    private fun startBossRaidFromSave(): Boolean {
+    private fun startBossRaidFromSave(vigil: Boolean = false): Boolean {
         if (!nativeReady) {
             Toast.makeText(this, "Native library not ready — can't start raid.", Toast.LENGTH_LONG).show()
             return false
@@ -2350,8 +2371,8 @@ class MainActivity : AppCompatActivity() {
             prefs().edit().remove("pre_raid_save_state").putBoolean("raid_active", false).apply()
             return false
         }
-        val ok = try { beginBossRaidFromCurrent() } catch (e: Exception) {
-            Log.e(TAG, "beginBossRaidFromCurrent failed", e)
+        val ok = try { if (vigil) beginDrownedVigilFromCurrent() else beginBossRaidFromCurrent() } catch (e: Exception) {
+            Log.e(TAG, if (vigil) "beginDrownedVigilFromCurrent failed" else "beginBossRaidFromCurrent failed", e)
             false
         }
         if (!ok) {
@@ -2373,7 +2394,8 @@ class MainActivity : AppCompatActivity() {
         btnReset.visibility = View.GONE
         syncAndSave()
         updateUi()
-        Toast.makeText(this, "Boss Raid — $localPlayerName enters the arena!", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, if (vigil) "The Drowned Vigil — $localPlayerName climbs the Vigil Spire!"
+            else "Boss Raid — $localPlayerName enters the arena!", Toast.LENGTH_SHORT).show()
         return true
     }
 
@@ -3923,7 +3945,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun rarityKey(rarity: String): String = when (rarity.lowercase()) {
-        "uncommon", "rare", "epic", "legendary" -> rarity.lowercase()
+        "uncommon", "rare", "epic", "legendary", "mythical" -> rarity.lowercase()
         else -> "common"
     }
 
@@ -3939,10 +3961,11 @@ class MainActivity : AppCompatActivity() {
                 "rare" -> R.drawable.bg_item_row_rare
                 "epic" -> R.drawable.bg_item_row_epic
                 "legendary" -> R.drawable.bg_item_row_legendary
+                "mythical" -> R.drawable.bg_item_row_mythical
                 else -> R.drawable.bg_item_row_common
             }
         )
-        // v2.27: socket = rarity frame (background) + gear glyph (src). Calm Legendary when reduce-flash is on.
+        // v2.27: socket = rarity frame (background) + gear glyph (src). Calm Legendary / Mythical when reduce-flash is on.
         socket?.setBackgroundResource(GearIcons.socketFor(k))
         socket?.setImageResource(GearIcons.forItem(itemName, itemType, k, calm = reduceFlashEnabled))
         pip?.setImageResource(
@@ -3951,6 +3974,7 @@ class MainActivity : AppCompatActivity() {
                 "rare" -> R.drawable.ic_rarity_rare
                 "epic" -> R.drawable.ic_rarity_epic
                 "legendary" -> R.drawable.ic_rarity_legendary
+                "mythical" -> R.drawable.ic_rarity_mythical
                 else -> R.drawable.ic_rarity_common
             }
         )
@@ -3963,6 +3987,7 @@ class MainActivity : AppCompatActivity() {
             "rare" -> getColor(R.color.rarity_rare)
             "epic" -> getColor(R.color.rarity_epic)
             "legendary" -> getColor(R.color.rarity_legendary)
+            "mythical" -> getColor(R.color.rarity_mythical)
             else -> getColor(R.color.rarity_common)
         }
     }
@@ -6191,7 +6216,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private enum class AccentKind { HIT, CRIT, KILL, SPECIAL, LEVEL_UP, RARE_LOOT }
+    private enum class AccentKind { HIT, CRIT, KILL, SPECIAL, LEVEL_UP, RARE_LOOT, MYTHIC_LOOT }
 
     /**
      * Restrained combat juice helpers. Heavy flashes / shakes mute when
@@ -6239,6 +6264,7 @@ class MainActivity : AppCompatActivity() {
             AccentKind.SPECIAL -> if (accentFromEnemy) withAlpha(R.color.ae_gloam, 0x55) else withAlpha(R.color.ae_amber, 0x55)
             AccentKind.LEVEL_UP -> withAlpha(R.color.ae_amber_core, 0x66)
             AccentKind.RARE_LOOT -> withAlpha(R.color.ae_epic_violet, 0x66)
+            AccentKind.MYTHIC_LOOT -> withAlpha(R.color.rarity_mythical, 0x77) // ember-white burst
             AccentKind.CRIT -> withAlpha(R.color.ae_amber_core, 0x88)
             AccentKind.HIT -> withAlpha(R.color.ae_ember, 0x55)
         }
@@ -6271,6 +6297,7 @@ class MainActivity : AppCompatActivity() {
         overlay.alpha = when (kind) {
             AccentKind.CRIT -> 0.55f
             AccentKind.KILL, AccentKind.LEVEL_UP, AccentKind.RARE_LOOT -> 0.35f
+            AccentKind.MYTHIC_LOOT -> 0.45f
             AccentKind.SPECIAL -> 0.28f
             else -> 0.25f
         }
@@ -6298,6 +6325,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun maybeRareLootAccent(event: String) {
         val e = event.lowercase()
+        if (e.contains("[mythical]")) {
+            // v2.40: an ember-white burst for a Mythical (reduce-flash: the toast only, no wash).
+            val key = "loot:${event.take(80)}"
+            if (key == lastRareLootKey) return
+            lastRareLootKey = key
+            Toast.makeText(this, "Mythical loot!", Toast.LENGTH_LONG).show()
+            pulseAccent(AccentKind.MYTHIC_LOOT)
+            return
+        }
         val rare = e.contains("[rare]") || e.contains("[epic]") || e.contains("[legendary]") ||
             e.contains("(rare)") || e.contains("(epic)") || e.contains("(legendary)") ||
             (e.contains("legendary") && (e.contains("finds") || e.contains("claims") || e.contains("loot")))
@@ -6490,7 +6526,7 @@ class MainActivity : AppCompatActivity() {
         if (!sessionActive || wipeDialogShowing) return
         val d = currentDifficultyForWipe()
         val inRaid = prefs().getBoolean("raid_active", false) ||
-            try { getSoloPlayMode() == 2 } catch (_: Exception) { false }
+            try { getSoloPlayMode().let { it == 2 || it == DrownedVigil.MODE } } catch (_: Exception) { false }
         val inChallenge = prefs().getBoolean("challenge_active", false) ||
             try { getSoloPlayMode() == 3 } catch (_: Exception) { false }
         val inArena = prefs().getBoolean("arena_active", false) ||

@@ -72,7 +72,18 @@ enum class ItemRarity {
     UNCOMMON = 1,
     RARE = 2,
     EPIC = 3,
-    LEGENDARY = 4
+    LEGENDARY = 4,
+    MYTHICAL = 5    // v2.40: Rekindled heroes only (docs/MYTHICAL.md). Appended; saves store the int.
+};
+
+/** v2.40 Mythic effect (Mythical gear only, unlocks at upgrade +25). Persist as int id (item token field 11). */
+enum class MythicEffect : int {
+    NONE = 0,
+    REKINDLE = 1,     // armor: once per battle, a downing blow leaves the wearer at 25% HP (fires before Last Light)
+    EMBER_ECHO = 2,   // weapon: every 4th hit repeats for 50% damage
+    CINDER_BRAND = 3, // weapon: hits Burn the target
+    HEARTH_AURA = 4,  // armor: the whole party +1 AC
+    LANTERNS_DUE = 5  // weapon: on a kill, the party heals 5% of max HP
 };
 
 /** Legendary sub-effect (unlocks at upgrade 20+). Persist as int id. */
@@ -98,6 +109,11 @@ struct Item {
     int legStat1 = -1;
     int legStat2 = -1;
     int subEffect = 0; // LegendarySubEffect
+    int mythicEffect = 0; // v2.40 MythicEffect (Mythical only)
+
+    bool isMythical() const { return rarity == ItemRarity::MYTHICAL; }
+    /** Legendary or Mythical: the bonus stats + sub-effect rules apply (Mythical unlocks them sooner). */
+    bool legendaryTier() const { return rarity == ItemRarity::LEGENDARY || rarity == ItemRarity::MYTHICAL; }
 
     static const char* rarityName(ItemRarity r) {
         switch (r) {
@@ -106,6 +122,7 @@ struct Item {
             case ItemRarity::RARE: return "Rare";
             case ItemRarity::EPIC: return "Epic";
             case ItemRarity::LEGENDARY: return "Legendary";
+            case ItemRarity::MYTHICAL: return "Mythical";
         }
         return "Common";
     }
@@ -131,6 +148,25 @@ struct Item {
         }
     }
 
+    static const char* mythicEffectName(int id) {
+        switch (static_cast<MythicEffect>(id)) {
+            case MythicEffect::REKINDLE: return "Rekindle (rise once per battle at 25% HP)";
+            case MythicEffect::EMBER_ECHO: return "Ember Echo (every 4th hit repeats for 50%)";
+            case MythicEffect::CINDER_BRAND: return "Cinder Brand (hits Burn)";
+            case MythicEffect::HEARTH_AURA: return "Hearth Aura (party +1 AC)";
+            case MythicEffect::LANTERNS_DUE: return "Lantern's Due (on a kill, party heals 5%)";
+            default: return "";
+        }
+    }
+    static constexpr int kMythicEffectUnlock = 25;
+    bool mythicEffectUnlocked() const {
+        return isMythical() && upgradeLevel >= kMythicEffectUnlock && mythicEffect > 0;
+    }
+    /** The Mythic effect when this item has it unlocked, else NONE. */
+    bool hasMythic(MythicEffect e) const {
+        return mythicEffectUnlocked() && mythicEffect == static_cast<int>(e);
+    }
+
     /** Upgrade level cap by rarity — Legendary reaches 20+ for full power. */
     int maxUpgradeLevel() const {
         switch (rarity) {
@@ -139,12 +175,14 @@ struct Item {
             case ItemRarity::RARE: return 12;
             case ItemRarity::EPIC: return 16;
             case ItemRarity::LEGENDARY: return 25;
+            case ItemRarity::MYTHICAL: return 30; // +32 at Rekindled VII (Character::upgradeCapFor)
         }
         return 5;
     }
 
     /** How many legendary bonus stats are active at current upgrade. */
     int activeLegStatCount() const {
+        if (isMythical()) return upgradeLevel >= 20 ? 3 : (upgradeLevel >= 10 ? 2 : 1); // +0 / +10 / +20
         if (rarity != ItemRarity::LEGENDARY) return 0;
         if (upgradeLevel >= 20) return 3;
         if (upgradeLevel >= 15) return 2;
@@ -152,35 +190,42 @@ struct Item {
     }
 
     bool subEffectUnlocked() const {
+        if (isMythical()) return subEffect > 0; // Mythical: the Legendary sub-effect from +0
         return rarity == ItemRarity::LEGENDARY && upgradeLevel >= 20 && subEffect > 0;
     }
 
     /** +1 per active legendary bonus stat matching this attribute index. */
     int legendaryAttrBonus(int attrIndex) const {
-        if (rarity != ItemRarity::LEGENDARY) return 0;
+        if (!legendaryTier()) return 0;
         int n = activeLegStatCount();
         int add = 0;
         if (n >= 1 && legStat0 == attrIndex) add++;
         if (n >= 2 && legStat1 == attrIndex) add++;
         if (n >= 3 && legStat2 == attrIndex) add++;
-        return add;
+        return isMythical() ? add * 2 : add; // Mythical: +2 each
     }
 
     std::string legendaryBonusText() const {
-        if (rarity != ItemRarity::LEGENDARY) return "";
+        if (!legendaryTier()) return "";
         std::stringstream ss;
         int n = activeLegStatCount();
+        const char* plus = isMythical() ? " +2 " : " +";
         ss << "Bonus stats:";
-        if (n >= 1 && legStat0 >= 0) ss << " +" << attrShort(legStat0);
-        if (n >= 2 && legStat1 >= 0) ss << " +" << attrShort(legStat1);
-        if (n >= 3 && legStat2 >= 0) ss << " +" << attrShort(legStat2);
+        if (n >= 1 && legStat0 >= 0) ss << plus << attrShort(legStat0);
+        if (n >= 2 && legStat1 >= 0) ss << plus << attrShort(legStat1);
+        if (n >= 3 && legStat2 >= 0) ss << plus << attrShort(legStat2);
         if (n < 3) {
-            ss << " (next at +" << (n == 1 ? 15 : 20) << ")";
+            if (isMythical()) ss << " (next at +" << (n == 1 ? 10 : 20) << ")";
+            else ss << " (next at +" << (n == 1 ? 15 : 20) << ")";
         }
         if (subEffectUnlocked()) {
             ss << " | " << subEffectName(subEffect);
         } else if (rarity == ItemRarity::LEGENDARY && subEffect > 0) {
             ss << " | " << subEffectName(subEffect) << " (unlocks at +20)";
+        }
+        if (isMythical() && mythicEffect > 0) {
+            ss << " | Mythic: " << mythicEffectName(mythicEffect);
+            if (!mythicEffectUnlocked()) ss << " (unlocks at +" << kMythicEffectUnlock << ")";
         }
         return ss.str();
     }
@@ -252,10 +297,13 @@ struct Item {
         if (bonus != 0) ss << " (+" << bonus << ")";
         if (upgradeLevel > 0) ss << " [+" << upgradeLevel << "]";
         if (rarity == ItemRarity::LEGENDARY) ss << " ★";
+        else if (isMythical()) ss << " ✦";
         return ss.str();
     }
 
-    /** Persist: name:bonus:W|A|P:rarity:classTag:upgrade:leg0:leg1:leg2:subEffect */
+    /** Persist: name:bonus:W|A|P:rarity:classTag:upgrade:leg0:leg1:leg2:subEffect[:mythicEffect]
+     *  v2.40: the 11th field is appended only for Mythical items, so every older item token is
+     *  byte-identical to v2.39 (an older build ignores the extra field and clamps rarity 5 to 4). */
     std::string toToken() const {
         char t = 'W';
         if (type == ItemType::ARMOR) t = 'A';
@@ -265,6 +313,7 @@ struct Item {
         ss << savecodec::encode(name) << ":" << bonus << ":" << t << ":"
            << static_cast<int>(rarity) << ":" << classTag << ":" << upgradeLevel
            << ":" << legStat0 << ":" << legStat1 << ":" << legStat2 << ":" << subEffect;
+        if (isMythical()) ss << ":" << mythicEffect;
         return ss.str();
     }
 
@@ -291,7 +340,8 @@ struct Item {
         if (parts.size() >= 4) {
             int r = 0;
             if (savecodec::tryParseInt(parts[3], r)) {
-                item->rarity = static_cast<ItemRarity>(savecodec::clampInt(r, 0, 4));
+                // v2.40: exactly 5 is Mythical; anything above still clamps to Legendary as in v2.39.
+                item->rarity = static_cast<ItemRarity>(r == 5 ? 5 : savecodec::clampInt(r, 0, 4));
             } else {
                 // L8: was an empty catch(...) — keep Common, but say so instead of hiding it.
                 aout << "Item::fromToken: bad rarity '" << parts[3] << "' for " << item->name << ", using Common" << std::endl;
@@ -320,15 +370,22 @@ struct Item {
             item->subEffect = savecodec::parseIntOr(parts[9], 0);
             if (item->subEffect < 0 || item->subEffect > lim::kMaxSubEffect) item->subEffect = 0;
         }
-        if (static_cast<int>(item->rarity) < 0 || static_cast<int>(item->rarity) > 4)
+        if (parts.size() >= 11) {
+            item->mythicEffect = savecodec::parseIntOr(parts[10], 0);
+            if (item->mythicEffect < 0 || item->mythicEffect > lim::kMaxMythicEffect) item->mythicEffect = 0;
+        }
+        if (static_cast<int>(item->rarity) < 0 || static_cast<int>(item->rarity) > 5)
             item->rarity = ItemRarity::COMMON;
-        // Highest cap any rarity has (Legendary +25): never rewrites a real item, only absurd values.
-        item->upgradeLevel = savecodec::clampInt(item->upgradeLevel, 0, savecodec::limits::kMaxUpgradeLevel);
+        if (!item->isMythical()) item->mythicEffect = 0;
+        // Highest cap any rarity has (Legendary +25; v2.40 Mythical +32 at rank VII): never rewrites
+        // a real item, only absurd values.
+        item->upgradeLevel = savecodec::clampInt(item->upgradeLevel, 0,
+            item->isMythical() ? lim::kMaxMythicUpgradeLevel : lim::kMaxUpgradeLevel);
         return item;
     }
 
     static void rollLegendaryExtras(Item& i) {
-        if (i.rarity != ItemRarity::LEGENDARY) return;
+        if (!i.legendaryTier()) return;
         // Three distinct bonus stats
         int pool[6] = {0,1,2,3,4,5};
         for (int k = 5; k > 0; --k) {
@@ -345,13 +402,23 @@ struct Item {
                 ? static_cast<int>(LegendarySubEffect::LIFESTEAL)
                 : static_cast<int>(LegendarySubEffect::ON_HIT_HEAL);
         }
+        if (i.isMythical()) {
+            if (i.type == ItemType::ARMOR) {
+                i.mythicEffect = rng::below(2) == 0 ? static_cast<int>(MythicEffect::REKINDLE)
+                                                    : static_cast<int>(MythicEffect::HEARTH_AURA);
+            } else {
+                static const MythicEffect kWeapon[3] = {MythicEffect::EMBER_ECHO, MythicEffect::CINDER_BRAND,
+                                                        MythicEffect::LANTERNS_DUE};
+                i.mythicEffect = static_cast<int>(kWeapon[rng::below(3)]);
+            }
+        }
     }
 
     static std::shared_ptr<Item> make(const std::string& n, ItemType t, int b,
                                       ItemRarity r = ItemRarity::COMMON, int cls = -1) {
         auto i = std::make_shared<Item>();
         i->name = n; i->type = t; i->bonus = b; i->rarity = r; i->classTag = cls;
-        if (r == ItemRarity::LEGENDARY) rollLegendaryExtras(*i);
+        if (r == ItemRarity::LEGENDARY || r == ItemRarity::MYTHICAL) rollLegendaryExtras(*i);
         return i;
     }
 };
@@ -619,7 +686,7 @@ struct Character {
         int dexMod = Attributes::getModifier(effectiveAttr(1));
         if (statRules) dexMod = stats::acFromDex(dexMod); // v2.31: DEX gives at most +6 AC
         const int armorBonus = armorBonusEff(); // v2.33: attuned to level / 2 + 3 when Rekindled
-        armorClass = 10 + dexMod + armorBonus;
+        armorClass = 10 + dexMod + armorBonus + (isFoe() ? 0 : auraAc); // v2.40 Hearth Aura
     }
 
     /**
@@ -909,8 +976,8 @@ struct Character {
             err = "Cannot upgrade that.";
             return false;
         }
-        if (item->upgradeLevel >= item->maxUpgradeLevel()) {
-            err = "Max upgrade (+" + std::to_string(item->maxUpgradeLevel()) + ") for "
+        if (item->upgradeLevel >= upgradeCapFor(*item)) {
+            err = "Max upgrade (+" + std::to_string(upgradeCapFor(*item)) + ") for "
                 + item->rarityLabel() + ".";
             return false;
         }
@@ -955,6 +1022,20 @@ struct Character {
 
     /** Once-per-fight shield charges (armor Legendary sub-effect). Not persisted mid-fight across saves. */
     mutable bool fightShieldUsed = false;
+    /** v2.40 Mythic runtime state (not saved): Rekindle spent this battle, Ember Echo hit count,
+     *  and the party's Hearth Aura AC (Game::refreshHearthAura). */
+    bool rekindleUsed = false;
+    int mythicHitCount = 0;
+    int auraAc = 0;
+    bool hasMythic(MythicEffect e) const {
+        return (equippedWeapon && equippedWeapon->hasMythic(e)) || (equippedArmor && equippedArmor->hasMythic(e));
+    }
+    /** v2.40: Mythical gear reaches +30, +32 from Rekindled VII; every other rarity as before. */
+    int upgradeCapFor(const Item& item) const {
+        int cap = item.maxUpgradeLevel();
+        if (item.isMythical() && prestige::clampRank(prestigeRank) >= 7) cap += 2;
+        return cap;
+    }
     /** Temporary attack-roll penalty from Bard Cutting Quip (applied then cleared on next attack). */
     int nextAttackPenalty = 0;
 
@@ -1148,6 +1229,32 @@ public:
         {"Aegis of Millhollow", 3}, {"Archsage Mantle", 1}, {"Veilwalker Hide", 2}, {"Sanctum Plate", 3}, {"Troubadour Coat", 1}};
     static constexpr NamedItem kLegendaryWeaponAny = {"Emberdeep Relic Blade", 0};
     static constexpr NamedItem kLegendaryArmorAny = {"Emberdeep Relic Mail", 2};
+    /** v2.40 Mythical gear (docs/MYTHICAL.md). Armor extras follow the Legendary armor of each class. */
+    static constexpr NamedItem kMythicalWeapons[kClassCount] = {
+        {"Kindlewrath", 0}, {"Last Wick Focus", 0}, {"Ashfang", 0}, {"Vigil Censer", 0}, {"Bellsong Rapier", 0}};
+    static constexpr NamedItem kMythicalArmor[kClassCount] = {
+        {"Hearthwall Plate", 3}, {"Cinderweave Mantle", 1}, {"Smokeveil Hide", 2}, {"Lantern-Saint Mail", 3}, {"Embercourt Coat", 1}};
+    static constexpr NamedItem kMythicalWeaponAny = {"Firstflame Blade", 0};
+    static constexpr NamedItem kMythicalArmorAny = {"Firstflame Mail", 2};
+    static constexpr int kMythicalExtraBonus = 5; // Mythical bonus = depth / 5 + 4 + 5 (Legendary: + 4 + 2)
+
+    /**
+     * v2.40 Mythical drop (Game::grantKillLoot decides whether one drops; this only builds it).
+     * Bonus depth/5 + 4 + 5 (Legendary is depth/5 + 4 + 2), class biased like every drop.
+     */
+    static std::shared_ptr<Item> generateMythical(int roomDepth, int preferClass = -1, int preferClass2 = -1) {
+        using T = Tuning;
+        const int bonus = std::max(0, roomDepth / T::kDepthPerBonus + 4 + kMythicalExtraBonus);
+        const bool weapon = rng::below(2) == 0;
+        const int cls = pickLootClass(preferClass, preferClass2);
+        const bool classed = cls >= 0 && cls < kClassCount;
+        const NamedItem& it = classed ? (weapon ? kMythicalWeapons[cls] : kMythicalArmor[cls])
+                                      : (weapon ? kMythicalWeaponAny : kMythicalArmorAny);
+        const int tag = classed ? cls : -1;
+        return weapon ? Item::make(it.name, ItemType::WEAPON, bonus, ItemRarity::MYTHICAL, tag)
+                      : Item::make(it.name, ItemType::ARMOR, bonus + it.armorExtra, ItemRarity::MYTHICAL, tag);
+    }
+
     static constexpr NamedItem kClassWeapons[kClassCount] = {
         {"Champion's Longsword", 0}, {"Focus Staff", 0}, {"Silent Shortsword", 0}, {"Hallowed Mace", 0}, {"Stage Rapier", 0}};
     static constexpr NamedItem kClassArmor[kClassCount] = {

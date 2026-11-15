@@ -333,7 +333,11 @@ struct PartyMember {
     int level; int weaponBonus; int armorBonus; int armorBase; int prestige;
     bool measured = false; RefStats actual{0, 0, 0, 0};
     int embers = 0;
+    int mythic = 0; // v2.40: Mythical pieces equipped (0..2)
 };
+/** v2.40: each equipped Mythical piece adds 1 EL and lifts the EL ceiling (level + 6) by 1, so
+ *  Mythical gear is matched instead of running past the cap. Only Mythical holders change. */
+constexpr double kMythicFollow = 1.5;
 
 inline double hitChance(int bonus, int ac);
 constexpr double kPowerMatch = 0.97;
@@ -392,7 +396,7 @@ inline EncounterLevels encounterLevels(const std::vector<PartyMember>& party, in
         out.el = std::clamp(1 + modeBonus, 1, kMaxEL);
         return out;
     }
-    double lv = 0, surplus = 0, prestige = 0, embers = 0;
+    double lv = 0, surplus = 0, prestige = 0, embers = 0, mythic = 0;
     RefStats me{0, 0, 0, 0};
     bool measured = true;
     for (const auto& m : party) {
@@ -400,11 +404,12 @@ inline EncounterLevels encounterLevels(const std::vector<PartyMember>& party, in
         surplus += (m.weaponBonus + m.armorBonus - m.armorBase) - expectedGear(m.level);
         prestige += m.prestige;
         embers += std::max(0, m.embers);
+        mythic += std::clamp(m.mythic, 0, 2);
         measured = measured && m.measured;
         me.atk += m.actual.atk; me.ac += m.actual.ac; me.hp += m.actual.hp; me.dmg += m.actual.dmg;
     }
     const double n = static_cast<double>(party.size());
-    lv /= n; surplus /= n; prestige /= n; embers /= n;
+    lv /= n; surplus /= n; prestige /= n; embers /= n; mythic /= n;
     me.atk /= n; me.ac /= n; me.hp /= n; me.dmg /= n;
     // The party's average numbers against the Reference Lamplighter (the Fighter / Wizard average
     // every foe is built from) — so a weak-hitting party (Cleric + Wizard) gets shorter fights too.
@@ -414,12 +419,13 @@ inline EncounterLevels encounterLevels(const std::vector<PartyMember>& party, in
         offGap = g.first; defGap = g.second;
     }
     surplus = std::clamp(surplus, static_cast<double>(kGearSurplusMin), static_cast<double>(kGearSurplusMax));
-    double el = std::round(lv + kGearFollow * surplus + kPrestigeFollow * prestige + kEmberFollow * embers);
-    el = std::clamp(el, lv - kElBelowLevel, lv + kElAboveLevel);
+    double el = std::round(lv + kGearFollow * surplus + kPrestigeFollow * prestige + kEmberFollow * embers
+                           + kMythicFollow * mythic);
+    el = std::clamp(el, lv - kElBelowLevel, lv + kElAboveLevel + kMythicFollow * mythic);
     const int base = std::max(1, static_cast<int>(std::lround(el)));
     auto axis = [&](double gap) {
         if (gap < 0.5) return base; // built like the model (or better): the EL as is
-        const double a = lv - gap + kPrestigeFollow * prestige + kEmberFollow * embers;
+        const double a = lv - gap + kPrestigeFollow * prestige + kEmberFollow * embers + kMythicFollow * mythic;
         return std::clamp(static_cast<int>(std::lround(a)), 1, base);
     };
     out.offEl = axis(offGap);
@@ -514,6 +520,8 @@ inline PartyMember memberOf(const Character& c, bool measurePower = true) {
     m.armorBonus = c.armorBonusEff();
     m.armorBase = starterArmorBase(c.characterClass);
     m.prestige = c.prestigeShare();
+    m.mythic = (c.equippedWeapon && c.equippedWeapon->isMythical() ? 1 : 0)
+             + (c.equippedArmor && c.equippedArmor->isMythical() ? 1 : 0);
     if (measurePower) {
         m.measured = true;
         m.actual = actualStats(c);

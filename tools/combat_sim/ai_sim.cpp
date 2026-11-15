@@ -42,6 +42,8 @@ struct Scn {
     int rank = 0;      // v2.33 Rekindling rank (hero full, companion half)
     bool raw = false;  // v2.34 rebalance: under-geared + unspent (starter gear, class base stats, no Embers)
     bool debugJump = false; // v2.33: the debug-build level-50 shortcut on a fresh hero (debug code, not in release)
+    int gear = 0;      // v2.40: 0 reference gear, 1 Legendary +20 set, 2 Mythical +25 (Ember Echo + Rekindle),
+                       //        3 Mythical +25 (Cinder Brand + Hearth Aura)
 };
 struct Res { double win = 0, lost = 0, rounds = 0; int el = 0; };
 
@@ -104,7 +106,7 @@ static void buildRaw(Game& g, int level) {
     }
 }
 
-static void buildParty(Game& g, int level, int extraGear, bool perksOn, int rank = 0) {
+static void buildParty(Game& g, int level, int extraGear, bool perksOn, int rank = 0, int gear = 0) {
     for (size_t i = 0; i < T::heroes(g); ++i) {
         Character& p = T::hero(g, i);
         p.prestigeRank = rank; p.prestigeHalf = i != 0; // v2.33: the companion has half the rank
@@ -115,6 +117,21 @@ static void buildParty(Game& g, int level, int extraGear, bool perksOn, int rank
                                       ItemRarity::COMMON, static_cast<int>(p.characterClass));
         p.equippedArmor = Item::make(curve::kRefArmorName, ItemType::ARMOR, ref.equippedArmor->bonus + extraGear,
                                      ItemRarity::COMMON, static_cast<int>(p.characterClass));
+        if (gear > 0) {
+            // v2.40: the same bonus as the reference piece (+3 for Mythical: depth/5 + 4 + 5 vs + 4 + 2),
+            // Legendary at +20 (3 stats + sub-effect) or Mythical at +25 (Mythic effect unlocked).
+            const bool myth = gear >= 2;
+            const ItemRarity r = myth ? ItemRarity::MYTHICAL : ItemRarity::LEGENDARY;
+            const int cls = static_cast<int>(p.characterClass);
+            auto w = Item::make(myth ? LootSystem::kMythicalWeapons[cls].name : LootSystem::kLegendaryWeapons[cls].name,
+                                ItemType::WEAPON, p.equippedWeapon->bonus + (myth ? 3 : 0), r, cls);
+            auto a = Item::make(myth ? LootSystem::kMythicalArmor[cls].name : LootSystem::kLegendaryArmor[cls].name,
+                                ItemType::ARMOR, p.equippedArmor->bonus + (myth ? 3 : 0), r, cls);
+            w->upgradeLevel = a->upgradeLevel = myth ? 25 : 20;
+            if (gear == 2) { w->mythicEffect = static_cast<int>(MythicEffect::EMBER_ECHO); a->mythicEffect = static_cast<int>(MythicEffect::REKINDLE); }
+            if (gear == 3) { w->mythicEffect = static_cast<int>(MythicEffect::CINDER_BRAND); a->mythicEffect = static_cast<int>(MythicEffect::HEARTH_AURA); }
+            p.equippedWeapon = w; p.equippedArmor = a;
+        }
         p.bonusMaxHp = 0; p.bonusMaxResources = 0;
         if (perksOn) giveLoadout(p);
         p.statRules = true; // the stat rules are on in every column here (v2.31+)
@@ -144,7 +161,7 @@ static Res run(const Scn& s, Rules rules, int n, CharacterClass a = CharacterCla
             T::clearRoomAt(g, 6); // out of the opening fight, as the shortcut needs
             for (size_t k = 0; k < T::heroes(g); ++k) T::hero(g, k).aiControlled = true;
             if (!g.debugJumpToRekindleReady()) std::printf("(debug shortcut refused)\n");
-        } else if (s.raw) buildRaw(g, s.level); else buildParty(g, s.level, s.extraGear, rules == Rules::V232, s.rank);
+        } else if (s.raw) buildRaw(g, s.level); else buildParty(g, s.level, s.extraGear, rules == Rules::V232, s.rank, s.gear);
         g.simBeginFight(s.foes, s.surprise);
         if (!g.getEnemies().empty()) r.el = g.getEnemies().front()->curveEL;
         int steps = 0;
@@ -178,7 +195,8 @@ int main(int argc, char** argv) {
     };
     // v2.34 rebalance: every difficulty, levels 1-50, a built hero (model stats + gear + perks) and the
     // under-geared, unspent one (what the debug shortcut used to make). Arg 2 "grid" prints only this.
-    {
+    const bool mythicOnly = argc > 2 && std::string(argv[2]) == "mythic";
+    if (!mythicOnly) {
         static const char* kDiffName[] = {"Easy", "Medium", "Hard", "Nightmare"};
         std::printf("| Difficulty | Level | room: built | room: unspent | boss + escort: built | boss + escort: unspent |\n|---|---|---|---|---|---|\n");
         for (int d = 0; d < 4; ++d) {
@@ -206,6 +224,43 @@ int main(int argc, char** argv) {
         }
         std::printf("\n");
         if (argc > 2 && std::string(argv[2]) == "grid") return 0;
+    }
+    // v2.40 Mythical: level 50, Rekindled I / V / X, the same seeds with Legendary +20 gear and two
+    // Mythical +25 loadouts. Arg 2 "mythic" prints only this.
+    {
+        static const char* kDiffName[] = {"Easy", "Medium", "Hard", "Nightmare"};
+        const int vigil = static_cast<int>(SoloPlayMode::VIGIL);
+        struct M { std::string name; std::vector<std::string> foes; int diff; int mode; };
+        const std::vector<std::string> vc1 = {"enemy_ashbound_bonebound", "enemy_tithe_enforcer", "enemy_gloamhound", "enemy_crier_bone"};
+        const std::vector<std::string> vc2 = {"enemy_brute", "enemy_tithe_enforcer"};
+        std::vector<M> ms;
+        for (int d : {1, 2, 3}) ms.push_back({std::string("Boss + escort (") + kDiffName[d] + ")", boss, d, static_cast<int>(SoloPlayMode::CRAWL)});
+        ms.push_back({"Raid: Hollow Crown (Medium)", {"boss_hollow_crown"}, 1, raid});
+        ms.push_back({"Raid: Ember Hydra (Hard)", {"boss_ember_hydra"}, 2, raid});
+        for (int d : {1, 2, 3}) {
+            ms.push_back({std::string("Vigil 1/3 pack (") + kDiffName[d] + ")", vc1, d, vigil});
+            ms.push_back({std::string("Vigil 2/3 pair (") + kDiffName[d] + ")", vc2, d, vigil});
+            ms.push_back({std::string("Vigil 3/3 Drowned Nightfang + 2 (") + kDiffName[d] + ")",
+                          {"boss_nightfang", "enemy_ashbound_bonebound", "enemy_crier_bone"}, d, vigil});
+        }
+        std::printf("v2.40 Mythical, L50 Fighter + Wizard, %d fights per cell: win %% · HP lost %% · EL. "
+                    "Gear: Legendary +20 → **Mythical +25 (Echo + Rekindle)** → Mythical +25 (Brand + Hearth Aura).\n\n", n);
+        std::printf("| Scenario | rank I | rank V | rank X |\n|---|---|---|---|\n");
+        for (const auto& m : ms) {
+            std::printf("| %s |", m.name.c_str());
+            for (int rank : {1, 5, 10}) {
+                Res r[3];
+                for (int gi = 0; gi < 3; ++gi) {
+                    Scn s; s.level = 50; s.diff = m.diff; s.foes = m.foes; s.mode = m.mode; s.rank = rank; s.gear = gi + 1;
+                    r[gi] = run(s, Rules::V232, n);
+                }
+                std::printf(" %.0f%% → **%.0f%%** → %.0f%% · %.0f/%.0f/%.0f%% · EL %d/%d/%d |", r[0].win, r[1].win, r[2].win,
+                            r[0].lost, r[1].lost, r[2].lost, r[0].el, r[1].el, r[2].el);
+            }
+            std::printf("\n");
+        }
+        std::printf("\n");
+        if (argc > 2 && std::string(argv[2]) == "mythic") return 0;
     }
     std::printf("Fighter + Wizard party, %d fights per cell. Each cell: v2.31 rules → v2.32 without perks → **v2.32 with the sim loadout** (win %%, HP lost %%, rounds).\n\n", n);
     std::printf("| Level | Scenario | EL | v2.31 | v2.32, no perks | v2.32 + perks |\n|---|---|---|---|---|---|\n");

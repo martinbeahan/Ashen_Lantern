@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v2.40 Mythical gear socket: soot plate, 2dp ember stroke, bone-white inner hairline (double rim).
+     The glyph (ic_gear_*_mythical) is the ImageView src. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/ae_soot"/>
+            <stroke android:width="2dp" android:color="@color/ae_ember"/>
+            <corners android:radius="3dp"/>
+        </shape>
+    </item>
+    <item android:left="3.5dp" android:top="3.5dp" android:right="3.5dp" android:bottom="3.5dp">
+        <shape android:shape="rectangle">
+            <stroke android:width="0.75dp" android:color="@color/ae_bone"/>
+            <corners android:radius="2dp"/>
+        </shape>
+    </item>
+</layer-list>

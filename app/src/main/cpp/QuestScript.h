@@ -58,7 +58,8 @@ enum class SoloPlayMode : int {
     RAID = 2,
     CHALLENGE = 3,  // Challenge Dungeon (story-complete endgame)
     ARENA = 4,      // Ember Ring Arena (story-complete wave mode)
-    ENDLESS = 5     // Endless Deep / Ashen Deep (story-complete depth crawl)
+    ENDLESS = 5,    // Endless Deep / Ashen Deep (story-complete depth crawl)
+    VIGIL = 6       // v2.40 The Drowned Vigil (Rekindled I+; three chambers, 1 Raid Key)
 };
 
 inline const char* difficultyName(int d) {

@@ -78,7 +78,7 @@ static bool sane(const Game& g) {
         for (const auto& it : {p->equippedWeapon, p->equippedArmor}) {
             if (!it) continue;
             if (it->bonus < lim::kMinItemBonus || it->bonus > lim::kMaxItemBonus) { std::cerr << "insane: it->bonus < lim::kMinItemBonus || it->bonus > lim::kMaxItemBonus\n"; return false; }
-            if (it->upgradeLevel < 0 || it->upgradeLevel > lim::kMaxUpgradeLevel) { std::cerr << "insane: it->upgradeLevel < 0 || it->upgradeLevel > lim::kMaxUpgradeLevel\n"; return false; }
+            if (it->upgradeLevel < 0 || it->upgradeLevel > (it->isMythical() ? lim::kMaxMythicUpgradeLevel : lim::kMaxUpgradeLevel)) { std::cerr << "insane: it->upgradeLevel out of its rarity's range\n"; return false; }
             if (it->classTag < -1 || it->classTag > 4) { std::cerr << "insane: it->classTag < -1 || it->classTag > 4\n"; return false; }
         }
     }
