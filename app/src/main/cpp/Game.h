@@ -383,6 +383,13 @@ public:
     const std::vector<std::unique_ptr<Character>>& getPlayers() const { return players_; }
     const std::vector<std::unique_ptr<Character>>& getEnemies() const { return enemies_; }
 
+    /** v2.35 #89: every turn-order slot points at a Character this game still owns (tests / debug checks). */
+    bool turnOrderIsLive() const {
+        for (const Character* c : turnOrder_) if (!ownsActor(c)) return false;
+        return true;
+    }
+    size_t turnOrderSize() const { return turnOrder_.size(); }
+    int currentTurnIndex() const { return currentTurnIndex_; }
     Character* getCurrentActor() const {
         if (turnOrder_.empty() || currentTurnIndex_ < 0 || static_cast<size_t>(currentTurnIndex_) >= turnOrder_.size()) return nullptr;
         return turnOrder_[static_cast<size_t>(currentTurnIndex_)];
@@ -577,6 +584,8 @@ private:
     int pickAllyAiHealTarget() const;
     bool allySpecialBeatsBasic(const Character& actor, const Character& enemy) const;
     void removeFromTurnOrder(Character* c);
+    bool ownsActor(const Character* c) const;   // v2.35 #89: address-only check, safe on stale pointers
+    void clearEnemies();                        // v2.35 #89: strip foes from turnOrder_, then free them
     void checkPartyDefeat();
     void advanceTurn();
     void purgeDownedEnemies();
