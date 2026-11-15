@@ -132,7 +132,7 @@ class MultiplayerManager(private val sessionId: String, private val uid: String 
                 // H2: only 0..4 are real classes; anything else joins as Fighter.
                 val classId = TextSafety.validClassId(rawClass)
                 if (rawClass != classId) Log.w(tag, "lobby: bad classId for '$name' — using 0")
-                onJoin(name, classId)
+                onJoin(snapshot.key.orEmpty(), name, classId) // v2.37 #90: the key is the joiner's uid
             }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onChildRemoved(snapshot: DataSnapshot) {}
@@ -188,8 +188,9 @@ class MultiplayerManager(private val sessionId: String, private val uid: String 
         chatListener?.let { ref.removeEventListener(it) }
         val listener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                // v2.35 #88: a non-String chat child is skipped (it used to crash every rejoin); cut to 500 chars.
-                val msg = try { RemoteValues.chat(snapshot.value) } catch (e: Exception) {
+                // v2.35 #88 + v2.37 #90: chat lines are {uid, text, ts}; a bare string from an older client is
+                // still shown; a non-String text is skipped; cut to 500 chars.
+                val msg = try { RemoteValues.chat(snapshot.child("text").value ?: snapshot.value) } catch (e: Exception) {
                     Log.w(tag, "chat: unreadable (${e.message})"); null
                 }
                 if (msg != null) callback(msg)
