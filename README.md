@@ -6,7 +6,27 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.35 / 74) — Stability hotfix (audit)
+## What's new (v2.39 / 78) — Post-merge fix
+
+- **Fixes the build after merging v2.35–v2.38.** The app's version went back to 2.35 / 74 during the merges, and two lines of the online code from v2.35 (bad-data safety) and v2.37 (lockdown) didn't fit together: the app no longer built, and chat would have stopped showing messages. Version is now 2.39 / 78 so it installs over any earlier build, and online lobby and chat are as tested in v2.37. No gameplay change; saves unchanged
+
+## Previous (v2.38 / 77) — Cleanup: potion on a fallen ally
+
+- **A potion is no longer wasted on a fallen hero (#92).** Picking a hero who has died for good (three failed death saves) used to spend the potion for 0 HP and end your turn. Now the game says they're beyond a potion's help, keeps the potion and lets you pick again. A downed (dying) ally is still revived as before. Saves unchanged; online play otherwise unchanged
+
+## Previous (v2.37 / 76) — Online lockdown
+
+- **Online play is locked down (#90).** Host and Join first sign in anonymously with Firebase (nothing to type). The database rules let only the Lanternkeeper write the game, and each player write only their own lobby entry, actions and chat. The host never loads game state from the database. A phone can't act as another player's hero
+- **Longer session codes** like **`AL-7KQ2M-X9D4R`** replace the guessable 4-character ones. Joining ignores dashes, spaces and case, and reads O as 0 and I / L as 1. Copy / paste from the share dialog still works
+- **Heads-up:** once the new rules are published, v2.36 and older can't Host / Join. Install v2.37 on every phone first. Console steps (Anonymous sign-in, rules, Playground checklist, deploy order) are in [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md). Saves unchanged (no new fields); Host / Join still never touch a solo save; online gameplay otherwise unchanged
+
+## Previous (v2.36 / 75) — Save and online number limits (audit)
+
+- **Absurd numbers can't break a game** — a save or an online host's game state with numbers near the integer limit (room 2,147,483,647, gold or XP at the maximum, a +2-billion weapon) used to overflow: a level-1 hero jumped to level 50 with 1.5 billion gold, or gold turned negative after one kill. Every number is now held to a sane ceiling when a save or online state loads (XP 10 million, gold 100 million, max HP 100,000, uses 1,000, room 1,000,000, initiative −50..100, item bonus −20..+100, upgrade +25), and gold, XP and arena score can no longer overflow in play. Real saves are far below every limit and load exactly as before (#91)
+- **Item fields** in a save no longer use a throwing number parser: a damaged value falls back to the default (an unknown class tag means "any class") instead of being guessed
+- **Online actions** from other players are read safely too: a huge target or class number can no longer wrap round into a real one, and a level-up request spends at most 120 points (the host still checks the hero has them). Online play is otherwise unchanged
+
+## Previous (v2.35 / 74) — Stability hotfix (audit)
 
 - **Companion class change no longer crashes** — changing the companion's class after loading a save where the companion held the current turn read freed memory (a crash, garbled text, or the wrong hero taking the turn). The turn order now points at the new companion before the old one is freed, foes are taken out of the turn order before they are cleared, and the turn order only ever reads heroes and foes the game still has (#89)
 - **Online sessions can't be crashed by bad data** — a wrong-type value in a shared session (a number where a name, chat line or game state belongs) used to crash every device at the table, and a bad chat line kept doing it on every rejoin. Those values are now ignored, and incoming text has limits: game state 512 KB, chat 500 characters, names 24 characters, actions 32 fields (#88). Online play is otherwise unchanged
