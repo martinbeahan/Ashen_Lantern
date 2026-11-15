@@ -6,9 +6,10 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.38 / 77) — Cleanup: potion on a fallen ally
+## What's new (v2.35 / 74) — Stability hotfix (audit)
 
-- **A potion is no longer wasted on a fallen hero (#92).** Picking a hero who has died for good (three failed death saves) used to spend the potion for 0 HP and end your turn. Now the game says they're beyond a potion's help, keeps the potion and lets you pick again. A downed (dying) ally is still revived as before. Saves unchanged; online play otherwise unchanged
+- **Companion class change no longer crashes** — changing the companion's class after loading a save where the companion held the current turn read freed memory (a crash, garbled text, or the wrong hero taking the turn). The turn order now points at the new companion before the old one is freed, foes are taken out of the turn order before they are cleared, and the turn order only ever reads heroes and foes the game still has (#89)
+- **Online sessions can't be crashed by bad data** — a wrong-type value in a shared session (a number where a name, chat line or game state belongs) used to crash every device at the table, and a bad chat line kept doing it on every rejoin. Those values are now ignored, and incoming text has limits: game state 512 KB, chat 500 characters, names 24 characters, actions 32 fields (#88). Online play is otherwise unchanged
 
 ## Previous (v2.34 / 73) — Combat rebalance
 
