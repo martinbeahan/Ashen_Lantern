@@ -46,6 +46,6 @@ cp "$here/prestige_test.cpp" "$work"/
 cp "$here/turnorder_test.cpp" "$work"/
 "${cxx[@]}" -std=c++17 -O0 -o "$work/turnorder_test" "$work/turnorder_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/turnorder_test"
-cp "$here/mythic_test.cpp" "$here/v239_fixtures.h" "$work"/
+cp "$here/mythic_test.cpp" "$here/v239_fixtures.h" "$here/el_sweep.h" "$work"/
 "${cxx[@]}" -std=c++17 -O0 -o "$work/mythic_test" "$work/mythic_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/mythic_test"

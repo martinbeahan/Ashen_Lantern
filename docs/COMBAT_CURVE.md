@@ -194,5 +194,11 @@ with the Rekindle / Not now dialog (later PRs). The story +1 resource padding is
 
 ## v2.40: Mythical gear
 
-Mythical gear does **not** change the encounter level (Martin's decision on #99): no follow term,
-so a high win rate with Mythical gear is the reward. See docs/MYTHICAL.md.
+Mythical gear never raises the encounter level (Martin's rule on #99). There is no Mythical term,
+and `memberOf` hands the curve a `curveView` of any hero wearing a Mythical piece: each Mythical item
+counts as the max-tier Legendary it would be (rarity Legendary, upgrade min(u, +25), bonus minus the
+Mythical extra +3 and minus every upgrade past +25, no Mythic effect, Hearth Aura off). That view feeds
+both the gear surplus (`kGearFollow`) and the measured power (offEl / defEl); AC and max HP move by the
+difference only. Heroes without Mythical gear take the unchanged v2.39 path. `mythic_test` checks
+Mythical == Legendary +25 on 2160 cases and that a 19 200-case non-Mythical sweep hashes to master's value.
+See docs/MYTHICAL.md.

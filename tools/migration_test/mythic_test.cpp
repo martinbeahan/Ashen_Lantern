@@ -9,6 +9,7 @@
 #include "CombatCurve.h"
 #include "Perks.h"
 #include "v239_fixtures.h"
+#include "el_sweep.h"
 #include <cmath>
 #include <cstdio>
 #include <iostream>
@@ -431,6 +432,69 @@ int main() {
         CHECK(!c8.mythicFoundThisRun());
         // Streak travels with the slot through the crawl too.
         CHECK(c8.getMythicDryStreak() == 77);
+    }
+
+    // ------------------------------------------------------------ Curve: Mythical never raises the EL
+    // Martin's rule on #99: a Mythical piece counts for the curve (gear surplus + measured power)
+    // as the max-tier Legendary it would be. Mythical +u (bonus X + 3 + max(0, u - 25), +2 stats,
+    // Mythic effect, Hearth Aura on) == Legendary +min(u, 25) (bonus X, +1 stats, no effect).
+    {
+        int cases = 0;
+        for (int cls = 0; cls < 5; ++cls)
+        for (int level : {8, 20, 35, 50})
+        for (int rank : {1, 5, 10})
+        for (int extra : {0, 6, 20})
+        for (int up : {10, 20, 25, 28, 30, 32})
+        for (int measured = 0; measured < 2; ++measured) {
+            auto build = [&](bool myth) {
+                Character p = curve::makeReferenceHero(static_cast<CharacterClass>(cls), level);
+                p.prestigeRank = rank; p.statRules = true;
+                const int lu = std::min(up, 25);
+                auto mk = [&](ItemType t, int base, int eff) {
+                    auto it = Item::make("X", t, std::max(0, base + extra), ItemRarity::COMMON, cls);
+                    it->rarity = myth ? ItemRarity::MYTHICAL : ItemRarity::LEGENDARY;
+                    it->upgradeLevel = myth ? up : lu;
+                    if (myth) it->bonus += curve::kMythicCurveExtra + std::max(0, up - 25);
+                    it->legStat0 = cls % 6; it->legStat1 = 2; it->legStat2 = (cls + 1) % 6; it->subEffect = 1;
+                    it->mythicEffect = myth ? eff : 0;
+                    return it;
+                };
+                p.equippedWeapon = mk(ItemType::WEAPON, p.equippedWeapon->bonus, static_cast<int>(MythicEffect::EMBER_ECHO));
+                p.equippedArmor = mk(ItemType::ARMOR, p.equippedArmor->bonus, static_cast<int>(MythicEffect::HEARTH_AURA));
+                p.applyStatsForLevel(); p.recomputeMaxHp();
+                if (myth && up >= 25) p.auraAc = 1; // Hearth Aura live, as Game::refreshHearthAura sets it
+                p.calculateAC();
+                return p;
+            };
+            const Character m = build(true), l = build(false);
+            const auto pm = curve::memberOf(m, measured != 0), pl = curve::memberOf(l, measured != 0);
+            CHECK(pm.weaponBonus == pl.weaponBonus && pm.armorBonus == pl.armorBonus);
+            CHECK(pm.actual.atk == pl.actual.atk && pm.actual.ac == pl.actual.ac && pm.actual.hp == pl.actual.hp
+                  && pm.actual.dmg == pl.actual.dmg);
+            for (int mode : {0, 4, 6}) {
+                std::vector<curve::PartyMember> a{pm}, b{pl};
+                const Character w = curve::makeReferenceHero(CharacterClass::WIZARD, level);
+                a.push_back(curve::memberOf(w, measured != 0)); b.push_back(curve::memberOf(w, measured != 0));
+                const auto ea = curve::encounterLevels(a, mode), eb = curve::encounterLevels(b, mode);
+                CHECK(ea.el == eb.el && ea.offEl == eb.offEl && ea.defEl == eb.defEl);
+            }
+            ++cases;
+        }
+        CHECK(cases == 2160);
+        // The real hero keeps its Mythical power: only the curve's view is Legendary.
+        Character r = curve::makeReferenceHero(CharacterClass::FIGHTER, 50);
+        r.prestigeRank = 1; r.statRules = true;
+        r.equippedWeapon = Item::make("Kindlewrath", ItemType::WEAPON, 20, ItemRarity::MYTHICAL, 0);
+        r.equippedWeapon->upgradeLevel = 30;
+        const Character v = curve::curveView(r);
+        CHECK(r.equippedWeapon->isMythical() && r.equippedWeapon->bonus == 20 && r.equippedWeapon->upgradeLevel == 30);
+        CHECK(!v.equippedWeapon->isMythical() && v.equippedWeapon->bonus == 20 - 3 - 5 && v.equippedWeapon->upgradeLevel == 25
+              && v.equippedWeapon->mythicEffect == 0);
+        // Non-Mythical gear: every EL / offEl / defEl over the sweep is exactly master's (v2.39 d0af1b2).
+        int n = 0;
+        const uint64_t h = elsweep::sweep(n);
+        CHECK(n == 19200);
+        CHECK(h == 0x4e390bc6560f7045ull);
     }
 
     if (failures) { std::cerr << failures << " failure(s)\n"; return 1; }

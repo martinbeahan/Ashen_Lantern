@@ -111,24 +111,38 @@ skipped under reduce-flash.
 
 ## Balance
 
-**Martin's decision (#99): Mythical gear must not make fights harder.** There is no
-Mythical encounter-level term; a high win rate with Mythical gear is the reward. The
-only EL change seen below (+2 at ranks I and V) is the existing gear-surplus follow
-(`kGearFollow`, unchanged since v2.29) reacting to the higher item bonus. Win % for
-Legendary +20 → **Mythical Echo/Rekindle** → Mythical Brand/Hearth, L50 Fighter + Wizard,
-1000 fights; then HP lost.
+**Martin's decision (#99): Mythical gear must not make fights harder**, including through the
+gear-surplus rule. There is no Mythical encounter-level term, and for the curve only a Mythical
+piece counts as the max-tier Legendary it would be:
+
+* rarity Legendary, upgrade **min(upgrade, +25)** (the Legendary cap);
+* bonus **minus the Mythical extra** (kMythicalExtraBonus 5 − kLegendaryExtraBonus 2 = **+3**) and
+  minus every upgrade past +25 (each upgrade is +1 bonus);
+* **no Mythic effect**, Hearth Aura off, so its stat lines give +1 (not +2) and follow the Legendary
+  thresholds.
+
+`curve::curveView` builds that view (CombatCurve.h); it feeds both the gear surplus (`kGearFollow`)
+and the measured power (offEl / defEl), with AC and max HP moved by the difference only. The real
+hero keeps every Mythical number in the fight. Heroes without a Mythical piece take the unchanged
+v2.39 path. `mythic_test` checks Mythical +10…+32 == Legendary +min(u, 25) (same surplus, measured
+stats, EL, offEl, defEl) over 2160 cases, and that a 19 200-case non-Mythical sweep hashes to
+master's value.
+
+Win % for Legendary +20 → **Mythical Echo/Rekindle** → Mythical Brand/Hearth, L50 Fighter + Wizard,
+1000 fights; then HP lost; then EL. The EL is now the same in every column.
 
 | Scenario | Rank I | Rank V | Rank X |
 |---|---|---|---|
-| Boss + escort (Medium) | 100 → **100** → 100 | 100 → **100** → 100 | 100 → **100** → 100 |
-| Boss + escort (Hard) | 95 → **100** → 100 · 54/33/30% | 96 → **100** → 100 | 100 → **100** → 100 |
-| Boss + escort (Nightmare) | 91 → **99** → 99 · 62/39/36% | 94 → **99** → 99 | 99 → **100** → 100 |
-| Raids (Hollow Crown M, Ember Hydra H) | 99–100 → **100** | 100 | 100 |
-| Vigil 1/3 (Hard) | 96 → **100** → 100 | 98 → **100** → 100 | 100 |
-| Vigil 1/3 (Nightmare) | 87 → **96** → 96 | 92 → **99** → 99 | 98 → **100** → 100 |
-| Vigil finale + 2 (Medium) | 98 → **100** → 100 | 98 → **100** → 100 | 100 |
-| Vigil finale + 2 (Hard) | 76 → **99** → 99 · 76/44/40% | 70 → **99** → 100 | 91 → **100** → 100 |
-| Vigil finale + 2 (Nightmare) | 68 → **97** → 96 · 81/50/46% | 67 → **98** → 98 | 87 → **100** → 100 |
+| Boss + escort (Medium) | 100 → **100** → 100 · EL 53 | 100 → **100** → 100 · EL 54 | 100 → **100** → 100 · EL 56 |
+| Boss + escort (Hard) | 95 → **100** → 100 · 54/27/24% · EL 53 | 96 → **100** → 100 · EL 54 | 100 → **100** → 100 · EL 56 |
+| Boss + escort (Nightmare) | 91 → **100** → 100 · 62/31/28% · EL 53 | 94 → **100** → 100 · EL 54 | 99 → **100** → 100 · EL 56 |
+| Raid: Hollow Crown (Medium) | 100 → **100** → 100 · EL 55 | 100 · EL 56 | 100 · EL 58 |
+| Raid: Ember Hydra (Hard) | 99 → **100** → 100 · EL 55 | 100 · EL 56 | 100 · EL 58 |
+| Vigil 1/3 (Hard) | 96 → **100** → 100 · EL 59 | 98 → **100** → 100 · EL 64 | 100 · EL 64 |
+| Vigil 1/3 (Nightmare) | 87 → **99** → 99 · EL 59 | 92 → **99** → 100 · EL 64 | 98 → **100** → 100 · EL 64 |
+| Vigil finale + 2 (Medium) | 98 → **100** → 100 · EL 59 | 98 → **100** → 100 · EL 64 | 100 · EL 64 |
+| Vigil finale + 2 (Hard) | 76 → **100** → 100 · 76/36/32% · EL 59 | 70 → **100** → 100 · EL 64 | 91 → **100** → 100 · EL 64 |
+| Vigil finale + 2 (Nightmare) | 68 → **99** → 99 · 81/41/36% · EL 59 | 67 → **99** → 100 · EL 64 | 87 → **100** → 100 · EL 64 |
 
 The EL saturates at kMaxEL 64 in the Vigil from rank V. All pre-existing sim tables
 (`run.sh 150`, `run.sh 200 grid`) are identical to v2.39. Reproduce with

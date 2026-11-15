@@ -505,8 +505,53 @@ inline RefStats actualStats(const Character& c) {
     return {static_cast<double>(mod + pb + wb), static_cast<double>(c.armorClass), static_cast<double>(c.maxHp),
             ((c.weaponDamageDie() + 1) / 2.0 + mod + wb) * classOffenseFactor(c.characterClass)};
 }
+/**
+ * v2.40 (Martin's rule on #99): Mythical gear must not make fights harder. For the curve only
+ * (gear surplus AND the measured power), a Mythical piece counts as the max-tier Legendary it
+ * would be: rarity Legendary, upgrade min(upgrade, +25), bonus minus the Mythical extra
+ * (kMythicalExtraBonus - kLegendaryExtraBonus = +3) and minus every upgrade past +25 (each
+ * upgrade is +1 bonus), no Mythic effect. So its stats are +1 (not +2), its Legendary stat lines
+ * and sub-effect follow the Legendary thresholds, and Hearth Aura is left out. Non-Mythical gear
+ * is untouched (memberOf takes the old path unchanged when no Mythical piece is worn).
+ */
+constexpr int kMythicCurveExtra = LootSystem::kMythicalExtraBonus - LootSystem::Tuning::kLegendaryExtraBonus;
+constexpr int kMythicCurveUpgradeCap = 25; // the Legendary upgrade cap
+inline std::shared_ptr<Item> legendaryEquivalent(const std::shared_ptr<Item>& it) {
+    if (!it || !it->isMythical()) return it;
+    auto e = std::make_shared<Item>(*it);
+    const int past = std::max(0, it->upgradeLevel - kMythicCurveUpgradeCap);
+    e->rarity = ItemRarity::LEGENDARY;
+    e->upgradeLevel = std::min(it->upgradeLevel, kMythicCurveUpgradeCap);
+    e->bonus = std::max(0, it->bonus - kMythicCurveExtra - past);
+    e->mythicEffect = 0;
+    return e;
+}
+inline bool wearsMythical(const Character& c) {
+    return (c.equippedWeapon && c.equippedWeapon->isMythical()) || (c.equippedArmor && c.equippedArmor->isMythical());
+}
+/** The hero as the curve sees it: Mythical pieces swapped for their Legendary equivalent. AC and
+ *  max HP move by the difference only, so buffs and bonus HP on the real hero still count. */
+inline Character curveView(const Character& c) {
+    Character before = c;
+    before.calculateAC();
+    before.recomputeMaxHp();
+    Character v = c;
+    v.equippedWeapon = legendaryEquivalent(c.equippedWeapon);
+    v.equippedArmor = legendaryEquivalent(c.equippedArmor);
+    v.auraAc = 0; // Hearth Aura is a Mythic effect
+    v.calculateAC();
+    v.recomputeMaxHp();
+    v.armorClass = c.armorClass + (v.armorClass - before.armorClass);
+    v.maxHp = std::max(1, c.maxHp + (v.maxHp - before.maxHp));
+    return v;
+}
+inline PartyMember memberOfImpl(const Character& c, bool measurePower);
 /** measurePower = false (online Keeper tables, the classic rules): EL from level and gear only, as v2.32. */
 inline PartyMember memberOf(const Character& c, bool measurePower = true) {
+    if (wearsMythical(c)) return memberOfImpl(curveView(c), measurePower);
+    return memberOfImpl(c, measurePower);
+}
+inline PartyMember memberOfImpl(const Character& c, bool measurePower) {
     PartyMember m;
     m.level = c.level;
     // v2.33: a Rekindled hero's gear counts as attuned (level / 2 + 3); the companion's rank is half.
