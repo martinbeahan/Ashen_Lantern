@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Save-migration + save-safety + turn-order pointer safety (v2.35 #89, turnorder_test) + Rekindling (v2.33, prestige_test) + Kindling (v2.25 story) + Memory Ledger (v2.26) + save slots (v2.28) + combat curve (v2.29) tests for the native game core (Bestiary IDs, legacy/renamed
+# Save-migration + save-safety + Mythical / Drowned Vigil (v2.40, mythic_test) + turn-order pointer safety (v2.35 #89, turnorder_test) + Rekindling (v2.33, prestige_test) + Kindling (v2.25 story) + Memory Ledger (v2.26) + save slots (v2.28) + combat curve (v2.29) tests for the native game core (Bestiary IDs, legacy/renamed
 # names, escaped text fields, transactional load, class validation).
 # Builds Game.cpp + GameSave.cpp + the tests for the host with the NDK clang (x86_64, static)
 # or a system clang++/g++, using a stub AndroidOut.h. Usage: tools/migration_test/run.sh
@@ -46,3 +46,6 @@ cp "$here/prestige_test.cpp" "$work"/
 cp "$here/turnorder_test.cpp" "$work"/
 "${cxx[@]}" -std=c++17 -O0 -o "$work/turnorder_test" "$work/turnorder_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
 "$work/turnorder_test"
+cp "$here/mythic_test.cpp" "$here/v239_fixtures.h" "$here/el_sweep.h" "$work"/
+"${cxx[@]}" -std=c++17 -O0 -o "$work/mythic_test" "$work/mythic_test.cpp" "$work/Game.cpp" "$work/GameSave.cpp" "$work/GamePerks.cpp"
+"$work/mythic_test"

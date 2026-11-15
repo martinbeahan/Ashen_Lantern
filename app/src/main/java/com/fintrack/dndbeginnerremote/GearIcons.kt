@@ -7,6 +7,7 @@ import androidx.annotation.DrawableRes
  * name -> glyph, falling back by item type (Weapon -> sword, Armor -> mail, Potion -> potion).
  * Rarity stays in the socket frame and row pip; Legendary adds an amber inlay on the glyph,
  * plus static glow circles unless reduce-flash is on (calm keeps the inlay, drops the glow).
+ * v2.40 Mythical: an ember-set bone-white inlay with ember cracks and an ember glow (calm: no glow).
  * No save-format change. Art: docs/art/ash_ember/gear, generator tools/gear_icons.
  * GearIconsTest parses the C++ item tables so every item in the game has an explicit glyph.
  */
@@ -36,23 +37,25 @@ object GearIcons {
     val BY_NAME: Map<String, String> = linkedMapOf(
         *(names(SWORD, "Longsword", "Champion's Longsword", "Fighter's Arming Sword", "Steel Blade",
             "Runed Blade", "Traveler Blade", "Traveler's Blade", "Crownbreaker", "Emberdeep Relic Blade",
-            "Lampwright's Blade") +
-        names(SHORT_BLADE, "Shortsword", "Silent Shortsword", "Rogue's Stiletto", "Shadow Dirk", "Nightwhisper") +
-        names(RAPIER, "Rapier", "Stage Rapier", "Bard's Stage Rapier", "Songsteel Rapier") +
-        names(STAFF, "Quarterstaff", "Focus Staff", "Wizard's Focus Rod", "Starfall Focus") +
+            "Lampwright's Blade", "Kindlewrath", "Firstflame Blade") +
+        names(SHORT_BLADE, "Shortsword", "Silent Shortsword", "Rogue's Stiletto", "Shadow Dirk", "Nightwhisper",
+            "Ashfang") +
+        names(RAPIER, "Rapier", "Stage Rapier", "Bard's Stage Rapier", "Songsteel Rapier", "Bellsong Rapier") +
+        names(STAFF, "Quarterstaff", "Focus Staff", "Wizard's Focus Rod", "Starfall Focus", "Last Wick Focus") +
         names(WAND, "Arcane Wand") +
-        names(MACE, "Mace", "Hallowed Mace", "Dawnward Mace") +
+        names(MACE, "Mace", "Hallowed Mace", "Dawnward Mace", "Vigil Censer") +
         names(HAMMER, "Cleric's Warhammer") +
         names(MAUL, "War Maul") +
         names(ASHEN_LANTERN, "Ashen Lantern") +
         names(LEATHER, "Leather Armor", "Padded Vest", "Shadow Leathers", "Rogue's Leathers",
-            "Performer's Leathers", "Veil of Shadows", "Veilwalker Hide") +
+            "Performer's Leathers", "Veil of Shadows", "Veilwalker Hide", "Smokeveil Hide") +
         names(CLOTH, "Traveler Clothes", "Scholar Robes", "Wizard's Robe", "Temple Vestments",
-            "Archsage Mantle", "Sturdy Cloak") +
+            "Archsage Mantle", "Sturdy Cloak", "Cinderweave Mantle") +
         names(MAIL, "Chain Shirt", "Scale Mail", "Reinforced Mail", "Bulwark Mail", "Fighter's Mail",
-            "Reliquary Mail", "Emberdeep Relic Mail", "Cleric's Scale", "Lampwright's Mail") +
-        names(PLATE, "Knight Plate", "Sanctum Plate", "Aegis of Millhollow") +
-        names(COAT, "Troubadour Coat") +
+            "Reliquary Mail", "Emberdeep Relic Mail", "Cleric's Scale", "Lampwright's Mail",
+            "Lantern-Saint Mail", "Firstflame Mail") +
+        names(PLATE, "Knight Plate", "Sanctum Plate", "Aegis of Millhollow", "Hearthwall Plate") +
+        names(COAT, "Troubadour Coat", "Embercourt Coat") +
         names(POTION, "Healing Draught", "Greater Potion") +
         names(TONIC, "Wayfarer's Tonic")).toTypedArray()
     )
@@ -74,13 +77,14 @@ object GearIcons {
 
     fun glyphFor(name: String, type: String): String = BY_NAME[name.trim()] ?: fallbackFor(type)
 
-    /** Drawable stem, e.g. ic_gear_mace, ic_gear_mace_legendary, ic_gear_mace_legendary_calm. */
+    /** Drawable stem, e.g. ic_gear_mace, ic_gear_mace_legendary(_calm), ic_gear_mace_mythical(_calm). */
     fun stemFor(glyph: String, rarity: String, calm: Boolean): String {
-        val legendary = rarity.trim().equals("legendary", ignoreCase = true) && glyph in LEGENDARY_GLYPHS
+        val r = rarity.trim().lowercase()
+        val tier = if (glyph in LEGENDARY_GLYPHS && (r == "legendary" || r == "mythical")) r else ""
         return when {
-            !legendary -> "ic_gear_$glyph"
-            calm -> "ic_gear_${glyph}_legendary_calm"
-            else -> "ic_gear_${glyph}_legendary"
+            tier.isEmpty() -> "ic_gear_$glyph"
+            calm -> "ic_gear_${glyph}_${tier}_calm"
+            else -> "ic_gear_${glyph}_$tier"
         }
     }
 
@@ -129,6 +133,32 @@ object GearIcons {
         "ic_gear_plate_legendary_calm" to R.drawable.ic_gear_plate_legendary_calm,
         "ic_gear_coat_legendary" to R.drawable.ic_gear_coat_legendary,
         "ic_gear_coat_legendary_calm" to R.drawable.ic_gear_coat_legendary_calm,
+        "ic_gear_sword_mythical" to R.drawable.ic_gear_sword_mythical,
+        "ic_gear_sword_mythical_calm" to R.drawable.ic_gear_sword_mythical_calm,
+        "ic_gear_short_blade_mythical" to R.drawable.ic_gear_short_blade_mythical,
+        "ic_gear_short_blade_mythical_calm" to R.drawable.ic_gear_short_blade_mythical_calm,
+        "ic_gear_rapier_mythical" to R.drawable.ic_gear_rapier_mythical,
+        "ic_gear_rapier_mythical_calm" to R.drawable.ic_gear_rapier_mythical_calm,
+        "ic_gear_staff_mythical" to R.drawable.ic_gear_staff_mythical,
+        "ic_gear_staff_mythical_calm" to R.drawable.ic_gear_staff_mythical_calm,
+        "ic_gear_wand_mythical" to R.drawable.ic_gear_wand_mythical,
+        "ic_gear_wand_mythical_calm" to R.drawable.ic_gear_wand_mythical_calm,
+        "ic_gear_mace_mythical" to R.drawable.ic_gear_mace_mythical,
+        "ic_gear_mace_mythical_calm" to R.drawable.ic_gear_mace_mythical_calm,
+        "ic_gear_hammer_mythical" to R.drawable.ic_gear_hammer_mythical,
+        "ic_gear_hammer_mythical_calm" to R.drawable.ic_gear_hammer_mythical_calm,
+        "ic_gear_maul_mythical" to R.drawable.ic_gear_maul_mythical,
+        "ic_gear_maul_mythical_calm" to R.drawable.ic_gear_maul_mythical_calm,
+        "ic_gear_leather_mythical" to R.drawable.ic_gear_leather_mythical,
+        "ic_gear_leather_mythical_calm" to R.drawable.ic_gear_leather_mythical_calm,
+        "ic_gear_cloth_mythical" to R.drawable.ic_gear_cloth_mythical,
+        "ic_gear_cloth_mythical_calm" to R.drawable.ic_gear_cloth_mythical_calm,
+        "ic_gear_mail_mythical" to R.drawable.ic_gear_mail_mythical,
+        "ic_gear_mail_mythical_calm" to R.drawable.ic_gear_mail_mythical_calm,
+        "ic_gear_plate_mythical" to R.drawable.ic_gear_plate_mythical,
+        "ic_gear_plate_mythical_calm" to R.drawable.ic_gear_plate_mythical_calm,
+        "ic_gear_coat_mythical" to R.drawable.ic_gear_coat_mythical,
+        "ic_gear_coat_mythical_calm" to R.drawable.ic_gear_coat_mythical_calm,
     )
 
     fun hasDrawable(stem: String): Boolean = DRAWABLES.containsKey(stem)
@@ -148,6 +178,7 @@ object GearIcons {
         "rare" -> R.drawable.bg_gear_socket_rare
         "epic" -> R.drawable.bg_gear_socket_epic
         "legendary" -> R.drawable.bg_gear_socket_legendary
+        "mythical" -> R.drawable.bg_gear_socket_mythical
         else -> R.drawable.bg_gear_socket_common
     }
 }

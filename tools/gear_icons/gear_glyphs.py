@@ -12,7 +12,7 @@ Hero gear is amber / ember / bone / iron — never teal.
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ae_lib import P, C, ring, flame, poly, f, F, V, S, W, R, ASH, FOG, B, A, AC, EM, OB  # noqa: F401
+from ae_lib import P, C, STK, ring, flame, poly, f, F, V, S, W, R, ASH, FOG, B, A, AC, EM, OB  # noqa: F401
 import draw_gear as g
 from draw_gear import rrect, wick
 
@@ -281,8 +281,45 @@ def legendary_body(name, with_glow=True):
     return out + inlay(ax, ay, s)
 
 
+# v2.40 Mythical: an ember-set bone-white inlay (white-hot core) with ember cracks, plus a static
+# ember glow that the calm variant drops (the inlay and cracks stay). Same anchors as Legendary;
+# the sword (Crownbreaker has its own build) takes the guard.
+MYTHIC_SWORD_ANCHOR = (256, 300, 0.75)
+
+
+def mythic_inlay(cx, cy, s=1.0):
+    """Ember setting, bone-white diamond, amber-core heart, and three short ember cracks."""
+    out = (poly([(cx, cy - 44*s), (cx + 33*s, cy), (cx, cy + 44*s), (cx - 33*s, cy)], EM) +
+           poly([(cx, cy - 33*s), (cx + 24*s, cy), (cx, cy + 33*s), (cx - 24*s, cy)], B) +
+           poly([(cx, cy - 15*s), (cx + 10*s, cy), (cx, cy + 15*s), (cx - 10*s, cy)], AC))
+    for (dx1, dy1, dx2, dy2, dx3, dy3) in ((-30, -4, -46, -14, -60, -10), (28, 8, 44, 20, 58, 16), (4, 40, -6, 56, 2, 70)):
+        out += STK(f'M{f(cx + dx1*s)} {f(cy + dy1*s)} L{f(cx + dx2*s)} {f(cy + dy2*s)} L{f(cx + dx3*s)} {f(cy + dy3*s)}',
+                   EM, max(2.0, 4.0 * s))
+    return out
+
+
+def ember_glow(cx, cy, r=120):
+    return C(cx, cy, r, EM, 0.16) + C(cx, cy, r * 0.55, B, 0.10)
+
+
+def mythical_body(name, with_glow=True):
+    if name == 'sword':
+        ax, ay, s = MYTHIC_SWORD_ANCHOR
+        base = g.sword_glyph(False)
+    elif name == 'coat':
+        ax, ay, s = 256, 206, 0.55
+        base = coat_glyph()
+    else:
+        builder, (ax, ay, s) = GLYPHS[name]
+        base = builder()
+        if name == 'plate':
+            base = g.plate_glyph(False)
+    out = ember_glow(256, 256, 120) if with_glow else ''
+    return out + base + mythic_inlay(ax, ay, s)
+
+
 def all_outputs():
-    """(file stem, svg text). ic_gear_<glyph>, ic_gear_<glyph>_legendary(_calm)."""
+    """(file stem, svg text). ic_gear_<glyph>, ic_gear_<glyph>_legendary(_calm), ic_gear_<glyph>_mythical(_calm)."""
     outs = []
     for name in GLYPHS:
         outs.append((f'ic_gear_{name}', svg(body(name), name)))
@@ -290,4 +327,8 @@ def all_outputs():
         outs.append((f'ic_gear_{name}_legendary', svg(legendary_body(name, True), name + ' legendary')))
         outs.append((f'ic_gear_{name}_legendary_calm',
                      svg(legendary_body(name, False), name + ' legendary (calm: no glow, inlay kept)')))
+    for name in sorted(set(LEGENDARY_GLYPHS)):
+        outs.append((f'ic_gear_{name}_mythical', svg(mythical_body(name, True), name + ' mythical')))
+        outs.append((f'ic_gear_{name}_mythical_calm',
+                     svg(mythical_body(name, False), name + ' mythical (calm: no glow, inlay and cracks kept)')))
     return outs

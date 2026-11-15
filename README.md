@@ -6,7 +6,14 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.39 / 78) — Post-merge fix
+## What's new (v2.40 / 79) — Mythical gear and The Drowned Vigil
+
+- **Mythical gear** — a sixth rarity above Legendary, only for heroes who have Rekindled at least once (rank I+). Twelve original pieces (Kindlewrath, Last Wick Focus, Ashfang, Vigil Censer, Bellsong Rapier, Firstflame Blade; Hearthwall Plate, Cinderweave Mantle, Smokeveil Hide, Lantern-Saint Mail, Embercourt Coat, Firstflame Mail). Bonus 3 higher than a Legendary, upgrades to +30 (+32 at Rekindled VII), three bonus stats at +2 each (unlocked at +0 / +10 / +20), the Legendary sub-effect from +0, and one **Mythic effect** at +25: *Rekindle* (armor: rise once a battle at 25% HP, before Last Light), *Ember Echo* (every 4th hit repeats for 50%), *Cinder Brand* (hits Burn), *Hearth Aura* (armor: party +1 AC) or *Lantern's Due* (a kill heals the party 5%). It looks different too: an ember frame with a bone-white rim, a ringed-flame pip, ember-coloured name text and a bone-white inlay with ember cracks on the glyph (*Reduce flashing* drops its glow and the ember-white burst)
+- **Where it drops** — only from the kills that can drop a Legendary: **7%** on the Drowned Vigil finale, **1.5%** in Boss Raids, the Ember Ring and the Ashen Deep, **1%** in the crawl after the story, and the Crucible's Legendary chance ÷ 6 (3% at 18%; a Mythical there also lowers the Crucible chance). Never from the story, trash, Search, the shop, set pieces, pity, Daily Quests or online. **Pity:** after 50 such kills without one the chance doubles, and the 150th in a row is a Mythical. At most one per run. Mythical gear never raises the Encounter Level: the curve counts a Mythical piece as the +25 Legendary it would be, so foes stay as they are and the gear is the reward
+- **The Drowned Vigil** — a new endgame run for Rekindled heroes, from the Boss Raid entry (**1 Raid Key**). Climb the Vigil Spire through three chambers — the tide-wardens of the lower stair, the bell-wardens of the drowned bell, then one of the Three Drowned Lanterns with its acolytes in the flooded crown (three phases). Foes are tougher with your rank (Encounter Level +4 +2 per rank). Below rank I the dialog says *Rekindle to open the Drowned Vigil*. Details: [`docs/MYTHICAL.md`](docs/MYTHICAL.md)
+- **Saves:** two new trailing fields (the pity count and the one-per-run flag) and the reserved Vigil chamber field; older saves load exactly as before. Host / Join never touch a solo save; online play is unchanged (online heroes never roll Mythical gear)
+
+## Previous (v2.39 / 78) — Post-merge fix
 
 - **Fixes the build after merging v2.35–v2.38.** The app's version went back to 2.35 / 74 during the merges, and two lines of the online code from v2.35 (bad-data safety) and v2.37 (lockdown) didn't fit together: the app no longer built, and chat would have stopped showing messages. Version is now 2.39 / 78 so it installs over any earlier build, and online lobby and chat are as tested in v2.37. No gameplay change; saves unchanged
 
@@ -226,7 +233,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Memory Ledger** — a book of 47 Ember Memories: short testimonies from the souls in the Lantern, with Wren's remarks, sorted into three ribbons (*Wren*, *Maren*, *The Lantern*). They come from story beats, Lamplighter's Rounds, the Ashen Deep, the Ember Ring and the Drowned Lantern raids. Lore only, no stat effects. Each hero has their own Ledger; uncollected cards show only where they are found
 - **Ash & Ember art** — original hand-authored silhouettes for all 27 foes (one per stable enemy ID) and all five hero classes, with code-driven idle sway / attack lunge / ash-dissolve animation; 16 original stage backgrounds chosen by mode and story beat; *Reduce flashing* stills them and calms the bright amber boss and hero glows
 - **Ash & Ember UI** — soot-and-amber panels, buttons and dialogs, Cinzel / Cormorant Garamond type, a candle-wick HP bar, a 10-ember XP row and rarity pips on loot
-- **Gear icons** — 18 original item glyphs (one per kind of gear, unique art for the Ashen Lantern) in rarity-framed 40dp sockets across inventory and shop, plus the Potion button, Raid Key hints and a gold coin. Legendary gear carries an amber inlay; *Reduce flashing* drops its glow
+- **Gear icons** — 18 original item glyphs (one per kind of gear, unique art for the Ashen Lantern) in rarity-framed 40dp sockets across inventory and shop, plus the Potion button, Raid Key hints and a gold coin. Legendary gear carries an amber inlay, Mythical gear a bone-white inlay with ember cracks in an ember frame; *Reduce flashing* drops their glow
 - **Save slots** — three adventures (lanterns) side by side on an *Adventures* screen; Continue loads the last one played, New Story / Crawl never overwrite a hero, and Delete / Abandon clear only that hero. Keys, Crucible pity, Ring / Deep bests, the Ledger and the story unlock are per hero; settings, Daily Quests and the daily Raid Key cap are shared
 - **Dungeon Crawl** — procedural rooms from the start (skip the scripted quest)
 - **Difficulty** — Easy / Medium / Hard / Nightmare (locked for the run; wipe rules differ by tier)
@@ -237,8 +244,9 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **How combat scales** — solo fights use an Encounter Level from your level and gear (gear at 50%), foe roles and per-room threat budgets, a 15–90% hit clamp, a 45% one-hit guard, Pressure / Rekindle comeback rules and warned surprise bosses. Levels to 50
 - **Classes** — Fighter, Wizard, Rogue, Cleric, and **Bard** (CHA-based; Cutting Quip special)
 - **Companion** — AI or player-controlled ally; change class in-run where supported
-- **Inventory & loot** — rarity tiers, class-tagged gear, shop, sell, gold upgrades; early bosses (The Wick King, The Ossuary Prior, Ashen Drake)
+- **Inventory & loot** — rarity tiers (Common to Legendary, plus **Mythical** for Rekindled heroes with a pity count and one Mythic effect each), class-tagged gear, shop, sell, gold upgrades; early bosses (The Wick King, The Ossuary Prior, Ashen Drake)
 - **Boss Raids** — story-complete endgame mode; spends a Raid Key; focused boss fight with strong rewards (Legendary chance)
+- **The Drowned Vigil** — Rekindled heroes only; spends a Raid Key; three chambers up the Vigil Spire ending with a Drowned Lantern boss; the best Mythical chance (7%)
 - **Daily Quests** — local-midnight errands for story-complete Continue heroes (gold / tonic / optional Raid Key)
 - **Challenge Dungeon** — story-complete *Cinder Crucible* vault (no Raid Key cost; dynamic Legendary chance)
 - **Arena (Ember Ring)** — see Endgame modes below
@@ -258,6 +266,9 @@ Unlocked per hero after that hero finishes Acts 1–4, with a livable **Continue
 | **Challenge Dungeon** | *Cinder Crucible* | One vault apex + adds | No | **Dynamic** 18%± (floor 5%, cap 28%) |
 | **Arena** | *Ember Ring* | **5 scored waves**; Onward between waves | No | Waves 1–4 Rare/Epic only; **Wave 5** apex flat **7%** |
 | **Endless Deep** | *Ashen Deep* | **Endless** depth-scaling rooms | No | Apex every **10** depths, flat **7%** |
+| **The Drowned Vigil** | *Vigil Spire* | **3 chambers**: elite pack → elite pair → Drowned boss + acolytes (Rekindled I+) | Yes (Raid Key) | Finale **7%**; **Mythical 7%** |
+
+Mythical gear (Rekindled I+ only) rolls on the same Legendary-eligible kills: Vigil 7%, Raid / Arena / Deep 1.5%, crawl 1%, Crucible its Legendary chance ÷ 6; pity doubles after 50 dry kills and guarantees the 150th; one per run. See [`docs/MYTHICAL.md`](docs/MYTHICAL.md).
 
 ### Arena — Ember Ring
 Wave-based scored fights on your Continue hero. Clear a wave → **Onward** for the next; Wave 5 is an endgame apex. Soft end on wipe (Easy–Hard Continue restores the hero; Nightmare restores the pre-Arena snapshot). Meta prefs track **best score**, **best waves**, and **runs**. Details: [`docs/ARENA.md`](docs/ARENA.md).
@@ -348,6 +359,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`docs/CHALLENGE_DUNGEON.md`](docs/CHALLENGE_DUNGEON.md) | Challenge Dungeon / Cinder Crucible |
 | [`docs/ARENA.md`](docs/ARENA.md) | Arena / Ember Ring |
 | [`docs/ENDLESS_DEEP.md`](docs/ENDLESS_DEEP.md) | Endless Deep / Ashen Deep |
+| [`docs/MYTHICAL.md`](docs/MYTHICAL.md) | Mythical gear and The Drowned Vigil: rarity rules, Mythic effects, drop rates, pity, one per run, save fields, art, balance tables (`tools/migration_test/mythic_test`, `tools/combat_sim/ai_sim … mythic`) |
 | [`BUILD_HELP.md`](BUILD_HELP.md) | Build troubleshooting |
 | [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md) | Online multiplayer setup |
 | [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md) | Online lockdown: anonymous sign-in, database rules (`firebase/database.rules.json`), session codes, console steps, deploy order, Rules Playground checklist, emulator test (`tools/rules_test`) |

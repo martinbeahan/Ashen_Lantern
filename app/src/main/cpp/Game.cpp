@@ -1305,11 +1305,14 @@ void Game::rollInitiative() {
     for (auto& p : players_) {
         if (!p) continue;
         p->fightShieldUsed = false;
+        p->rekindleUsed = false;   // v2.40 Mythic Rekindle: once per battle
+        p->mythicHitCount = 0;     // v2.40 Ember Echo counts this battle's hits
         p->specialUsedThisCombat = false;
         // v2.31 Signature (main stat 20+): one free class-special use per battle.
         p->signatureUses = p->signatureTier() >= 1 ? 1 : 0;
     }
 
+    refreshHearthAura(); // v2.40 Mythic Hearth Aura (party +1 AC)
     turnOrder_.clear();
     if (isMerchantRoom_) return;
     bool freshFight = false;
@@ -1553,6 +1556,7 @@ bool Game::equipInventoryItem(const std::string& playerName, int invIndex) {
         hero->equippedArmor = item;
         hero->refreshDerivedStats();
     }
+    refreshHearthAura(); // v2.40
     lastEvent_ = hero->name + " equips " + item->getDescription() + ".";
     return true;
 }
@@ -1567,6 +1571,7 @@ bool Game::unequipSlot(const std::string& playerName, int slot) {
         lastEvent_ = hero->name + " unequips " + hero->equippedWeapon->name + ".";
         hero->equippedWeapon = nullptr;
         hero->refreshDerivedStats();
+        refreshHearthAura(); // v2.40
         return true;
     }
     if (slot == 1) {
@@ -1575,6 +1580,7 @@ bool Game::unequipSlot(const std::string& playerName, int slot) {
         lastEvent_ = hero->name + " unequips " + hero->equippedArmor->name + ".";
         hero->equippedArmor = nullptr;
         hero->refreshDerivedStats();
+        refreshHearthAura(); // v2.40
         return true;
     }
     lastEvent_ = "Bad slot.";
@@ -1614,6 +1620,7 @@ bool Game::upgradeEquippedItem(const std::string& playerName, int slot) {
         lastEvent_ = err;
         return false;
     }
+    refreshHearthAura(); // v2.40: Hearth Aura unlocks at +25
     lastEvent_ = hero->name + " upgrades " + (*ptr)->name + " to +" + std::to_string((*ptr)->bonus)
         + " for " + std::to_string(cost) + "g.";
     addJournalEntry(lastEvent_);
@@ -2230,13 +2237,11 @@ bool Game::beginBossRaidFromCurrent() {
     if (players_.empty()) return false;
 
     // Preserve party (stats, gear, inventory, gold, companion, level, Legendary upgrades).
-    if (soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ENDLESS)) {
+    if (!isFocusedEndgameRun()) {
         preRaidSoloPlayMode_ = soloPlayMode_;
         preRaidRoomCount_ = roomCount_;
     }
+    mythicThisRun_ = false; // v2.40: one Mythical per run — a new run starts here
 
     soloPlayMode_ = static_cast<int>(SoloPlayMode::RAID);
     gameOver_ = false;
@@ -2304,6 +2309,7 @@ void Game::finishBossRaidKeepParty() {
     }
     preRaidSoloPlayMode_ = -1;
     preRaidRoomCount_ = 0;
+    mythicThisRun_ = false; // v2.40: the run is over
 
     // Keep endgame story flags; adventure continues with same character.
     questComplete_ = true;
@@ -2323,13 +2329,11 @@ void Game::finishBossRaidKeepParty() {
 bool Game::beginChallengeDungeonFromCurrent(int legendaryChancePercent) {
     if (players_.empty()) return false;
 
-    if (soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ENDLESS)) {
+    if (!isFocusedEndgameRun()) {
         preRaidSoloPlayMode_ = soloPlayMode_;
         preRaidRoomCount_ = roomCount_;
     }
+    mythicThisRun_ = false; // v2.40: one Mythical per run — a new run starts here
 
     soloPlayMode_ = static_cast<int>(SoloPlayMode::CHALLENGE);
     setChallengeLegendaryChance(legendaryChancePercent);
@@ -2414,6 +2418,7 @@ void Game::finishChallengeDungeonKeepParty() {
     }
     preRaidSoloPlayMode_ = -1;
     preRaidRoomCount_ = 0;
+    mythicThisRun_ = false; // v2.40: the run is over
 
     questComplete_ = true;
     questAct2Complete_ = true;
@@ -2495,13 +2500,11 @@ void Game::spawnArenaWave(int wave) {
 bool Game::beginArenaFromCurrent() {
     if (players_.empty()) return false;
 
-    if (soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ENDLESS)) {
+    if (!isFocusedEndgameRun()) {
         preRaidSoloPlayMode_ = soloPlayMode_;
         preRaidRoomCount_ = roomCount_;
     }
+    mythicThisRun_ = false; // v2.40: one Mythical per run — a new run starts here
 
     soloPlayMode_ = static_cast<int>(SoloPlayMode::ARENA);
     arenaWave_ = 1;
@@ -2554,6 +2557,7 @@ void Game::finishArenaKeepParty() {
     }
     preRaidSoloPlayMode_ = -1;
     preRaidRoomCount_ = 0;
+    mythicThisRun_ = false; // v2.40: the run is over
     // Keep arenaScore_ / arenaWavesCleared_ for Kotlin meta until next begin.
 
     questComplete_ = true;
@@ -2656,13 +2660,11 @@ void Game::spawnEndlessDepth(int depth) {
 bool Game::beginEndlessDeepFromCurrent() {
     if (players_.empty()) return false;
 
-    if (soloPlayMode_ != static_cast<int>(SoloPlayMode::ENDLESS)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::RAID)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::CHALLENGE)
-        && soloPlayMode_ != static_cast<int>(SoloPlayMode::ARENA)) {
+    if (!isFocusedEndgameRun()) {
         preRaidSoloPlayMode_ = soloPlayMode_;
         preRaidRoomCount_ = roomCount_;
     }
+    mythicThisRun_ = false; // v2.40: one Mythical per run — a new run starts here
 
     soloPlayMode_ = static_cast<int>(SoloPlayMode::ENDLESS);
     endlessDepth_ = 1;
@@ -2715,6 +2717,7 @@ void Game::finishEndlessDeepKeepParty() {
     }
     preRaidSoloPlayMode_ = -1;
     preRaidRoomCount_ = 0;
+    mythicThisRun_ = false; // v2.40: the run is over
     // Keep endlessDepth_ / endlessBestDepthThisRun_ for Kotlin meta until next begin.
 
     questComplete_ = true;
@@ -2730,6 +2733,211 @@ void Game::finishEndlessDeepKeepParty() {
     addChatMessage("System", "Endless Deep finished — story character preserved. Best depth "
                    + std::to_string(endlessBestDepthThisRun_) + ".");
     addJournalEntry("Ashen Deep concluded; depth " + std::to_string(endlessBestDepthThisRun_) + ".");
+}
+
+// =============================================================================================
+// v2.40 The Drowned Vigil + Mythical drops (docs/MYTHICAL.md).
+// =============================================================================================
+
+bool Game::beginDrownedVigilFromCurrent() {
+    if (players_.empty() || !players_[0]) return false;
+    // Rekindled I+ only (Kotlin hides the entry below that), never on a Keeper table or a joiner.
+    if (!encounterCurveActive() || prestige::clampRank(players_[0]->prestigeRank) < 1) return false;
+
+    if (!isFocusedEndgameRun()) {
+        preRaidSoloPlayMode_ = soloPlayMode_;
+        preRaidRoomCount_ = roomCount_;
+    }
+    mythicThisRun_ = false; // v2.40: one Mythical per run — a new run starts here
+    soloPlayMode_ = static_cast<int>(SoloPlayMode::VIGIL);
+    gameOver_ = false;
+    dmOnlyTable_ = false;
+    isHost_ = true;
+    dmName_.clear();
+    pendingRaidKeyDrop_ = false;
+    pendingBossXpBonus_ = 0;
+    pendingBossLootLuck_ = 0;
+    pendingBossAllowLegendary_ = false;
+    pendingBossGoldBonus_ = 0;
+    pendingChallengeLegendaryFound_ = false;
+    arenaWave_ = 0;
+    arenaScore_ = 0;
+    arenaWavesCleared_ = 0;
+    endlessDepth_ = 0;
+    endlessBestDepthThisRun_ = 0;
+    clearSetPiecePending();
+
+    questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
+    questComplete_ = true;
+    questAct2Complete_ = true;
+    questAct3Complete_ = true;
+    questAct4Complete_ = true;
+
+    roomCount_ = std::max(roomCount_, 24);
+    spawnVigilChamber(1);
+    addChatMessage("System", "The Drowned Vigil begins (difficulty: " + std::string(difficultyName(difficulty_))
+                   + ") — one Raid Key spent, same hero preserved.");
+    addJournalEntry("Climbed the Vigil Spire to keep the Drowned Vigil.");
+    return true;
+}
+
+void Game::spawnVigilChamber(int chamber) {
+    clearEnemies(); // no dangling turn slots (#89)
+    shopInventory_.clear();
+    isMerchantRoom_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
+    clearSetPiecePending();
+    pendingBossXpBonus_ = 0;
+    pendingBossLootLuck_ = 0;
+    pendingBossAllowLegendary_ = false;
+    pendingBossGoldBonus_ = 0;
+    vigilChamber_ = std::clamp(chamber, 1, 3);
+
+    auto push = [&](const char* id, CharacterClass cl) { enemies_.push_back(newEnemy(id, cl, "dv")); };
+    if (vigilChamber_ == 1) {
+        // An elite pack: the tide-wardens of the lower stair.
+        push("enemy_ashbound_bonebound", CharacterClass::FIGHTER);
+        push("enemy_tithe_enforcer", CharacterClass::FIGHTER);
+        push("enemy_gloamhound", CharacterClass::ROGUE);
+        push("enemy_crier_bone", CharacterClass::CLERIC);
+        roomDescription_ = "The Drowned Vigil — Chamber 1/3. Black water laps the lower stair of the Vigil Spire; "
+                           "the tide-wardens rise dripping to bar the way.";
+        lastEvent_ = "THE DROWNED VIGIL — the lower stair! Stand ready!";
+        dmSay("Three lanterns drowned when the old Tithe fell. Their Vigil still keeps the spire. Climb, and be weighed.");
+    } else if (vigilChamber_ == 2) {
+        // An elite pair: the bell-wardens.
+        push("enemy_brute", CharacterClass::FIGHTER);
+        push("enemy_tithe_enforcer", CharacterClass::FIGHTER);
+        roomDescription_ = "The Drowned Vigil — Chamber 2/3. The bell gallery: a cracked bronze bell hangs over "
+                           "the water, and two wardens stand beneath it.";
+        lastEvent_ = "THE DROWNED VIGIL — the bell gallery! Stand ready!";
+        dmSay("The drowned bell tolls once, though no hand touches it. The wardens step forward together.");
+    } else {
+        // The finale: one of the Three Drowned Lanterns, risen from the flooded crown of the spire.
+        const int pick = getRandomInt(0, 2);
+        const char* boss = pick == 0 ? "boss_hollow_crown" : (pick == 1 ? "boss_ember_hydra" : "boss_nightfang");
+        spawnNamedBoss(boss);
+        push("enemy_ashbound_bonebound", CharacterClass::FIGHTER); // its drowned acolytes
+        push("enemy_crier_bone", CharacterClass::CLERIC);
+        const std::string name = bestiary::displayName(boss);
+        roomDescription_ = "The Drowned Vigil — Chamber 3/3. The flooded crown of the spire. " + name
+                           + " rises from the black water, wreathed in drowned lantern-light, its acolytes at its side.";
+        lastEvent_ = "THE DROWNED VIGIL — the Drowned " + name + "!";
+        dmSay("The Drowned " + name + " keeps the last lantern. It fights in three tides — hold through each one. "
+              "Mythical gear is possible here (7%).");
+    }
+    if (!enemies_.empty()) rollInitiative();
+    else { turnOrder_.clear(); currentTurnIndex_ = 0; }
+}
+
+void Game::finishDrownedVigilKeepParty() {
+    if (!isDrownedVigil() && preRaidSoloPlayMode_ < 0) return;
+    clearEnemies();
+    shopInventory_.clear();
+    isMerchantRoom_ = false;
+    roomSearchUsed_ = false; roomRestUsed_ = false;
+    turnOrder_.clear();
+    currentTurnIndex_ = 0;
+    gameOver_ = false;
+    if (preRaidSoloPlayMode_ >= 0) {
+        soloPlayMode_ = preRaidSoloPlayMode_;
+        if (preRaidRoomCount_ > 0) roomCount_ = preRaidRoomCount_;
+    } else {
+        soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
+    }
+    preRaidSoloPlayMode_ = -1;
+    preRaidRoomCount_ = 0;
+    vigilChamber_ = 0;
+    mythicThisRun_ = false; // the run is over
+    questComplete_ = true;
+    questAct2Complete_ = true;
+    questAct3Complete_ = true;
+    questAct4Complete_ = true;
+    questBeat_ = static_cast<int>(SoloQuestBeat::NONE);
+    generateRoomDescription();
+    lastEvent_ = "The Drowned Vigil ended — your hero and gear are intact. Return to the menu or press Onward to keep exploring.";
+    dmSay(lastEvent_);
+    addChatMessage("System", "Drowned Vigil finished — story character preserved.");
+    addJournalEntry("The Drowned Vigil concluded; party preserved.");
+}
+
+int Game::mythicBasePermille() const {
+    if (isDrownedVigil()) return 70;                                // the Vigil finale: 7%
+    if (isBossRaid() || isArena() || isEndlessDeep()) return 15;    // 1.5%
+    if (isChallengeDungeon())                                       // its Legendary rate / 6 (18% -> 3%)
+        return static_cast<int>(std::lround(std::clamp(challengeLegendaryChance_, 0, 100) * 10 / 6.0));
+    if (isSoloCrawl()) return 10;                                   // 1%
+    if (soloPlayMode_ == static_cast<int>(SoloPlayMode::STORY) && questAct4Complete_ && !isSoloQuestScripted())
+        return 10;                                                  // the post-story crawl: 1%
+    return 0;                                                       // the story itself never drops one
+}
+
+int Game::mythicPermilleWithPity() const {
+    const int base = mythicBasePermille();
+    if (base <= 0) return 0;
+    if (mythicDryStreak_ >= kMythicPityGuarantee - 1) return 1000; // the 150th dry kill in a row
+    if (mythicDryStreak_ >= kMythicPityDouble) return std::min(1000, base * 2);
+    return base;
+}
+
+bool Game::mythicEligibleNow() const {
+    if (!encounterCurveActive() || players_.empty() || !players_[0]) return false; // solo host only
+    if (!players_[0]->attuned()) return false; // Rekindled I+ (and the solo rules on)
+    if (mythicThisRun_) return false;
+    return mythicBasePermille() > 0;
+}
+
+std::shared_ptr<Item> Game::rollMythicalDrop(int preferA, int preferB) {
+    if (!mythicEligibleNow()) return nullptr;
+    const int chance = mythicPermilleWithPity();
+    if (rng::below(1000) >= chance) {
+        mythicDryStreak_ = std::min(kMythicStreakMax, mythicDryStreak_ + 1);
+        return nullptr;
+    }
+    mythicDryStreak_ = 0;
+    mythicThisRun_ = true;
+    return LootSystem::generateMythical(roomCount_, preferA, preferB);
+}
+
+void Game::refreshHearthAura() {
+    int aura = 0;
+    for (const auto& p : players_)
+        if (p && !p->isDead && p->hasMythic(MythicEffect::HEARTH_AURA)) { aura = 1; break; }
+    for (auto& p : players_) {
+        if (!p) continue;
+        // Shift by the change only, so a live guard / sunder adjustment on AC is kept.
+        if (p->auraAc != aura) { p->armorClass += aura - p->auraAc; p->auraAc = aura; }
+    }
+}
+
+void Game::applyMythicOnHit(Character* actor, Character* target, int dmg) {
+    if (!actor || !target || dmg <= 0 || !actor->equippedWeapon || !actor->equippedWeapon->mythicEffectUnlocked()) return;
+    if (actor->hasMythic(MythicEffect::EMBER_ECHO)) {
+        if (++actor->mythicHitCount % 4 == 0 && target->currentHp > 0) {
+            const int echo = std::max(1, dmg / 2);
+            target->takeDamage(echo);
+            noteDailyQuestDamage(echo);
+            addChatMessage("Combat", "Ember Echo! " + actor->name + "'s blow rings again for " + std::to_string(echo) + ".");
+        }
+    }
+    if (actor->hasMythic(MythicEffect::CINDER_BRAND) && target->currentHp > 0) {
+        target->status.burn = std::max(target->status.burn, 2);
+        target->status.burnDmg = std::max(target->status.burnDmg, std::max(2, dmg / 6));
+        addChatMessage("Combat", "Cinder Brand — " + target->name + " burns (" + std::to_string(target->status.burnDmg) + " a turn).");
+    }
+}
+
+void Game::applyMythicOnKill(Character* actor) {
+    if (!actor || !actor->hasMythic(MythicEffect::LANTERNS_DUE)) return;
+    int healed = 0;
+    for (auto& p : players_) {
+        if (!p || p->isDead || p->isDowned || p->currentHp <= 0) continue;
+        const int amt = std::max(1, p->maxHp * 5 / 100);
+        const int before = p->currentHp;
+        p->currentHp = std::min(p->maxHp, p->currentHp + amt);
+        healed += p->currentHp - before;
+    }
+    if (healed > 0) addChatMessage("Combat", "Lantern's Due — the party draws warmth from the fallen (+" + std::to_string(healed) + " HP).");
 }
 
 
@@ -2755,6 +2963,15 @@ bool Game::recoverFromPartyWipe() {
         dmSay(lastEvent_);
         addChatMessage("System", lastEvent_);
         addJournalEntry(std::string("Raid wipe Continue on ") + dname + " — character preserved.");
+        return true;
+    }
+    if (isDrownedVigil()) {
+        finishDrownedVigilKeepParty();
+        const char* dname = difficultyName(difficulty_);
+        lastEvent_ = std::string("Continue (") + dname + ") — the Drowned Vigil aborted; your story hero stands again.";
+        dmSay(lastEvent_);
+        addChatMessage("System", lastEvent_);
+        addJournalEntry(std::string("Drowned Vigil wipe Continue on ") + dname + " — character preserved.");
         return true;
     }
     if (isChallengeDungeon()) {
@@ -2902,6 +3119,11 @@ void Game::enterClearedRoom(Character* actor) {
                        + std::to_string(ARENA_MAX_WAVES) + " clear — score "
                        + std::to_string(arenaScore_) + ".");
     }
+    // v2.40 Drowned Vigil: the elite chambers give a luck bump (Rare/Epic); the finale is a boss.
+    if (isDrownedVigil() && vigilChamber_ >= 1 && vigilChamber_ < 3) {
+        pendingBossLootLuck_ += 14 + vigilChamber_ * 6;
+        addChatMessage("Vigil", "Chamber " + std::to_string(vigilChamber_) + "/3 quiet — Onward to the next lantern.");
+    }
     // Ashen Deep: depth-scaled gold + loot luck; Legendary only via apex noteBossDefeat.
     if (isEndlessDeep() && endlessDepth_ >= 1) {
         endlessBestDepthThisRun_ = std::max(endlessBestDepthThisRun_, endlessDepth_);
@@ -2942,8 +3164,20 @@ void Game::enterClearedRoom(Character* actor) {
         partyPreferClasses(preferA, preferB);
         // Legendary only from endgame boss / Boss Raid / Challenge Dungeon defeat (never questAct3 alone).
         const int legPct = isChallengeDungeon() ? challengeLegendaryChance_ : 7;
-        auto loot = LootSystem::generateLoot(roomCount_, luck, preferA, preferB, pendingAllowLegendary, legPct);
-        if (loot) {
+        // v2.40 Mythical: the same Legendary-eligible kills, Rekindled heroes only, rolled first
+        // (d1000, per-source rate + dry-streak pity, one per run). docs/MYTHICAL.md.
+        std::shared_ptr<Item> loot = pendingAllowLegendary ? rollMythicalDrop(preferA, preferB) : nullptr;
+        if (!loot) loot = LootSystem::generateLoot(roomCount_, luck, preferA, preferB, pendingAllowLegendary, legPct);
+        if (loot && loot->isMythical()) {
+            actor->addToInventory(loot);
+            dmSay(actor->name + " lifts " + loot->getDescription() + " [Mythical] from the ashes — a flame that remembers the first lamp.");
+            addJournalEntry(actor->name + " found Mythical gear: " + loot->getDescription());
+            if (isChallengeDungeon()) {
+                pendingChallengeLegendaryFound_ = true; // a Mythical also takes the -3pp forge decay
+                dmSay("Challenge Dungeon: Mythical found — the Legendary chance falls as for a Legendary.");
+            }
+            rareLootNote = actor->name + " finds " + loot->getDescription() + " [Mythical]!";
+        } else if (loot) {
             actor->addToInventory(loot);
             dmSay(actor->name + " finds " + loot->getDescription() + " [" + loot->rarityLabel() + "] — check Inventory.");
             addJournalEntry(actor->name + " found loot: " + loot->getDescription() + " (" + loot->rarityLabel() + ")");
@@ -3372,6 +3606,7 @@ bool Game::performWeaponAttack(Character* actor, Character& target, int atkVisIn
         if (targetIsEnemy) {
             noteDailyQuestDamage(dmg);
             applyLegendaryOnHit(actor, dmg);
+            applyMythicOnHit(actor, &target, dmg); // v2.40 Ember Echo / Cinder Brand
             noteFoeDamaged(target, dmg, actor, result.isCriticalHit); // v2.30: stagger / phases
         }
         pushVisualEvent(targetIsEnemy ? VisualEventType::ENEMY_DAMAGE : VisualEventType::PLAYER_DAMAGE, targetIndex);
@@ -3397,6 +3632,7 @@ void Game::resolveEnemyDefeated(Character* actor, int /*targetEnemyIndex*/) {
     for (auto it = enemies_.begin(); it != enemies_.end(); ) {
         if ((*it)->currentHp <= 0) {
             returnStolenGold(**it, actor);
+            applyMythicOnKill(actor); // v2.40 Lantern's Due
             grantKillLoot(actor, (*it)->name, (*it)->enemyId); // sets Felled … lastEvent_ + journal/DM
             removeFromTurnOrder(it->get());
             it = enemies_.erase(it);
@@ -3897,6 +4133,20 @@ void Game::playerAdvanceFromCleared() {
         dmSay(lastEvent_);
         addChatMessage("Quest", "Arena cleared — character preserved. Score "
                        + std::to_string(arenaScore_) + ".");
+        return;
+    }
+    if (isDrownedVigil()) {
+        advanceLongRestProgress(); // a chamber clear counts as a room for Long Rest
+        if (vigilChamber_ < 3) {
+            spawnVigilChamber(vigilChamber_ + 1);
+            addChatMessage("Vigil", "Onward — Drowned Vigil chamber " + std::to_string(vigilChamber_) + "/3.");
+            addJournalEntry("Climbed to Drowned Vigil chamber " + std::to_string(vigilChamber_) + ".");
+            return;
+        }
+        finishDrownedVigilKeepParty();
+        lastEvent_ = "The Drowned Vigil is kept! Spoils kept on your story hero. Onward resumes your adventure, or use Menu.";
+        dmSay(lastEvent_);
+        addChatMessage("Quest", "Drowned Vigil cleared — character preserved.");
         return;
     }
     if (isEndlessDeep()) {
@@ -4418,6 +4668,7 @@ std::string Game::getPartyStatus() const {
                            << ARENA_MAX_WAVES << " · Score " << arenaScore_ << "\n";
     else if (isEndlessDeep()) ss << "Mode: Ashen Deep (Endless) — Depth " << endlessDepth_
                                  << " · Best " << endlessBestDepthThisRun_ << "\n";
+    else if (isDrownedVigil()) ss << "Mode: The Drowned Vigil — Chamber " << vigilChamber_ << "/3\n";
     else if (isSoloCrawl()) ss << "Mode: Dungeon Crawl\n";
     else if (questAct4Complete_) ss << "Story complete: Acts 1–4 (endgame unlocked)\n";
     else if (isAct4Beat(questBeat_)) ss << "Quest: Ashwake Vigil — " << soloQuestBeatName(questBeat_) << "\n";
@@ -4542,6 +4793,8 @@ int Game::encounterModeBonus() const {
     if (isChallengeDungeon()) return 3;
     if (isArena()) return arenaWave_ >= ARENA_MAX_WAVES ? 2 : 0;
     if (isEndlessDeep()) return std::max(0, endlessDepth_) / 5;
+    if (isDrownedVigil()) // v2.40: +4 + 2 x the hero's Rekindling rank
+        return 4 + 2 * (players_.empty() || !players_[0] ? 0 : prestige::clampRank(players_[0]->prestigeRank));
     return 0;
 }
 

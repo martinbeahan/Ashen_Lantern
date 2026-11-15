@@ -102,12 +102,14 @@ std::string Game::serialize() {
        // readers still detect encoding and simply ignore the extra fields).
        << "," << vennChoice_ << "," << wellChoice_
        // v2.29 combat curve (append-only): 37 schema tag, 38 pressure, 39 Rekindle rooms,
-       // 40 reserved for the Drowned Vigil chamber (PR 6), 41 low-HP streak, 42 last room over
+       // 40 the Drowned Vigil chamber (v2.40; was a reserved 0), 41 low-HP streak, 42 last room over
        // budget, 43 a hero dropped this room.
-       << "," << kCurveSchemaTag << "," << pressure_ << "," << rekindleRooms_ << ",0"
+       << "," << kCurveSchemaTag << "," << pressure_ << "," << rekindleRooms_ << "," << (isDrownedVigil() ? vigilChamber_ : 0)
        << "," << lowHpStreak_ << "," << (lastRoomOverBudget_ ? 1 : 0) << "," << (heroDroppedThisRoom_ ? 1 : 0)
        // v2.30 enemy AI (append-only): 44 combat round, 45 foes this room, 46 foes that fled.
        << "," << combatRound_ << "," << roomFoeTotal_ << "," << fledFoes_
+       // v2.40 Mythical (append-only): 47 dry eligible kills (pity), 48 a Mythical found this run.
+       << "," << mythicDryStreak_ << "," << (mythicThisRun_ ? 1 : 0)
        << "|";
     // Section 1: Descriptions
     ss << encode(roomDescription_) << "~" << encode(lastEvent_) << "|";
@@ -292,7 +294,11 @@ bool Game::deserialize(const std::string& data, std::string* error) {
     combatRound_ = tmp.combatRound_;
     roomFoeTotal_ = tmp.roomFoeTotal_;
     fledFoes_ = tmp.fledFoes_;
+    vigilChamber_ = tmp.vigilChamber_;
+    mythicDryStreak_ = tmp.mythicDryStreak_;
+    mythicThisRun_ = tmp.mythicThisRun_;
     pendingSurprise_ = false;
+    refreshHearthAura(); // v2.40: the aura is runtime-only; re-derive it from the loaded gear
 
     rebuildTurnOrder();
     // v2.31: solo saves pick up the stat caps now (over-cap points are refunded, never lost).
@@ -341,7 +347,7 @@ bool Game::parseSave(const std::string& data) {
     questAct2Complete_ = flag(12);
     questAct2LedgerFound_ = flag(13);
     soloPlayMode_ = num(14, static_cast<int>(SoloPlayMode::STORY), "playMode");
-    if (soloPlayMode_ < 0 || soloPlayMode_ > static_cast<int>(SoloPlayMode::ENDLESS))
+    if (soloPlayMode_ < 0 || soloPlayMode_ > static_cast<int>(SoloPlayMode::VIGIL)) // v2.40: 6 = Drowned Vigil
         soloPlayMode_ = static_cast<int>(SoloPlayMode::STORY);
     difficulty_ = num(15, static_cast<int>(Difficulty::EASY), "difficulty");
     if (difficulty_ < 0 || difficulty_ > 3) difficulty_ = static_cast<int>(Difficulty::EASY);
@@ -389,11 +395,21 @@ bool Game::parseSave(const std::string& data) {
         combatRound_ = savecodec::clampInt(num(44, 1, "combatRound"), 0, 100000);
         roomFoeTotal_ = savecodec::clampInt(num(45, 0, "roomFoes"), 0, 99);
         fledFoes_ = savecodec::clampInt(num(46, 0, "fledFoes"), 0, 99);
+        // v2.40 (40 was a reserved 0 before; 47 / 48 are new). A v2.39 save: no Vigil, no streak.
+        vigilChamber_ = savecodec::clampInt(num(40, 0, "vigilChamber"), 0, 3);
+        mythicDryStreak_ = savecodec::clampInt(num(47, 0, "mythicStreak"), 0, kMythicStreakMax);
+        mythicThisRun_ = flag(48);
     } else {
+        vigilChamber_ = 0; mythicDryStreak_ = 0; mythicThisRun_ = false;
         combatRound_ = 1; roomFoeTotal_ = 0; fledFoes_ = 0;
         pressure_ = 0; rekindleRooms_ = 0; lowHpStreak_ = 0;
         lastRoomOverBudget_ = false; heroDroppedThisRoom_ = false;
     }
+    if (soloPlayMode_ != static_cast<int>(SoloPlayMode::VIGIL)) vigilChamber_ = 0;
+    else if (vigilChamber_ < 1) vigilChamber_ = 1;
+    // A story / crawl session is its own "run" for the one-Mythical cap; focused runs keep the flag.
+    if (soloPlayMode_ == static_cast<int>(SoloPlayMode::STORY) || soloPlayMode_ == static_cast<int>(SoloPlayMode::CRAWL))
+        mythicThisRun_ = false;
 
     // Section 1: Descriptions
     bool hasDescriptions = false;

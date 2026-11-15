@@ -191,3 +191,14 @@ A v2.28 mid-fight foe has no curve fields and keeps the old rules until that fig
 Abilities / intents / AI and statuses (PR 2), XP formula (PR 4), level cap 50 and optional prestige
 with the Rekindle / Not now dialog (later PRs). The story +1 resource padding is still lost at level-up
 (noticed, not fixed here).
+
+## v2.40: Mythical gear
+
+Mythical gear never raises the encounter level (Martin's rule on #99). There is no Mythical term,
+and `memberOf` hands the curve a `curveView` of any hero wearing a Mythical piece: each Mythical item
+counts as the max-tier Legendary it would be (rarity Legendary, upgrade min(u, +25), bonus minus the
+Mythical extra +3 and minus every upgrade past +25, no Mythic effect, Hearth Aura off). That view feeds
+both the gear surplus (`kGearFollow`) and the measured power (offEl / defEl); AC and max HP move by the
+difference only. Heroes without Mythical gear take the unchanged v2.39 path. `mythic_test` checks
+Mythical == Legendary +25 on 2160 cases and that a 19 200-case non-Mythical sweep hashes to master's value.
+See docs/MYTHICAL.md.

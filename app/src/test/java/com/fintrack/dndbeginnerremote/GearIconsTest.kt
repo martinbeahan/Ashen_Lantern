@@ -70,6 +70,8 @@ class GearIconsTest {
             val leg = g in GearIcons.LEGENDARY_GLYPHS
             assertEquals("$g legendary", leg, GearIcons.hasDrawable("ic_gear_${g}_legendary"))
             assertEquals("$g legendary calm", leg, GearIcons.hasDrawable("ic_gear_${g}_legendary_calm"))
+            assertEquals("$g mythical", leg, GearIcons.hasDrawable("ic_gear_${g}_mythical"))
+            assertEquals("$g mythical calm", leg, GearIcons.hasDrawable("ic_gear_${g}_mythical_calm"))
         }
         for (g in GearIcons.BY_NAME.values) assertTrue(g, g in GearIcons.ALL_GLYPHS)
     }
@@ -95,5 +97,31 @@ class GearIconsTest {
         assertEquals(R.drawable.ic_gear_plate, GearIcons.forItem("Knight Plate", "Armor", "Rare", calm = false))
         assertEquals(R.drawable.bg_gear_socket_legendary, GearIcons.socketFor("Legendary"))
         assertEquals(R.drawable.bg_gear_socket_common, GearIcons.socketFor("weird"))
+    }
+
+    @Test fun mythicalGlyphsSocketAndCalm() {
+        for (n in listOf("Kindlewrath", "Last Wick Focus", "Ashfang", "Vigil Censer", "Bellsong Rapier", "Firstflame Blade",
+                "Hearthwall Plate", "Cinderweave Mantle", "Smokeveil Hide", "Lantern-Saint Mail", "Embercourt Coat", "Firstflame Mail")) {
+            assertTrue(n, GearIcons.hasExplicitGlyph(n))
+        }
+        assertEquals(GearIcons.MACE, GearIcons.glyphFor("Vigil Censer", "Weapon"))
+        assertEquals("ic_gear_mace_mythical", GearIcons.stemFor(GearIcons.MACE, "Mythical", calm = false))
+        assertEquals("ic_gear_mace_mythical_calm", GearIcons.stemFor(GearIcons.MACE, "mythical", calm = true))
+        assertEquals("ic_gear_ashen_lantern", GearIcons.stemFor(GearIcons.ASHEN_LANTERN, "Mythical", calm = false))
+        assertEquals(R.drawable.ic_gear_plate_mythical_calm, GearIcons.forItem("Hearthwall Plate", "Armor", "Mythical", calm = true))
+        assertEquals(R.drawable.bg_gear_socket_mythical, GearIcons.socketFor("Mythical"))
+        // Hand-written vector art only (no raster), the calm variant drops the ember glow but keeps the inlay.
+        val res = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "app/build.gradle.kts").isFile }
+        val draw = java.io.File(res, "app/src/main/res/drawable")
+        for (g in GearIcons.LEGENDARY_GLYPHS) {
+            val hot = java.io.File(draw, "ic_gear_${g}_mythical.xml").readText()
+            val calm = java.io.File(draw, "ic_gear_${g}_mythical_calm.xml").readText()
+            assertTrue(hot.startsWith("<vector") || hot.contains("<vector"))
+            assertTrue("$g calm keeps the bone inlay", calm.contains("D9D2C3", ignoreCase = true) && calm.contains("E0532B", ignoreCase = true))
+            assertTrue("$g calm drops a glow layer", calm.length < hot.length)
+        }
+        for (f in listOf("bg_gear_socket_mythical.xml", "bg_item_row_mythical.xml", "ic_rarity_mythical.xml"))
+            assertTrue(f, java.io.File(draw, f).isFile)
+        assertFalse(draw.listFiles()!!.any { it.name.contains("mythical") && !it.name.endsWith(".xml") })
     }
 }

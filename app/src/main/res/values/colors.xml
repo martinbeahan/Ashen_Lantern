@@ -33,6 +33,7 @@
     <color name="rarity_rare">#FF78B4EA</color>
     <color name="rarity_epic">#FFA676D6</color>
     <color name="rarity_legendary">#FFF2A541</color>
+    <color name="rarity_mythical">#FFF4795A</color> <!-- v2.40 Mythical: ember name text -->
 
     <!-- Legacy names kept so existing code/layouts compile; all now point at ae_* tokens. -->
     <color name="black">@color/ae_void</color>

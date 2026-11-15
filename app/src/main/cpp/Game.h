@@ -58,6 +58,29 @@ public:
     bool beginEndlessDeepFromCurrent();
     /** After death/retreat/milestone exit: restore prior mode; party preserved. */
     void finishEndlessDeepKeepParty();
+    /**
+     * v2.40 The Drowned Vigil (Rekindled I+; Kotlin spends 1 Raid Key): three chambers on the
+     * Continue hero — an elite pack, an elite pair, then a Drowned Lantern boss (3 phases).
+     * Returns false (nothing changes) when the hero is not Rekindled or this is an online table.
+     */
+    bool beginDrownedVigilFromCurrent();
+    /** After the finale / wipe-recover: restore prior mode; party preserved. */
+    void finishDrownedVigilKeepParty();
+    /** 1..3 while in the Vigil, else 0. */
+    int getVigilChamber() const { return isDrownedVigil() ? vigilChamber_ : 0; }
+
+    // --- v2.40 Mythical drops (docs/MYTHICAL.md) ---
+    static constexpr int kMythicPityDouble = 50;     // dry eligible kills before the chance doubles
+    static constexpr int kMythicPityGuarantee = 150; // the 150th eligible kill in a row is a Mythical
+    static constexpr int kMythicStreakMax = 1000;    // save clamp
+    /** Mythical chance per eligible kill, in permille, for the current mode (before pity). 0 = none. */
+    int mythicBasePermille() const;
+    /** The same with the dry-streak pity applied (1000 = guaranteed). */
+    int mythicPermilleWithPity() const;
+    /** Rekindled solo hero, not a Keeper table, no Mythical yet this run, and a source that drops them. */
+    bool mythicEligibleNow() const;
+    int getMythicDryStreak() const { return mythicDryStreak_; }
+    bool mythicFoundThisRun() const { return mythicThisRun_; }
     void startDmSession(const std::string& dmName);
     void addAlly(const std::string& name, CharacterClass cl);
     /** Solo NPC companion helpers (host/solo). Empty name if none. */
@@ -280,9 +303,12 @@ public:
     bool isEndlessDeep() const {
         return soloPlayMode_ == static_cast<int>(SoloPlayMode::ENDLESS);
     }
-    /** Boss Raid / Challenge / Arena / Endless Deep — focused endgame run on the Continue hero. */
+    bool isDrownedVigil() const {
+        return soloPlayMode_ == static_cast<int>(SoloPlayMode::VIGIL);
+    }
+    /** Boss Raid / Challenge / Arena / Endless Deep / Drowned Vigil — focused endgame run on the Continue hero. */
     bool isFocusedEndgameRun() const {
-        return isBossRaid() || isChallengeDungeon() || isArena() || isEndlessDeep();
+        return isBossRaid() || isChallengeDungeon() || isArena() || isEndlessDeep() || isDrownedVigil();
     }
     /** Acts 1–4 finished — gates Legendary loot, endgame bosses, Boss Raid / Challenge meta. */
     bool isStoryFullyComplete() const { return questAct4Complete_; }
@@ -525,6 +551,16 @@ private:
     int combatRound_ = 0;
     int roomFoeTotal_ = 0;
     int fledFoes_ = 0;
+    // v2.40 (saved: header 40 / 47 / 48). Rekindle + Ember Echo runtime state lives on Character (not saved).
+    int vigilChamber_ = 0;      // 1..3 in the Drowned Vigil
+    int mythicDryStreak_ = 0;   // eligible kills since the last Mythical (pity)
+    bool mythicThisRun_ = false; // one Mythical per run
+    void spawnVigilChamber(int chamber);
+    /** Mythical roll for one eligible kill; returns the item (already counted) or nullptr. */
+    std::shared_ptr<Item> rollMythicalDrop(int preferA, int preferB);
+    void applyMythicOnHit(Character* actor, Character* target, int dmg);
+    void applyMythicOnKill(Character* actor);
+    void refreshHearthAura();
     int bannerSeq_ = 0;          // not saved: phase banners for the UI
     std::string bannerText_;
     void planEnemyMove(Character& foe);

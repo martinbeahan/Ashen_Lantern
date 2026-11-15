@@ -105,6 +105,16 @@ std::string Game::wardsBeforeHit(Character& hero, int& dmg) {
         dmg -= soak;
         note += " (shield soaks " + std::to_string(soak) + ")";
     }
+    // v2.40 Mythic Rekindle (armor): a downing blow leaves the wearer at 25% HP, once per battle.
+    // It fires before Last Light and the two never stack (Last Light stays ready for a later blow).
+    if (dmg >= hero.currentHp && hero.currentHp > 0 && !hero.rekindleUsed && hero.hasMythic(MythicEffect::REKINDLE)) {
+        hero.rekindleUsed = true;
+        const int floorHp = std::max(1, hero.maxHp / 4);
+        if (hero.currentHp <= floorHp) { dmg = 0; hero.currentHp = floorHp; }
+        else dmg = hero.currentHp - floorHp;
+        note += " (Rekindle — " + hero.name + "'s Mythical armor flares; they stand at " + std::to_string(floorHp) + " HP!)";
+        return note;
+    }
     if (dmg >= hero.currentHp && hero.currentHp > 0 && hero.wardReady(perks::LAST_LIGHT)) {
         hero.spendWard(perks::LAST_LIGHT);
         dmg = hero.currentHp - 1;
