@@ -331,13 +331,13 @@ int main() {
             return false;
         };
         int dead = 0, downed = 0;
-        for (int run = 0; run < 20 && (dead < 3 || downed < 3); ++run) {
+        for (int run = 0; run < 400 && (dead < 3 || downed < 3); ++run) {
             Game g;
             if (!heroTurn(g) || g.getPlayers().size() < 2) continue;
             Character& hero = const_cast<Character&>(*g.getPlayers()[0]);
             Character& ally = const_cast<Character&>(*g.getPlayers()[1]);
             hero.resources = 3;
-            if (run % 2 == 0) {
+            if (dead <= downed) { // alternate by count, not run parity, so skipped runs can't starve a case
                 // Permanently dead ally: refused, potion kept, still the hero's turn, ally unchanged.
                 ally.currentHp = 0; ally.isDowned = true; ally.isDead = true; ally.deathSaveFailures = 3;
                 g.playerHeal(1);
