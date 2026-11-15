@@ -192,7 +192,7 @@ Abilities / intents / AI and statuses (PR 2), XP formula (PR 4), level cap 50 an
 with the Rekindle / Not now dialog (later PRs). The story +1 resource padding is still lost at level-up
 (noticed, not fixed here).
 
-## v2.40: Mythical follow
+## v2.40: Mythical gear
 
-Each equipped Mythical piece (0..2) adds `kMythicFollow = 1.5` to the encounter level, its upper
-clamp and the axis value, so the bands hold with Mythical gear. See docs/MYTHICAL.md.
+Mythical gear does **not** change the encounter level (Martin's decision on #99): no follow term,
+so a high win rate with Mythical gear is the reward. See docs/MYTHICAL.md.
