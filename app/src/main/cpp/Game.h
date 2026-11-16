@@ -357,6 +357,13 @@ public:
     // --- v2.29 combat curve (CombatCurve.h, docs/COMBAT_CURVE.md) ---
     /** Solo / host play only: online Keeper tables and joiners keep the old rules. */
     bool encounterCurveActive() const { return isHost_ && !dmOnlyTable_; }
+    /** v2.41: the host of an online Keeper table, which runs the classic rules plus the online
+     *  fairness guards (docs/ONLINE_FAIRNESS.md): 45% per-hit cap, soft crits on heroes below
+     *  level 5, and Easy foes (-15% HP and damage, -1 to hit). Solo play never sees these. */
+    bool onlineTableRules() const { return isHost_ && dmOnlyTable_; }
+    /** Online Easy: the solo Easy factors (curve::difficultyInfo(EASY): x0.85 HP and damage, -1 hit). */
+    static constexpr double kOnlineEasyFoeScale = 0.85;
+    static constexpr int kOnlineEasyToHit = -1;
     /** The party's Encounter Level right now (incl. mode bonus). */
     int currentEncounterLevel() const;
     /** v2.33: the EL with its offense / defense axes (foe HP + AC, damage + to-hit). */
