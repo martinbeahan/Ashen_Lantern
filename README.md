@@ -6,7 +6,17 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 
 > **3D / Unreal:** planning only — see [`docs/UNREAL_V3D_PLAN.md`](docs/UNREAL_V3D_PLAN.md). This Android repo stays the **2D production / tester** track; proposed UE work lives in a separate repo (**Ashen_Lantern_UE**).
 
-## What's new (v2.40 / 79) — Mythical gear and The Drowned Vigil
+## What's new (v2.41 / 80) — Fair online tables for new joiners
+
+- **Fix: a fresh joiner could die in the first round online.** Online Keeper tables run the classic combat rules on the host's phone, and a brand-new level-1 joiner (12 HP) could take 9–27 damage from one hit (a critical Sneak Attack); about 1 fight in 7 a joiner went from full HP to 0 in a single blow. Now, on online tables only:
+  - **No hit takes more than 45% of a standing hero's max HP** (the same guard solo play has), on every difficulty — a full-HP hero always survives at least two hits.
+  - **Soft crits on heroes below level 5** — a critical adds +50% instead of doubling the dice (solo does the same early on).
+  - **Easy is applied to every foe**: −15% HP, −15% damage, −1 to hit (it used to change only bosses and set-pieces).
+  - **The table uses the difficulty the host picked.** It used to keep whatever difficulty the host's last solo run had loaded (so an "Easy" table could secretly run on Nightmare). Everyone sees *Table difficulty: …* in the chat.
+- **Not the cause:** the host's (or a veteran's) level, gear or Mythical pieces never set online foes — foes scale only with the room number. A test now checks that a level-50 Mythical veteran in the party leaves every foe identical.
+- Solo play, saves and the online protocol / security rules are unchanged (no new data from joiners). Details: [`docs/ONLINE_FAIRNESS.md`](docs/ONLINE_FAIRNESS.md)
+
+## Previous (v2.40 / 79) — Mythical gear and The Drowned Vigil
 
 - **Mythical gear** — a sixth rarity above Legendary, only for heroes who have Rekindled at least once (rank I+). Twelve original pieces (Kindlewrath, Last Wick Focus, Ashfang, Vigil Censer, Bellsong Rapier, Firstflame Blade; Hearthwall Plate, Cinderweave Mantle, Smokeveil Hide, Lantern-Saint Mail, Embercourt Coat, Firstflame Mail). Bonus 3 higher than a Legendary, upgrades to +30 (+32 at Rekindled VII), three bonus stats at +2 each (unlocked at +0 / +10 / +20), the Legendary sub-effect from +0, and one **Mythic effect** at +25: *Rekindle* (armor: rise once a battle at 25% HP, before Last Light), *Ember Echo* (every 4th hit repeats for 50%), *Cinder Brand* (hits Burn), *Hearth Aura* (armor: party +1 AC) or *Lantern's Due* (a kill heals the party 5%). It looks different too: an ember frame with a bone-white rim, a ringed-flame pip, ember-coloured name text and a bone-white inlay with ember cracks on the glyph (*Reduce flashing* drops its glow and the ember-white burst)
 - **Where it drops** — only from the kills that can drop a Legendary: **7%** on the Drowned Vigil finale, **1.5%** in Boss Raids, the Ember Ring and the Ashen Deep, **1%** in the crawl after the story, and the Crucible's Legendary chance ÷ 6 (3% at 18%; a Mythical there also lowers the Crucible chance). Never from the story, trash, Search, the shop, set pieces, pity, Daily Quests or online. **Pity:** after 50 such kills without one the chance doubles, and the 150th in a row is a Mythical. At most one per run. Mythical gear never raises the Encounter Level: the curve counts a Mythical piece as the +25 Legendary it would be, so foes stay as they are and the gear is the reward
@@ -251,7 +261,7 @@ Compatible with **5e SRD** concepts only. **Not** an official Dungeons & Dragons
 - **Challenge Dungeon** — story-complete *Cinder Crucible* vault (no Raid Key cost; dynamic Legendary chance)
 - **Arena (Ember Ring)** — see Endgame modes below
 - **Endless Deep (Ashen Deep)** — see Endgame modes below
-- **Online multiplayer** — **Host online (Lanternkeeper)** / **Join session** via Firebase Realtime Database (the host narrates as the Lanternkeeper)
+- **Online multiplayer** — **Host online (Lanternkeeper)** / **Join session** via Firebase Realtime Database (the host narrates as the Lanternkeeper); online tables use the host's difficulty, cap any single hit at 45% of a hero's max HP and soften crits on heroes below level 5, so new level-1 joiners aren't one-shot
 - **Online security** — anonymous Firebase sign-in, locked-down database rules (only the host writes the game; players write only their own entries, with type and size checks), an authoritative host and unguessable 10-character session codes. See [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md)
 - **Settings** — music on/off, sound effects on/off, reduce flashing (photosensitive-friendly), foe intent chips and exact intent numbers, tutorial, Adventures (save slots), return to main menu, About
 - **Audio beds** — biome / combat / boss loops (CC0); optional Lanternkeeper (narrator) voice via Android Text-to-Speech
@@ -363,6 +373,7 @@ See [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 | [`BUILD_HELP.md`](BUILD_HELP.md) | Build troubleshooting |
 | [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md) | Online multiplayer setup |
 | [`docs/ONLINE_SECURITY.md`](docs/ONLINE_SECURITY.md) | Online lockdown: anonymous sign-in, database rules (`firebase/database.rules.json`), session codes, console steps, deploy order, Rules Playground checklist, emulator test (`tools/rules_test`) |
+| [`docs/ONLINE_FAIRNESS.md`](docs/ONLINE_FAIRNESS.md) | v2.41 online Keeper-table fairness: why a fresh joiner died in round 1, the 45% hit cap, soft crits below level 5, Easy online, the host's table difficulty, tests and sims (`tools/migration_test/online_test`, `tools/combat_sim/run.sh N online`) |
 
 ## Legal / trademarks
 

@@ -197,6 +197,8 @@ void Game::applyStarterPaddingForStory() {
 void Game::setDifficulty(int d) {
     if (d < 0 || d > 3) d = static_cast<int>(Difficulty::EASY);
     difficulty_ = d;
+    // v2.41: on an online table everyone sees which difficulty the host picked.
+    if (dmOnlyTable_) addChatMessage("System", std::string("Table difficulty: ") + difficultyName(difficulty_) + ".");
 }
 
 void Game::startDmSession(const std::string& dmName) {
@@ -215,6 +217,9 @@ void Game::startDmSession(const std::string& dmName) {
     isMerchantRoom_ = false;
     roomSearchUsed_ = false; roomRestUsed_ = false;
     dmOnlyTable_ = true;
+    // v2.41: a table never inherits the last solo run's difficulty; the host's chosen difficulty
+    // is applied right after (MainActivity -> setDifficulty), Easy until then.
+    difficulty_ = static_cast<int>(Difficulty::EASY);
     resetSoloQuestState();
     resetCombatCurveState();
     dmName_ = dmName.empty() ? "The Lanternkeeper" : dmName;
@@ -4557,6 +4562,9 @@ void Game::enemyTurn() {
             result.total -= enemy->nextAttackPenalty;
             enemy->nextAttackPenalty = 0;
         }
+        const bool online = onlineTableRules() && enemy->curveEL <= 0;
+        const bool easyOnline = online && difficulty_ == static_cast<int>(Difficulty::EASY);
+        if (easyOnline) result.total += kOnlineEasyToHit; // v2.41: Easy foes -1 to hit online
         bool hit = (result.total >= hero.armorClass || result.isCriticalHit) && !result.isCriticalFail;
         const bool curved = encounterCurveActive();
         std::string clampNote;
@@ -4571,9 +4579,17 @@ void Game::enemyTurn() {
                 dmg = curve::rollFoeDamage(enemy->curveAvgDmgX10, enemy->curveEL, result.isCriticalHit, sneak);
             } else {
                 int extra = sneak ? enemy->sneakAttackDice() : 0;
-                dmg = CombatSystem::calculateDamage(*enemy, result.isCriticalHit, extra, 6);
+                if (online && result.isCriticalHit && hero.level < curve::kCritSoftenBelowEL) {
+                    // v2.41: a crit on a hero below level 5 adds +50% instead of doubling the dice
+                    // (the solo curve does the same below EL 5).
+                    dmg = CombatSystem::calculateDamage(*enemy, false, extra, 6) * 3 / 2;
+                    clampNote += " (soft crit: " + hero.name + " is below level 5)";
+                } else {
+                    dmg = CombatSystem::calculateDamage(*enemy, result.isCriticalHit, extra, 6);
+                }
+                if (easyOnline) dmg = std::max(1, static_cast<int>(std::lround(dmg * kOnlineEasyFoeScale)));
             }
-            if (curved && !hero.isDowned && !hero.isStable) {
+            if ((curved || online) && !hero.isDowned && !hero.isStable) {
                 // v2.29 overkill guard: one hit takes at most 45% of max HP (telegraphed boss
                 // heavies will be exempt in PR 2; there are none yet).
                 const int capped = curve::overkillCap(dmg, hero.maxHp);
@@ -4836,8 +4852,17 @@ void Game::applyEncounterCurve() {
     for (const auto& e : enemies_) if (e && e->curvePending) { anyPending = true; break; }
     if (!anyPending) { pendingSurprise_ = false; return; }
     if (!encounterCurveActive()) {
-        // Online Keeper tables / joiners: old rules, untouched.
-        for (auto& e : enemies_) if (e) e->curvePending = false;
+        // Online Keeper tables / joiners: old rules (v2.41: plus the online Easy HP on the host).
+        const bool easyTable = onlineTableRules() && difficulty_ == static_cast<int>(Difficulty::EASY);
+        for (auto& e : enemies_) {
+            if (!e) continue;
+            if (easyTable && e->curvePending) {
+                e->maxHp = std::max(4, static_cast<int>(std::lround(e->maxHp * kOnlineEasyFoeScale)));
+                e->currentHp = std::min(e->currentHp, e->maxHp);
+                if (e->currentHp <= 0) e->currentHp = e->maxHp;
+            }
+            e->curvePending = false;
+        }
         pendingSurprise_ = false;
         return;
     }

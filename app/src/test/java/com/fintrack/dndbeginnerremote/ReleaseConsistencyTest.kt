@@ -23,7 +23,7 @@ class ReleaseConsistencyTest {
         assertEquals(name, top[0].groupValues[1])
         assertEquals(code, top[0].groupValues[2])
         // Every release since the audit keeps its entry.
-        for (v in listOf("2.35 / 74", "2.36 / 75", "2.37 / 76", "2.38 / 77", "2.39 / 78")) {
+        for (v in listOf("2.35 / 74", "2.36 / 75", "2.37 / 76", "2.38 / 77", "2.39 / 78", "2.40 / 79")) {
             assertTrue(v, readme.contains("## Previous (v$v)"))
         }
     }

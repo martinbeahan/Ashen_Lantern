@@ -2920,6 +2920,10 @@ class MainActivity : AppCompatActivity() {
         detachOnlineSession()
         try {
             startDmSession(localPlayerName)
+            // v2.41: the table runs on the difficulty the host picked (it used to keep whatever the
+            // last solo run had loaded). Sent to joiners in the normal state sync.
+            setDifficulty(OnlineFairness.tableDifficulty(preferredDifficulty))
+            runDifficulty = OnlineFairness.tableDifficulty(preferredDifficulty)
             setHost(true)
         } catch (e: Exception) {
             Log.e(TAG, "startDmSession failed", e)
